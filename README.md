@@ -2,129 +2,111 @@
 
 Sistema completo para gestionar historiales clinicos odontologicos con autenticacion, panel profesional y odontograma visual.
 
+## Credenciales de acceso
+
+| Usuario | Contrasena | Rol |
+|---------|-----------|-----|
+| admin | admin | Administrador |
+| doctor | doctor | Odontologo |
+
 ## Requisitos
 
-- Node.js 25+ (usa `node:sqlite` integrado - sin compilacion nativa)
+- Node.js 22+ (usa `node:sqlite` integrado)
 - npm
 
-## Estructura
-
-```
-Historias Clinica/
-├── backend/                  # API REST - Node.js + Express + SQLite
-│   ├── src/
-│   │   ├── index.js          # Servidor principal
-│   │   ├── database.js       # Conexion SQLite + schema
-│   │   ├── controllers/      # Logica de negocio
-│   │   ├── routes/           # Endpoints REST
-│   │   └── middleware/       # Auth JWT
-│   └── clinica.db            # Base de datos (se crea automaticamente)
-├── frontend/                 # React + Vite
-│   └── src/
-│       ├── App.jsx           # App principal
-│       ├── components/       # Login, Sidebar, Dashboard, Pacientes, Historial
-│       ├── context/          # AuthContext (JWT)
-│       └── services/         # API client con token
-└── README.md
-```
-
-## Instalacion y Ejecucion
-
-### 1. Backend
+## Ejecucion local
 
 ```bash
+# Backend
 cd backend
 npm install
-npm run seed    # Carga datos de prueba + usuario admin
+npm run seed    # Carga datos de prueba
 npm start       # http://localhost:3001
-```
 
-### 2. Frontend
-
-```bash
+# Frontend (otra terminal)
 cd frontend
 npm install
 npm run dev     # http://localhost:5173
 ```
 
-### 3. Credenciales de prueba
+## Deploy Gratuito
 
-| Email | Contrasena | Rol |
-|-------|-----------|-----|
-| admin@clinica.com | admin123 | Administrador |
-| doctor@clinica.com | doctor123 | Odontologo |
+### Backend en Render.com
 
-## Endpoints API
+1. Ir a [render.com](https://render.com) → Create Web Service
+2. Conectar repositorio `odontologia-sistema`
+3. Configurar:
+   - **Name**: `odontologia-backend`
+   - **Runtime**: Node
+   - **Region**: Oregon (o la mas cercana)
+   - **Branch**: master
+   - **Root Directory**: `backend`
+   - **Build Command**: `npm install`
+   - **Start Command**: `node src/seed.js && node src/index.js`
+   - **Plan**: Free
+4. Environment Variables:
+   - `NODE_ENV` = `production`
+   - `JWT_SECRET` = `una-clave-secreta-larga`
+   - `FRONTEND_URL` = `https://tu-app.vercel.app`
+5. Create Web Service
+6. Esperar deploy (~2 min)
+7. URL: `https://odontologia-backend.onrender.com`
 
-### Auth (publicos)
-| Metodo | Ruta | Descripcion |
-|--------|------|-------------|
-| POST | /api/auth/login | Iniciar sesion |
-| POST | /api/auth/register | Registrar usuario |
+### Frontend en Vercel
 
-### Auth (requieren token)
-| Metodo | Ruta | Descripcion |
-|--------|------|-------------|
-| GET | /api/auth/me | Usuario actual |
-| GET | /api/auth | Listar usuarios |
+1. Ir a [vercel.com](https://vercel.com) → New Project
+2. Importar repositorio `odontologia-sistema`
+3. Configurar:
+   - **Framework**: Vite
+   - **Root Directory**: `frontend`
+   - **Build Command**: `npm run build`
+   - **Output Directory**: `dist`
+4. Environment Variables:
+   - `VITE_API_URL` = `https://odontologia-backend.onrender.com/api`
+5. Deploy
+6. URL: `https://odontologia-frontend.vercel.app`
 
-### Pacientes
-| Metodo | Ruta | Descripcion |
-|--------|------|-------------|
-| GET | /api/pacientes | Listar pacientes |
-| POST | /api/pacientes | Crear paciente |
-| GET | /api/pacientes/:id | Obtener paciente |
-| GET | /api/pacientes/:id/historial | Historial completo |
-| PUT | /api/pacientes/:id | Actualizar paciente |
-| DELETE | /api/pacientes/:id | Eliminar paciente |
+### Notas importantes
 
-### Historias Clinicas
-| Metodo | Ruta | Descripcion |
-|--------|------|-------------|
-| POST | /api/historias | Crear historia |
-| GET | /api/historias/paciente/:id | Obtener historia |
-| PUT | /api/historias/:id | Actualizar historia |
+- Render free tier duerme despues de 15min sin trafico
+- El primer request tarda ~30seg (cold start)
+- La DB SQLite se reinicia al redeploy (es demo, no produccion)
+- Para datos persistentes, usar Turso o Supabase
 
-### Consultas
-| Metodo | Ruta | Descripcion |
-|--------|------|-------------|
-| POST | /api/consultas | Crear consulta |
-| GET | /api/consultas/historia/:id | Consultas de una historia |
+## Stack Tecnico
 
-### Odontogramas
-| Metodo | Ruta | Descripcion |
-|--------|------|-------------|
-| POST | /api/odontogramas | Guardar odontograma |
-| GET | /api/odontogramas/historia/:id | Odontogramas de una historia |
+| Componente | Tecnologia | Hosting |
+|------------|-----------|---------|
+| Backend | Node.js + Express | Render.com (gratis) |
+| Frontend | React + Vite | Vercel (gratis) |
+| Base de datos | SQLite | Archivo local |
+| Auth | JWT + bcrypt | - |
+
+## API Endpoints
+
+| Metodo | Ruta | Auth | Descripcion |
+|--------|------|------|-------------|
+| POST | /api/auth/login | No | Iniciar sesion |
+| POST | /api/auth/register | No | Registrar usuario |
+| GET | /api/auth/me | Si | Usuario actual |
+| GET | /api/pacientes | Si | Listar pacientes |
+| POST | /api/pacientes | Si | Crear paciente |
+| GET | /api/pacientes/:id | Si | Obtener paciente |
+| GET | /api/pacientes/:id/historial | Si | Historial completo |
+| PUT | /api/pacientes/:id | Si | Actualizar paciente |
+| DELETE | /api/pacientes/:id | Si | Eliminar paciente |
+| POST | /api/historias | Si | Crear historia |
+| PUT | /api/historias/:id | Si | Actualizar historia |
+| POST | /api/consultas | Si | Crear consulta |
+| GET | /api/consultas/historia/:id | Si | Consultas de historia |
+| POST | /api/odontogramas | Si | Guardar odontograma |
+| GET | /api/odontogramas/historia/:id | Si | Odontogramas |
+| GET | /api/health | No | Health check |
 
 ## Modelo de Datos
 
 - **Usuarios**: autenticacion con roles (admin/odontologo)
-- **Paciente**: datos personales (nombre, DNI, telefono, etc.)
-- **HistoriaClinica**: antecedentes, alergias (una por paciente)
-- **Consulta**: motivo, diagnostico, tratamiento (inmutables)
-- **Odontograma**: estado de 32 dientes en JSON por consulta
-
-## Funcionalidades
-
-- Login con JWT (tokens de 24h)
-- Dashboard con estadisticas
-- CRUD completo de pacientes
-- Historial clinico cronologico
-- Editor de odontograma visual (32 dientes, 8 estados)
-- Timeline de consultas
-- Busqueda de pacientes
-- Roles: admin y odontologo
-
-## Reglas de Negocio
-
-- Cada paciente tiene una sola historia clinica
-- Las consultas son inmutables (no se editan)
-- El historial se muestra en orden cronologico
-- El odontograma se versiona por consulta
-
-## Tecnologias
-
-- **Backend**: Node.js, Express, node:sqlite, JWT, bcryptjs
-- **Frontend**: React, Vite
-- **Base de datos**: SQLite (archivo local)
+- **Pacientes**: datos personales
+- **Historias Clinicas**: antecedentes, alergias (una por paciente)
+- **Consultas**: motivo, diagnostico, tratamiento (inmutables)
+- **Odontogramas**: estado de 32 dientes en JSON por consulta

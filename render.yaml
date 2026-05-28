@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: odontologia-backend
+    runtime: node
+    plan: free
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && node src/seed.js && node src/index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: FRONTEND_URL
+        sync: false
+    healthCheckPath: /api/health
