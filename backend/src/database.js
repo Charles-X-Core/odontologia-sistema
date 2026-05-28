@@ -57,6 +57,44 @@ db.exec(`
     created_at TEXT DEFAULT (datetime('now')),
     FOREIGN KEY (consulta_id) REFERENCES consultas(id) ON DELETE CASCADE
   );
+
+  CREATE TABLE IF NOT EXISTS tratamientos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    paciente_id INTEGER NOT NULL,
+    descripcion TEXT NOT NULL,
+    estado TEXT DEFAULT 'pendiente',
+    costo REAL DEFAULT 0,
+    diente_numero INTEGER,
+    fecha_inicio TEXT,
+    fecha_fin TEXT,
+    notas TEXT DEFAULT '',
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (paciente_id) REFERENCES pacientes(id) ON DELETE CASCADE
+  );
+
+  CREATE TABLE IF NOT EXISTS recetas (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    consulta_id INTEGER NOT NULL,
+    paciente_id INTEGER NOT NULL,
+    medicamentos TEXT NOT NULL DEFAULT '[]',
+    indicaciones TEXT DEFAULT '',
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (consulta_id) REFERENCES consultas(id) ON DELETE CASCADE,
+    FOREIGN KEY (paciente_id) REFERENCES pacientes(id) ON DELETE CASCADE
+  );
+
+  CREATE TABLE IF NOT EXISTS imagenes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    paciente_id INTEGER NOT NULL,
+    consulta_id INTEGER,
+    archivo_nombre TEXT NOT NULL,
+    archivo_original TEXT NOT NULL,
+    tipo TEXT DEFAULT 'foto',
+    descripcion TEXT DEFAULT '',
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (paciente_id) REFERENCES pacientes(id) ON DELETE CASCADE,
+    FOREIGN KEY (consulta_id) REFERENCES consultas(id) ON DELETE SET NULL
+  );
 `);
 
 module.exports = db;

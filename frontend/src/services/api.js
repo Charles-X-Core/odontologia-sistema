@@ -61,4 +61,24 @@ export const api = {
     crear: (data) => request('/odontogramas', { method: 'POST', body: JSON.stringify(data) }),
     obtener: (historiaId) => request(`/odontogramas/historia/${historiaId}`),
   },
+
+  tratamientos: {
+    crear: (data) => request('/tratamientos', { method: 'POST', body: JSON.stringify(data) }),
+    listar: (pacienteId) => request(`/tratamientos/paciente/${pacienteId}`),
+    actualizar: (id, data) => request(`/tratamientos/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    eliminar: (id) => request(`/tratamientos/${id}`, { method: 'DELETE' }),
+  },
+
+  recetas: {
+    crear: (data) => request('/recetas', { method: 'POST', body: JSON.stringify(data) }),
+    porPaciente: (pacienteId) => request(`/recetas/paciente/${pacienteId}`),
+    porConsulta: (consultaId) => request(`/recetas/consulta/${consultaId}`),
+    obtener: (id) => request(`/recetas/${id}`),
+    eliminar: (id) => request(`/recetas/${id}`, { method: 'DELETE' }),
+  },
+
+  imagenes: {
+    porPaciente: (pacienteId) => request(`/imagenes/paciente/${pacienteId}`),
+    eliminar: (id) => request(`/imagenes/${id}`, { method: 'DELETE' }),
+  },
 };

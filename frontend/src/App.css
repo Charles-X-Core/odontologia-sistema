@@ -776,6 +776,526 @@ body {
   font-size: 13px;
 }
 
+/* ========== TABS ========== */
+.tabs-container {
+  background: white;
+  border-radius: var(--radius);
+  border: 1px solid var(--gray-200);
+  overflow: hidden;
+}
+
+.tabs-nav {
+  display: flex;
+  border-bottom: 1px solid var(--gray-200);
+  background: var(--gray-50);
+}
+
+.tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 20px;
+  border: none;
+  background: transparent;
+  color: var(--gray-500);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s;
+}
+
+.tab-btn:hover { color: var(--gray-700); background: white; }
+.tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); background: white; }
+
+.tab-content { padding: 20px; }
+
+/* ========== SVG ODONTOGRAMA ========== */
+.odontograma-svg-container {
+  margin-top: 16px;
+}
+
+.odontograma-svg-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gray-700);
+  margin-bottom: 10px;
+}
+
+.odontograma-svg-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--gray-600);
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.odontograma-svg-scroll {
+  overflow-x: auto;
+  padding: 8px 0;
+}
+
+.odontograma-svg {
+  width: 100%;
+  max-width: 620px;
+  margin: 0 auto;
+  display: block;
+}
+
+.odontograma-svg .diente-svg:hover rect {
+  filter: brightness(1.1);
+  stroke-width: 2;
+}
+
+.estado-selector-svg {
+  margin-top: 16px;
+  padding: 12px;
+  background: var(--gray-50);
+  border-radius: var(--radius);
+  border: 1px solid var(--gray-200);
+}
+
+.estado-selector-label {
+  font-size: 13px;
+  color: var(--gray-600);
+  margin-bottom: 8px;
+  display: block;
+}
+
+.estado-selector-botones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.btn-estado {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 10px;
+  border: 1px solid var(--gray-300);
+  border-radius: 6px;
+  background: white;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.1s;
+}
+
+.btn-estado:hover { border-color: var(--estado-color); }
+.btn-estado.active { border-color: var(--estado-color); background: color-mix(in srgb, var(--estado-color) 10%, white); font-weight: 600; }
+
+.btn-estado-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.odontograma-preview-inline {
+  margin-top: 12px;
+  padding: 12px;
+  background: white;
+  border-radius: var(--radius);
+  border: 1px solid var(--gray-200);
+}
+
+/* ========== TRATAMIENTOS ========== */
+.tratamientos-panel { }
+
+.tratamientos-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tratamientos-stats {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.stat-badge {
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.stat-badge.pendiente { background: #fef3c7; color: #92400e; }
+.stat-badge.en_proceso { background: #dbeafe; color: #1e40af; }
+.stat-badge.completado { background: #dcfce7; color: #166534; }
+.stat-badge.total { background: var(--gray-100); color: var(--gray-700); }
+
+.tratamiento-form-card {
+  background: var(--gray-50);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.form-grid-3 {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 12px;
+}
+
+.form-actions-inline {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.tratamientos-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tratamiento-card {
+  background: white;
+  border: 1px solid var(--gray-200);
+  border-left: 4px solid;
+  border-radius: var(--radius);
+  padding: 14px 16px;
+}
+
+.tratamiento-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.tratamiento-card-header strong { font-size: 14px; }
+
+.diente-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  background: var(--gray-100);
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--gray-600);
+  font-weight: 600;
+}
+
+.costo-badge {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--gray-800);
+  white-space: nowrap;
+}
+
+.tratamiento-notas {
+  font-size: 12px;
+  color: var(--gray-500);
+  margin-top: 6px;
+}
+
+.tratamiento-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.estado-badge {
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid;
+}
+
+.tratamiento-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.btn-success {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #86efac;
+}
+.btn-success:hover { background: #bbf7d0; }
+
+/* ========== RECETAS ========== */
+.recetas-count {
+  font-size: 14px;
+  color: var(--gray-600);
+  font-weight: 500;
+}
+
+.medicamentos-section {
+  margin-bottom: 16px;
+}
+
+.medicamentos-section label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gray-700);
+  margin-bottom: 8px;
+}
+
+.medicamento-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr auto;
+  gap: 8px;
+  margin-bottom: 8px;
+  align-items: center;
+}
+
+.medicamento-row input {
+  padding: 7px 10px;
+  border: 1px solid var(--gray-300);
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.btn-remove {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: var(--danger-light);
+  color: var(--danger);
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.recetas-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.receta-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+  background: white;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.receta-card:hover { border-color: var(--primary); box-shadow: var(--shadow-sm); }
+
+.receta-card-fecha {
+  font-size: 12px;
+  color: var(--gray-500);
+  white-space: nowrap;
+}
+
+.receta-card-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.receta-card-body strong { font-size: 14px; }
+.receta-card-motivo { font-size: 12px; color: var(--gray-500); }
+.receta-card-arrow { font-size: 20px; color: var(--gray-400); }
+
+.receta-print { padding: 24px; }
+
+.receta-header-print {
+  text-align: center;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid var(--gray-800);
+}
+
+.receta-header-print h2 { font-size: 20px; margin-bottom: 4px; }
+.receta-header-print p { font-size: 13px; color: var(--gray-600); }
+
+.receta-paciente {
+  margin-bottom: 16px;
+  padding: 10px;
+  background: var(--gray-50);
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.receta-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 16px;
+}
+
+.receta-table th {
+  text-align: left;
+  padding: 8px 12px;
+  background: var(--gray-100);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gray-600);
+  border-bottom: 1px solid var(--gray-200);
+}
+
+.receta-table td {
+  padding: 8px 12px;
+  font-size: 13px;
+  border-bottom: 1px solid var(--gray-100);
+}
+
+.receta-indicaciones {
+  margin-bottom: 20px;
+  padding: 10px;
+  background: #fffbeb;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.receta-indicaciones p { margin-top: 4px; }
+
+.receta-firma {
+  text-align: center;
+  margin-top: 40px;
+}
+
+.firma-linea {
+  width: 200px;
+  border-top: 1px solid var(--gray-400);
+  margin: 0 auto 8px;
+}
+
+.receta-firma p { font-size: 13px; color: var(--gray-600); }
+
+/* ========== GALERIA ========== */
+.galeria-panel { }
+
+.galeria-filtros {
+  display: flex;
+  gap: 4px;
+}
+
+.filtro-btn {
+  padding: 6px 14px;
+  border: 1px solid var(--gray-300);
+  border-radius: 20px;
+  background: white;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.filtro-btn:hover { border-color: var(--primary); }
+.filtro-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+.galeria-empty {
+  text-align: center;
+  padding: 48px 20px;
+  color: var(--gray-400);
+}
+
+.galeria-empty p { margin-top: 12px; font-size: 14px; }
+.galeria-empty span { font-size: 12px; display: block; margin-top: 4px; }
+
+.galeria-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.galeria-item {
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.galeria-item:hover { box-shadow: var(--shadow-md); }
+
+.galeria-placeholder {
+  height: 140px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.galeria-placeholder-icon {
+  font-size: 24px;
+  font-weight: 700;
+  opacity: 0.6;
+}
+
+.galeria-placeholder-text {
+  font-size: 10px;
+  opacity: 0.5;
+  max-width: 80%;
+  text-align: center;
+  word-break: break-all;
+}
+
+.galeria-item-info {
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.galeria-item-tipo {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  width: fit-content;
+}
+
+.galeria-item-desc { font-size: 12px; color: var(--gray-700); font-weight: 500; }
+.galeria-item-fecha { font-size: 11px; color: var(--gray-400); }
+
+.galeria-ampliada { padding: 20px; }
+
+.galeria-placeholder-large {
+  height: 300px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-radius: var(--radius);
+}
+
+.galeria-placeholder-icon-large { font-size: 48px; font-weight: 700; opacity: 0.5; }
+
+.galeria-ampliada-info {
+  margin-top: 16px;
+  font-size: 13px;
+}
+
+.galeria-ampliada-info p { margin-bottom: 6px; }
+
 /* ========== LOADING ========== */
 .loading {
   text-align: center;

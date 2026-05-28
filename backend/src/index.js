@@ -34,6 +34,9 @@ app.use('/api/pacientes', auth, require('./routes/pacientes'));
 app.use('/api/historias', auth, require('./routes/historias'));
 app.use('/api/consultas', auth, require('./routes/consultas'));
 app.use('/api/odontogramas', auth, require('./routes/odontogramas'));
+app.use('/api/tratamientos', auth, require('./routes/tratamientos'));
+app.use('/api/recetas', auth, require('./routes/recetas'));
+app.use('/api/imagenes', auth, require('./routes/imagenes'));
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
