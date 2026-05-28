@@ -121,7 +121,7 @@ export default function Recetas({ pacienteId, consultas }) {
             <div className="receta-print">
               <div className="receta-header-print">
                 <h2>Receta Medica</h2>
-                <p>Dr. Carlos Lopez - Odontologia</p>
+                <p>Dr. Carlos Alonso - Odontologia</p>
                 <p>Fecha: {new Date(recetaDetalle.consulta_fecha).toLocaleDateString()}</p>
               </div>
               <div className="receta-paciente">
@@ -151,7 +151,7 @@ export default function Recetas({ pacienteId, consultas }) {
               )}
               <div className="receta-firma">
                 <div className="firma-linea"></div>
-                <p>Dr. Carlos Lopez</p>
+                <p>Dr. Carlos Alonso</p>
                 <p>Lic. en Odontologia</p>
               </div>
             </div>

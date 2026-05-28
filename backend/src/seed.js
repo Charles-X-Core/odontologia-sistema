@@ -17,7 +17,7 @@ db.exec('BEGIN');
 try {
   const adminHash = bcrypt.hashSync('admin', 10);
   insertUsuario.run('Admin', 'admin', adminHash, 'admin');
-  insertUsuario.run('Dr. Carlos Lopez', 'doctor', bcrypt.hashSync('doctor', 10), 'odontologo');
+  insertUsuario.run('Dr. Carlos Alonso', 'doctor', bcrypt.hashSync('doctor', 10), 'odontologo');
 
   const pacientes = [
     ['Maria Garcia', '12345678', '555-0101', 'maria@email.com', '1985-03-15', 'F'],

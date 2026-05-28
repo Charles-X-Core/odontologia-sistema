@@ -28,7 +28,7 @@ export default function Login() {
               <circle cx="15" cy="8" r="1" fill="#4361ee"/>
             </svg>
           </div>
-          <h1>OdontoSys</h1>
+          <h1>Vita Mirabilis</h1>
           <p>Historias Clinicas Digitales</p>
         </div>
 

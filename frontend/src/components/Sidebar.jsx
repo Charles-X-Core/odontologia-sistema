@@ -16,7 +16,7 @@ export default function Sidebar({ active, onNavigate }) {
           <circle cx="9" cy="8" r="1" fill="white"/>
           <circle cx="15" cy="8" r="1" fill="white"/>
         </svg>
-        <span>OdontoSys</span>
+        <span>Vita Mirabilis</span>
       </div>
 
       <nav className="sidebar-nav">
