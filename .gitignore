@@ -1,0 +1,6 @@
+node_modules/
+clinica.db
+clinica.db-shm
+clinica.db-wal
+dist/
+.env
