@@ -85,4 +85,10 @@ export const api = {
     porPaciente: (pacienteId) => request(`/imagenes/paciente/${pacienteId}`),
     eliminar: (id) => request(`/imagenes/${id}`, { method: 'DELETE' }),
   },
+
+  necesidades: {
+    crear: (data) => request('/necesidades', { method: 'POST', body: JSON.stringify(data) }),
+    porConsulta: (consultaId) => request(`/necesidades/consulta/${consultaId}`),
+    porPaciente: (pacienteId) => request(`/necesidades/paciente/${pacienteId}`),
+  },
 };

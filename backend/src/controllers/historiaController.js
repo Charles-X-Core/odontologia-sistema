@@ -1,7 +1,7 @@
 const db = require('../database');
 
 exports.crear = (req, res) => {
-  const { paciente_id, antecedentes, alergias, observaciones } = req.body;
+  const { paciente_id, antecedentes, alergias, observaciones, motivo_consulta } = req.body;
 
   if (!paciente_id) {
     return res.status(400).json({ error: 'paciente_id es obligatorio' });
@@ -17,13 +17,16 @@ exports.crear = (req, res) => {
     return res.status(409).json({ error: 'El paciente ya tiene una historia clinica' });
   }
 
+  const ultimo = db.prepare('SELECT MAX(CAST(numero_historia AS INTEGER)) as max_num FROM historias_clinicas WHERE numero_historia IS NOT NULL AND numero_historia != ""').get();
+  const siguienteNumero = (ultimo?.max_num || 0) + 1;
+
   try {
     const stmt = db.prepare(`
-      INSERT INTO historias_clinicas (paciente_id, antecedentes, alergias, observaciones)
-      VALUES (?, ?, ?, ?)
+      INSERT INTO historias_clinicas (paciente_id, antecedentes, alergias, observaciones, numero_historia, motivo_consulta)
+      VALUES (?, ?, ?, ?, ?, ?)
     `);
-    const result = stmt.run(paciente_id, antecedentes || '', alergias || '', observaciones || '');
-    res.status(201).json({ id: result.lastInsertRowid, paciente_id });
+    const result = stmt.run(paciente_id, antecedentes || '', alergias || '', observaciones || '', String(siguienteNumero), motivo_consulta || '');
+    res.status(201).json({ id: result.lastInsertRowid, paciente_id, numero_historia: String(siguienteNumero) });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

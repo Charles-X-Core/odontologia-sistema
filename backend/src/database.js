@@ -95,6 +95,24 @@ db.exec(`
     FOREIGN KEY (paciente_id) REFERENCES pacientes(id) ON DELETE CASCADE,
     FOREIGN KEY (consulta_id) REFERENCES consultas(id) ON DELETE SET NULL
   );
+
+  CREATE TABLE IF NOT EXISTS necesidades_odontologicas (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    consulta_id INTEGER UNIQUE NOT NULL,
+    cariados INTEGER DEFAULT 0,
+    curados INTEGER DEFAULT 0,
+    por_extraer INTEGER DEFAULT 0,
+    endodoncia INTEGER DEFAULT 0,
+    ortodoncia INTEGER DEFAULT 0,
+    protesis INTEGER DEFAULT 0,
+    extraidos INTEGER DEFAULT 0,
+    destartraje INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (consulta_id) REFERENCES consultas(id) ON DELETE CASCADE
+  );
 `);
+
+try { db.exec("ALTER TABLE historias_clinicas ADD COLUMN numero_historia TEXT"); } catch {}
+try { db.exec("ALTER TABLE historias_clinicas ADD COLUMN motivo_consulta TEXT"); } catch {}
 
 module.exports = db;

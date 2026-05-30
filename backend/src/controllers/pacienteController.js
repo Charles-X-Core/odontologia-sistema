@@ -77,5 +77,11 @@ exports.obtenerHistorial = (req, res) => {
     if (c.odontograma) c.odontograma = JSON.parse(c.odontograma);
   });
 
-  res.json({ paciente, historia, consultas });
+  const ultimaConsulta = consultas.length > 0 ? consultas[0] : null;
+  let necesidades = null;
+  if (ultimaConsulta) {
+    necesidades = db.prepare('SELECT * FROM necesidades_odontologicas WHERE consulta_id = ?').get(ultimaConsulta.id) || null;
+  }
+
+  res.json({ paciente, historia, consultas, necesidades });
 };
