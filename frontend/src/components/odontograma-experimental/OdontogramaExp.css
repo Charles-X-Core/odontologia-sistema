@@ -1,0 +1,155 @@
+.odontograma-exp-container {
+  margin-top: 16px;
+}
+
+.odontograma-exp-container h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 8px;
+}
+
+.odontograma-exp-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  background: #f8fafc;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  font-size: 11px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.odontograma-exp-legend .dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+.odontograma-exp-scroll {
+  overflow-x: auto;
+  padding: 8px 0;
+}
+
+.exp-panel-edicion {
+  margin-top: 16px;
+  padding: 14px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.exp-panel-header {
+  margin-bottom: 12px;
+}
+
+.exp-panel-header strong {
+  display: block;
+  font-size: 14px;
+  color: #1e293b;
+}
+
+.exp-panel-header span {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.exp-superficies {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.exp-superficie-btn {
+  padding: 6px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: white;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.1s;
+}
+
+.exp-superficie-btn:hover {
+  border-color: #2563eb;
+}
+
+.exp-superficie-btn.active {
+  background: #2563eb;
+  color: white;
+  border-color: #2563eb;
+}
+
+.exp-estados {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.exp-estado-grupo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.exp-grupo-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  min-width: 130px;
+}
+
+.exp-estado-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background: white;
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.1s;
+  white-space: nowrap;
+}
+
+.exp-estado-btn:hover {
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+
+.exp-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.exp-resumen {
+  margin-top: 12px;
+  padding: 8px;
+  background: white;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  font-size: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.exp-resumen-badge {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+}

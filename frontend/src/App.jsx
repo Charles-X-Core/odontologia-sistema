@@ -5,6 +5,7 @@ import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import Pacientes from './components/Pacientes';
 import Historial from './components/Historial';
+import TestOdontograma from './components/odontograma-experimental/TestOdontograma';
 import './App.css';
 
 function App() {
@@ -39,6 +40,7 @@ function LayoutAuth() {
         {view === 'historial' && pacienteSeleccionado && (
           <Historial paciente={pacienteSeleccionado} onVolver={volverPacientes} />
         )}
+        {view === 'test-odontograma' && <TestOdontograma />}
       </main>
     </div>
   );
