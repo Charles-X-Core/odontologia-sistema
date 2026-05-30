@@ -1,0 +1,54 @@
+{
+  "name": "vita-mirabilis",
+  "version": "1.0.0",
+  "description": "Vita Mirabilis - Sistema de Historial Clinico Odontologico",
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "concurrently \"npm run dev:backend\" \"sleep 3 && electron .\"",
+    "dev:backend": "cd backend && node src/index.js",
+    "build": "npm run build:frontend && electron-builder --win",
+    "build:frontend": "cd frontend && npm run build",
+    "pack": "npm run build:frontend && electron-builder --dir",
+    "seed": "cd backend && node src/seed.js",
+    "install:all": "cd backend && npm install && cd ../frontend && npm install && cd .. && npm install"
+  },
+  "build": {
+    "appId": "com.vitamirabilis.odontologia",
+    "productName": "Vita Mirabilis",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "electron/**/*",
+      "backend/src/**/*",
+      "backend/package.json",
+      "backend/node_modules/**/*",
+      "frontend/dist/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "backend/clinica.db",
+        "to": "data/clinica.db"
+      }
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Vita Mirabilis"
+    }
+  },
+  "dependencies": {
+    "concurrently": "^9.0.0"
+  },
+  "devDependencies": {
+    "electron": "^35.0.0",
+    "electron-builder": "^26.0.0"
+  }
+}

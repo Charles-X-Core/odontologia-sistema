@@ -88,7 +88,9 @@ export default function Historial({ paciente, onVolver }) {
             <p>Este paciente no tiene historia clinica.</p>
             <button className="btn btn-primary" onClick={async () => {
               const token = localStorage.getItem('token');
-              await fetch(`http://localhost:3001/api/historias`, {
+              const isElec = window.location.protocol === 'file:';
+              const base = isElec ? 'http://localhost:18234' : 'http://localhost:3001';
+              await fetch(`${base}/api/historias`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                 body: JSON.stringify({ paciente_id: paciente.id, antecedentes: '', alergias: '' })

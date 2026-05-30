@@ -3,4 +3,6 @@ clinica.db
 clinica.db-shm
 clinica.db-wal
 dist/
+dist-electron/
 .env
+*.log

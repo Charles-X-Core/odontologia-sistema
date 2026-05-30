@@ -1,4 +1,8 @@
-const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3001/api').replace(/\/+$/, '');
+const isElectron = window.location.protocol === 'file:';
+const ELECTRON_PORT = 18234;
+const API_URL = isElectron
+  ? `http://localhost:${ELECTRON_PORT}/api`
+  : (import.meta.env.VITE_API_URL || 'http://localhost:3001/api').replace(/\/+$/, '');
 
 function getToken() {
   return localStorage.getItem('token');
