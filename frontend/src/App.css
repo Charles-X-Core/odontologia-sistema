@@ -1296,6 +1296,123 @@ body {
 
 .galeria-ampliada-info p { margin-bottom: 6px; }
 
+/* ========== ODONTOGRAMA FDI ========== */
+.odontograma-fdi-container {
+  margin-top: 16px;
+}
+
+.odontograma-fdi-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gray-700);
+  margin-bottom: 10px;
+}
+
+.odontograma-fdi-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  background: var(--gray-50);
+  border-radius: 6px;
+  border: 1px solid var(--gray-200);
+}
+
+.legend-fdi {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--gray-600);
+}
+
+.legend-dot-fdi {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.odontograma-fdi-scroll {
+  overflow-x: auto;
+  padding: 8px 0;
+}
+
+.odontograma-fdi-svg {
+  width: 100%;
+  max-width: 700px;
+  margin: 0 auto;
+  display: block;
+}
+
+.odontograma-fdi-svg g:hover rect {
+  filter: brightness(0.95);
+}
+
+.estado-selector-fdi {
+  margin-top: 16px;
+  padding: 14px;
+  background: var(--gray-50);
+  border-radius: var(--radius);
+  border: 1px solid var(--gray-200);
+}
+
+.estado-selector-label-fdi {
+  font-size: 13px;
+  color: var(--gray-600);
+  margin-bottom: 10px;
+  display: block;
+}
+
+.estado-selector-botones-fdi {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.estado-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.estado-group-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  min-width: 140px;
+}
+
+.btn-estado-fdi {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border: 1px solid var(--gray-300);
+  border-radius: 6px;
+  background: white;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.1s;
+  white-space: nowrap;
+}
+
+.btn-estado-fdi:hover {
+  border-color: var(--primary);
+  background: var(--primary-light);
+}
+
+.btn-estado-dot-fdi {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
 /* ========== LOADING ========== */
 .loading {
   text-align: center;

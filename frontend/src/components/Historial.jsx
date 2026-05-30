@@ -5,8 +5,6 @@ import Tratamientos from './Tratamientos';
 import Recetas from './Recetas';
 import Galeria from './Galeria';
 
-const ESTADOS_DIENTE = ['sano', 'caries', 'endodoncia', 'corona', 'restaurado', 'extraccion', 'protesis', 'ausente'];
-
 export default function Historial({ paciente, onVolver }) {
   const [historia, setHistoria] = useState(null);
   const [consultas, setConsultas] = useState([]);
