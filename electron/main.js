@@ -14,10 +14,7 @@ function getDataPath() {
 }
 
 function getFrontendPath() {
-  if (app.isPackaged) {
-    return path.join(process.resourcesPath, 'app', 'frontend', 'dist');
-  }
-  return path.join(__dirname, '..', 'frontend', 'dist');
+  return path.join(app.getAppPath(), 'frontend', 'dist');
 }
 
 function ensureDatabase(dataPath) {
