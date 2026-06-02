@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Ficha Historia Clinica Odontologica</title>
+  <style>
+    @page { size: letter; margin: 1.5cm; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      font-size: 11px;
+      color: #1a1a1a;
+      line-height: 1.4;
+      padding: 15px;
+    }
+    h1 {
+      text-align: center;
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 2px;
+      color: #111;
+    }
+    h2 {
+      font-size: 11px;
+      font-weight: 700;
+      margin: 10px 0 4px 0;
+      text-transform: uppercase;
+      border-bottom: 1px solid #333;
+      padding-bottom: 2px;
+    }
+    .header-line {
+      border: none;
+      border-top: 2px solid #1a1a1a;
+      margin: 4px 0 10px 0;
+    }
+    .fecha-numero {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      margin-bottom: 10px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 8px;
+    }
+    table td {
+      border: 1px solid #333;
+      padding: 3px 5px;
+      font-size: 10px;
+      vertical-align: top;
+    }
+    table td.label {
+      font-weight: 700;
+      background: #f5f5f5;
+      width: auto;
+      white-space: nowrap;
+    }
+    table td.value {
+      background: #fff;
+    }
+    table td.empty {
+      background: #fff;
+    }
+    .odontograma-img {
+      text-align: center;
+      padding: 8px 0;
+    }
+    .odontograma-img img {
+      max-width: 100%;
+      height: auto;
+    }
+    .firma-area {
+      margin-top: 40px;
+      text-align: center;
+      width: 250px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .firma-line {
+      border-top: 1px solid #333;
+      margin-top: 50px;
+      padding-top: 4px;
+      font-size: 10px;
+    }
+    @media print {
+      body { padding: 0; }
+      .no-print { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+<h1>FICHA DE HISTORIA CLINICA ODONTOLOGICA</h1>
+<div style="text-align:center; margin-bottom:8px;">
+  <img src="https://cdn.mathpix.com/snip/images/vudTDSEYOmug6FudJ24B9V-V16kvr15mnQBs92Q3ULk.original.fullsize.png" alt="Logo Clinica" style="max-width:100%; height:auto;" />
+</div>
+<hr class="header-line">
+
+<div class="fecha-numero">
+  <span>Fecha y hora: {{fecha_hora}}</span>
+  <span>Numero: {{numero_historia}}</span>
+</div>
+
+<h2>IDENTIFICACION DEL PACIENTE</h2>
+<table>
+  <tr>
+    <td class="label" colspan="5">Apellido paterno - materno - Nombres:</td>
+    <td class="value" colspan="2">{{apellido_paterno}} {{apellido_materno}} {{nombres}}</td>
+  </tr>
+  <tr>
+    <td class="label">Fecha de Nacimiento</td>
+    <td class="value">{{fecha_nacimiento}}</td>
+    <td class="label">Telefono:</td>
+    <td class="value">{{telefono}}</td>
+    <td class="label">Email:</td>
+    <td class="value" colspan="2">{{email}}</td>
+  </tr>
+  <tr>
+    <td class="label" colspan="2">Direccion:</td>
+    <td class="value" colspan="5">{{direccion}}</td>
+  </tr>
+  <tr>
+    <td class="label">Lugar de Nacimiento:</td>
+    <td class="value">{{lugar_nacimiento}}</td>
+    <td class="label">Edad:</td>
+    <td class="value">{{edad}}</td>
+    <td class="label">Sexo:</td>
+    <td class="value">M {{sexo_m}} &nbsp; F {{sexo_f}}</td>
+    <td class="empty"></td>
+  </tr>
+  <tr>
+    <td class="label">Estado Civil:</td>
+    <td class="value">{{estado_civil}}</td>
+    <td class="label">Ocupacion:</td>
+    <td class="value">{{ocupacion}}</td>
+    <td class="label">Dependiente {{dependiente}} &nbsp; Independiente {{independiente}}</td>
+    <td class="empty" colspan="2"></td>
+  </tr>
+  <tr>
+    <td class="label">Grado de Instruccion:</td>
+    <td class="value">{{grado_instruccion}}</td>
+    <td class="label">Lugar de procedencia:</td>
+    <td class="value">{{lugar_procedencia}}</td>
+    <td class="label">Nombre del Acompanante:</td>
+    <td class="value" colspan="2">{{nombre_acompanante}}</td>
+  </tr>
+</table>
+
+<h2>ENFERMEDAD ACTUAL</h2>
+<table>
+  <tr>
+    <td class="label" style="width:180px">Motivo de consulta:</td>
+    <td class="value">{{motivo_consulta}}</td>
+  </tr>
+  <tr>
+    <td class="label">Tiempo de enfermedad:</td>
+    <td class="value">{{tiempo_enfermedad}}</td>
+  </tr>
+  <tr>
+    <td class="label">Signos y sintomas principales:</td>
+    <td class="value">{{signos_sintomas}}</td>
+  </tr>
+  <tr>
+    <td class="label">Relato cronologico:</td>
+    <td class="value">{{relato_cronologico}}</td>
+  </tr>
+  <tr>
+    <td class="label">Funciones biologicas:</td>
+    <td class="value">{{funciones_biologicas}}</td>
+  </tr>
+</table>
+
+<h2>ANTECEDENTES</h2>
+<table>
+  <tr>
+    <td class="label" colspan="3" style="text-align:center">ANTECEDENTES PERSONALES Y/O FAMILIARES</td>
+    <td class="label" colspan="2" style="text-align:center">EXPLORACION FISICA</td>
+  </tr>
+  <tr>
+    <td class="label">Alergico a algun medicamento</td>
+    <td class="value" style="width:30px;text-align:center">{{alergia_si}}</td>
+    <td class="value" style="width:30px;text-align:center">{{alergia_no}}</td>
+    <td class="label" style="width:150px">Presion Arterial:</td>
+    <td class="value">{{presion_arterial}}</td>
+  </tr>
+  <tr>
+    <td class="label">Propenso a hemorragia</td>
+    <td class="value" style="text-align:center">{{hemorragia_si}}</td>
+    <td class="value" style="text-align:center">{{hemorragia_no}}</td>
+    <td class="label">Pulso:</td>
+    <td class="value">{{pulso}}</td>
+  </tr>
+  <tr>
+    <td class="label">Complicaciones con anestesia</td>
+    <td class="value" style="text-align:center">{{anestesia_si}}</td>
+    <td class="value" style="text-align:center">{{anestesia_no}}</td>
+    <td class="label">Temperatura:</td>
+    <td class="value">{{temperatura}}</td>
+  </tr>
+  <tr>
+    <td class="label">Presion Arterial / medicacion</td>
+    <td class="value" colspan="2">{{pa_medicacion}}</td>
+    <td class="label">Frec. Cardiaca:</td>
+    <td class="value">{{frecuencia_cardiaca}}</td>
+  </tr>
+  <tr>
+    <td class="label">Afeccion cardiaca / familiar</td>
+    <td class="value" style="text-align:center">{{cardiaca_si}}</td>
+    <td class="value" style="text-align:center">{{cardiaca_no}}</td>
+    <td class="label">Frec. Respiratoria:</td>
+    <td class="value">{{frecuencia_respiratoria}}</td>
+  </tr>
+  <tr>
+    <td class="label">Diabetes / familiar</td>
+    <td class="value" style="text-align:center">{{diabetes_si}}</td>
+    <td class="value" style="text-align:center">{{diabetes_no}}</td>
+    <td class="label">Odontoestomatologico:</td>
+    <td class="value">{{odontoestomatologico}}</td>
+  </tr>
+  <tr>
+    <td class="label">Hepatitis (tipo A B C)</td>
+    <td class="value" style="text-align:center">{{hepatitis_si}}</td>
+    <td class="value" style="text-align:center">{{hepatitis_no}}</td>
+    <td class="label">Examen Clinico General:</td>
+    <td class="value">{{examen_general}}</td>
+  </tr>
+  <tr>
+    <td class="label" colspan="3">Otras enfermedades: {{otras_enfermedades}}</td>
+    <td class="empty" colspan="2"></td>
+  </tr>
+  <tr>
+    <td class="label" colspan="3">Enfermedad actual / medicacion: {{enfermedad_actual_medicacion}}</td>
+    <td class="empty" colspan="2"></td>
+  </tr>
+</table>
+
+<h2>LISTA DE DIAGNOSTICO</h2>
+<table>
+  <tr><td class="value">{{diagnostico_1}}</td></tr>
+  <tr><td class="value">{{diagnostico_2}}</td></tr>
+  <tr><td class="value">{{diagnostico_3}}</td></tr>
+  <tr><td class="value">{{diagnostico_4}}</td></tr>
+  <tr><td class="value">{{diagnostico_5}}</td></tr>
+  <tr><td class="value">{{diagnostico_6}}</td></tr>
+  <tr><td class="value">{{diagnostico_7}}</td></tr>
+</table>
+
+<h2>TRATAMIENTO Y/O PLAN DE TRABAJO</h2>
+<table>
+  <tr><td class="value">{{plan_tratamiento_1}}</td></tr>
+  <tr><td class="value">{{plan_tratamiento_2}}</td></tr>
+  <tr><td class="value">{{plan_tratamiento_3}}</td></tr>
+  <tr><td class="value">{{plan_tratamiento_4}}</td></tr>
+  <tr><td class="value">{{plan_tratamiento_5}}</td></tr>
+  <tr><td class="value">{{plan_tratamiento_6}}</td></tr>
+  <tr><td class="value">{{plan_tratamiento_7}}</td></tr>
+  <tr><td class="value">{{plan_tratamiento_8}}</td></tr>
+  <tr><td class="value">{{plan_tratamiento_9}}</td></tr>
+  <tr><td class="value">{{plan_tratamiento_10}}</td></tr>
+</table>
+
+<h2>ODONTOGRAMA</h2>
+<div class="odontograma-img">
+  <img src="https://cdn.mathpix.com/cropped/ddb7f91e-425c-40d4-ae7e-305bbfebdb0a-2.jpg?height=131&width=1664&top_left_y=196&top_left_x=178" alt="Odontograma 1" />
+</div>
+<div class="odontograma-img">
+  <img src="https://cdn.mathpix.com/cropped/ddb7f91e-425c-40d4-ae7e-305bbfebdb0a-2.jpg?height=358&width=1666&top_left_y=335&top_left_x=178" alt="Odontograma 2" />
+</div>
+<div class="odontograma-img">
+  <img src="https://cdn.mathpix.com/cropped/ddb7f91e-425c-40d4-ae7e-305bbfebdb0a-2.jpg?height=332&width=1657&top_left_y=667&top_left_x=185" alt="Odontograma 3" />
+</div>
+<div class="odontograma-img">
+  <img src="https://cdn.mathpix.com/cropped/ddb7f91e-425c-40d4-ae7e-305bbfebdb0a-2.jpg?height=129&width=1671&top_left_y=1007&top_left_x=178" alt="Odontograma 4" />
+</div>
+
+<h2>TRATAMIENTO</h2>
+<table>
+  <tr>
+    <td class="label" style="background:#e0e0e0">FECHA</td>
+    <td class="label" style="background:#e0e0e0;width:45px">PZA</td>
+    <td class="label" style="background:#e0e0e0">PROCEDIMIENTO</td>
+    <td class="label" style="background:#e0e0e0;width:70px">TOTAL</td>
+    <td class="label" style="background:#e0e0e0;width:70px">A CUENTA</td>
+    <td class="label" style="background:#e0e0e0;width:70px">SALDO</td>
+  </tr>
+  <tr><td class="value">{{trat_fecha_1}}</td><td class="value">{{trat_pza_1}}</td><td class="value">{{trat_proc_1}}</td><td class="value">{{trat_total_1}}</td><td class="value">{{trat_cuenta_1}}</td><td class="value">{{trat_saldo_1}}</td></tr>
+  <tr><td class="value">{{trat_fecha_2}}</td><td class="value">{{trat_pza_2}}</td><td class="value">{{trat_proc_2}}</td><td class="value">{{trat_total_2}}</td><td class="value">{{trat_cuenta_2}}</td><td class="value">{{trat_saldo_2}}</td></tr>
+  <tr><td class="value">{{trat_fecha_3}}</td><td class="value">{{trat_pza_3}}</td><td class="value">{{trat_proc_3}}</td><td class="value">{{trat_total_3}}</td><td class="value">{{trat_cuenta_3}}</td><td class="value">{{trat_saldo_3}}</td></tr>
+  <tr><td class="value">{{trat_fecha_4}}</td><td class="value">{{trat_pza_4}}</td><td class="value">{{trat_proc_4}}</td><td class="value">{{trat_total_4}}</td><td class="value">{{trat_cuenta_4}}</td><td class="value">{{trat_saldo_4}}</td></tr>
+  <tr><td class="value">{{trat_fecha_5}}</td><td class="value">{{trat_pza_5}}</td><td class="value">{{trat_proc_5}}</td><td class="value">{{trat_total_5}}</td><td class="value">{{trat_cuenta_5}}</td><td class="value">{{trat_saldo_5}}</td></tr>
+  <tr><td class="value">{{trat_fecha_6}}</td><td class="value">{{trat_pza_6}}</td><td class="value">{{trat_proc_6}}</td><td class="value">{{trat_total_6}}</td><td class="value">{{trat_cuenta_6}}</td><td class="value">{{trat_saldo_6}}</td></tr>
+  <tr><td class="value">{{trat_fecha_7}}</td><td class="value">{{trat_pza_7}}</td><td class="value">{{trat_proc_7}}</td><td class="value">{{trat_total_7}}</td><td class="value">{{trat_cuenta_7}}</td><td class="value">{{trat_saldo_7}}</td></tr>
+  <tr><td class="value">{{trat_fecha_8}}</td><td class="value">{{trat_pza_8}}</td><td class="value">{{trat_proc_8}}</td><td class="value">{{trat_total_8}}</td><td class="value">{{trat_cuenta_8}}</td><td class="value">{{trat_saldo_8}}</td></tr>
+  <tr><td class="value">{{trat_fecha_9}}</td><td class="value">{{trat_pza_9}}</td><td class="value">{{trat_proc_9}}</td><td class="value">{{trat_total_9}}</td><td class="value">{{trat_cuenta_9}}</td><td class="value">{{trat_saldo_9}}</td></tr>
+  <tr><td class="value">{{trat_fecha_10}}</td><td class="value">{{trat_pza_10}}</td><td class="value">{{trat_proc_10}}</td><td class="value">{{trat_total_10}}</td><td class="value">{{trat_cuenta_10}}</td><td class="value">{{trat_saldo_10}}</td></tr>
+  <tr><td class="value">{{trat_fecha_11}}</td><td class="value">{{trat_pza_11}}</td><td class="value">{{trat_proc_11}}</td><td class="value">{{trat_total_11}}</td><td class="value">{{trat_cuenta_11}}</td><td class="value">{{trat_saldo_11}}</td></tr>
+  <tr><td class="value">{{trat_fecha_12}}</td><td class="value">{{trat_pza_12}}</td><td class="value">{{trat_proc_12}}</td><td class="value">{{trat_total_12}}</td><td class="value">{{trat_cuenta_12}}</td><td class="value">{{trat_saldo_12}}</td></tr>
+</table>
+
+<div class="firma-area">
+  <div class="firma-line">Firma del Odontologo</div>
+  <div style="font-size:9px;margin-top:3px">C.M.P.: _______________</div>
+</div>
+
+<script>
+  // Auto-print when opened in browser (generates PDF dialog)
+  window.onload = function() {
+    setTimeout(function() { window.print(); }, 500);
+  };
+</script>
+
+</body>
+</html>

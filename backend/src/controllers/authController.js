@@ -85,3 +85,40 @@ exports.eliminar = (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+exports.cambiarPassword = (req, res) => {
+  const { password_actual, password_nuevo } = req.body;
+  if (!password_actual || !password_nuevo) {
+    return res.status(400).json({ error: 'Password actual y nuevo son obligatorios' });
+  }
+  if (password_nuevo.length < 4) {
+    return res.status(400).json({ error: 'El password nuevo debe tener al menos 4 caracteres' });
+  }
+  const usuario = db.prepare('SELECT * FROM usuarios WHERE id = ?').get(req.usuario.id);
+  if (!usuario) return res.status(404).json({ error: 'Usuario no encontrado' });
+  const valid = bcrypt.compareSync(password_actual, usuario.password);
+  if (!valid) return res.status(401).json({ error: 'El password actual es incorrecto' });
+  try {
+    const hash = bcrypt.hashSync(password_nuevo, 10);
+    db.prepare('UPDATE usuarios SET password = ? WHERE id = ?').run(hash, req.usuario.id);
+    res.json({ message: 'Password actualizado correctamente' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.actualizarPerfil = (req, res) => {
+  const { nombre, email } = req.body;
+  if (!nombre || !email) {
+    return res.status(400).json({ error: 'Nombre y email son obligatorios' });
+  }
+  try {
+    const existente = db.prepare('SELECT id FROM usuarios WHERE email = ? AND id != ?').get(email, req.usuario.id);
+    if (existente) return res.status(409).json({ error: 'Ya existe otro usuario con ese email' });
+    db.prepare('UPDATE usuarios SET nombre = ?, email = ? WHERE id = ?').run(nombre, email, req.usuario.id);
+    const usuarioActualizado = db.prepare('SELECT id, nombre, email, rol FROM usuarios WHERE id = ?').get(req.usuario.id);
+    res.json({ message: 'Perfil actualizado', usuario: usuarioActualizado });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};

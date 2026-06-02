@@ -22,11 +22,7 @@ export default function Login() {
       <div className="login-card">
         <div className="login-header">
           <div className="login-logo">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#4361ee" strokeWidth="1.5">
-              <path d="M12 2C8 2 5 5 5 8c0 2 1 4 2 5l-1 7c0 1 1 2 2 2h8c1 0 2-1 2-2l-1-7c1-1 2-3 2-5 0-3-3-6-7-6z"/>
-              <circle cx="9" cy="8" r="1" fill="#4361ee"/>
-              <circle cx="15" cy="8" r="1" fill="#4361ee"/>
-            </svg>
+            <img src="/logo2.png" alt="Logo" className="login-logo-img" />
           </div>
           <h1>Vita Mirabilis</h1>
           <p>Historias Clinicas Digitales</p>

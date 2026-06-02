@@ -4,12 +4,13 @@ const JWT_SECRET = process.env.JWT_SECRET || 'clinica-odontologica-secret-2026';
 
 const auth = (req, res, next) => {
   const header = req.headers.authorization;
+  const tokenFromQuery = req.query.token;
 
-  if (!header || !header.startsWith('Bearer ')) {
+  if ((!header || !header.startsWith('Bearer ')) && !tokenFromQuery) {
     return res.status(401).json({ error: 'Token de autenticacion requerido' });
   }
 
-  const token = header.split(' ')[1];
+  const token = header ? header.split(' ')[1] : tokenFromQuery;
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);

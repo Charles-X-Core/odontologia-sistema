@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  openwa:
+    image: openwa/wa-automate:latest
+    container_name: vita-mirabilis-whatsapp
+    ports:
+      - "3002:3000"
+    environment:
+      - PORT=3000
+      - ENVIRONMENT=production
+      - HEADLESS=true
+      - WEBHOOK=true
+      - WEBHOOK_URL=http://host.docker.internal:3001/api/whatsapp/webhook
+      - MULTI_DEVICE=true
+      - ALLOW_GROUP=false
+      - SIMPLE myListMode=true
+    volumes:
+      - openwa_tokens:/app/tokens
+      - openwa_data:/app/data
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  openwa_tokens:
+  openwa_data:

@@ -1,7 +1,13 @@
 const db = require('../database');
 
 exports.crear = (req, res) => {
-  const { paciente_id, antecedentes, alergias, observaciones, motivo_consulta } = req.body;
+  const {
+    paciente_id, observaciones,
+    alergia_medicamentos, propension_hemorragias, complicaciones_anestesia,
+    presion_arterial_medicacion, cardiopatias_personales, cardiopatias_familiares,
+    diabetes_personal, diabetes_familiar, hepatitis, otras_enfermedades,
+    enfermedad_actual_medicacion
+  } = req.body;
 
   if (!paciente_id) {
     return res.status(400).json({ error: 'paciente_id es obligatorio' });
@@ -22,10 +28,23 @@ exports.crear = (req, res) => {
 
   try {
     const stmt = db.prepare(`
-      INSERT INTO historias_clinicas (paciente_id, antecedentes, alergias, observaciones, numero_historia, motivo_consulta)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO historias_clinicas (
+        paciente_id, numero_historia, observaciones,
+        alergia_medicamentos, propension_hemorragias, complicaciones_anestesia,
+        presion_arterial_medicacion, cardiopatias_personales, cardiopatias_familiares,
+        diabetes_personal, diabetes_familiar, hepatitis, otras_enfermedades,
+        enfermedad_actual_medicacion
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
-    const result = stmt.run(paciente_id, antecedentes || '', alergias || '', observaciones || '', String(siguienteNumero), motivo_consulta || '');
+    const result = stmt.run(
+      paciente_id, String(siguienteNumero), observaciones || '',
+      alergia_medicamentos || '', propension_hemorragias || '',
+      complicaciones_anestesia || '', presion_arterial_medicacion || '',
+      cardiopatias_personales || '', cardiopatias_familiares || '',
+      diabetes_personal || '', diabetes_familiar || '',
+      hepatitis || '', otras_enfermedades || '',
+      enfermedad_actual_medicacion || ''
+    );
     res.status(201).json({ id: result.lastInsertRowid, paciente_id, numero_historia: String(siguienteNumero) });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -39,12 +58,34 @@ exports.obtenerPorPaciente = (req, res) => {
 };
 
 exports.actualizar = (req, res) => {
-  const { antecedentes, alergias, observaciones } = req.body;
+  const {
+    observaciones,
+    alergia_medicamentos, propension_hemorragias, complicaciones_anestesia,
+    presion_arterial_medicacion, cardiopatias_personales, cardiopatias_familiares,
+    diabetes_personal, diabetes_familiar, hepatitis, otras_enfermedades,
+    enfermedad_actual_medicacion
+  } = req.body;
   try {
     db.prepare(`
-      UPDATE historias_clinicas SET antecedentes = ?, alergias = ?, observaciones = ?
+      UPDATE historias_clinicas SET
+        observaciones = ?,
+        alergia_medicamentos = ?, propension_hemorragias = ?,
+        complicaciones_anestesia = ?, presion_arterial_medicacion = ?,
+        cardiopatias_personales = ?, cardiopatias_familiares = ?,
+        diabetes_personal = ?, diabetes_familiar = ?,
+        hepatitis = ?, otras_enfermedades = ?,
+        enfermedad_actual_medicacion = ?
       WHERE id = ?
-    `).run(antecedentes || '', alergias || '', observaciones || '', req.params.id);
+    `).run(
+      observaciones || '',
+      alergia_medicamentos || '', propension_hemorragias || '',
+      complicaciones_anestesia || '', presion_arterial_medicacion || '',
+      cardiopatias_personales || '', cardiopatias_familiares || '',
+      diabetes_personal || '', diabetes_familiar || '',
+      hepatitis || '', otras_enfermedades || '',
+      enfermedad_actual_medicacion || '',
+      req.params.id
+    );
     res.json({ message: 'Historia clinica actualizada' });
   } catch (err) {
     res.status(500).json({ error: err.message });

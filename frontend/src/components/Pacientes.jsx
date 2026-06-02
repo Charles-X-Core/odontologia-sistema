@@ -1,13 +1,24 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 
-export default function Pacientes({ onVerHistorial }) {
+function nombreCompleto(p) {
+  return `${p.apellido_paterno || ''} ${p.apellido_materno || ''} ${p.nombres || ''}`.trim();
+}
+
+const FORM_DEFAULT = {
+  apellido_paterno: '', apellido_materno: '', nombres: '', dni: '', telefono: '', email: '',
+  fecha_nacimiento: '', sexo: '', estado_civil: '', direccion: '', lugar_nacimiento: '',
+  lugar_procedencia: '', grado_instruccion: '', ocupacion: '', nombre_acompanante: '',
+  contacto_emergencia: '', telefono_emergencia: '',
+};
+
+export default function Pacientes({ onVerHistorial, onVer360 }) {
   const [pacientes, setPacientes] = useState([]);
   const [busqueda, setBusqueda] = useState('');
   const [mostrarForm, setMostrarForm] = useState(false);
   const [editando, setEditando] = useState(null);
   const [cargando, setCargando] = useState(true);
-  const [form, setForm] = useState({ nombre: '', dni: '', telefono: '', email: '', fecha_nacimiento: '', sexo: '' });
+  const [form, setForm] = useState({ ...FORM_DEFAULT });
   const [error, setError] = useState('');
 
   useEffect(() => { cargar(); }, []);
@@ -18,9 +29,11 @@ export default function Pacientes({ onVerHistorial }) {
     setCargando(false);
   };
 
-  const filtrados = pacientes.filter(
-    (p) => p.nombre.toLowerCase().includes(busqueda.toLowerCase()) || p.dni.includes(busqueda)
-  );
+  const filtrados = pacientes.filter(p => {
+    const nombre = nombreCompleto(p).toLowerCase();
+    const q = busqueda.toLowerCase();
+    return nombre.includes(q) || p.dni.includes(q);
+  });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -31,18 +44,33 @@ export default function Pacientes({ onVerHistorial }) {
     } else {
       const res = await api.pacientes.crear(form);
       if (res.error) { setError(res.error); return; }
-      await api.historias.obtener(res.id).catch(() =>
-        api.historias.crear ? null : null
-      );
     }
     setMostrarForm(false);
     setEditando(null);
-    setForm({ nombre: '', dni: '', telefono: '', email: '', fecha_nacimiento: '', sexo: '' });
+    setForm({ ...FORM_DEFAULT });
     cargar();
   };
 
   const handleEditar = (p) => {
-    setForm({ nombre: p.nombre, dni: p.dni, telefono: p.telefono || '', email: p.email || '', fecha_nacimiento: p.fecha_nacimiento || '', sexo: p.sexo || '' });
+    setForm({
+      apellido_paterno: p.apellido_paterno || '',
+      apellido_materno: p.apellido_materno || '',
+      nombres: p.nombres || '',
+      dni: p.dni || '',
+      telefono: p.telefono || '',
+      email: p.email || '',
+      fecha_nacimiento: p.fecha_nacimiento || '',
+      sexo: p.sexo || '',
+      estado_civil: p.estado_civil || '',
+      direccion: p.direccion || '',
+      lugar_nacimiento: p.lugar_nacimiento || '',
+      lugar_procedencia: p.lugar_procedencia || '',
+      grado_instruccion: p.grado_instruccion || '',
+      ocupacion: p.ocupacion || '',
+      nombre_acompanante: p.nombre_acompanante || '',
+      contacto_emergencia: p.contacto_emergencia || '',
+      telefono_emergencia: p.telefono_emergencia || '',
+    });
     setEditando(p);
     setMostrarForm(true);
   };
@@ -54,7 +82,7 @@ export default function Pacientes({ onVerHistorial }) {
   };
 
   const abrirNuevo = () => {
-    setForm({ nombre: '', dni: '', telefono: '', email: '', fecha_nacimiento: '', sexo: '' });
+    setForm({ ...FORM_DEFAULT });
     setEditando(null);
     setMostrarForm(true);
   };
@@ -74,41 +102,102 @@ export default function Pacientes({ onVerHistorial }) {
 
       {mostrarForm && (
         <div className="modal-overlay" onClick={() => setMostrarForm(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal modal-lg" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3>{editando ? 'Editar Paciente' : 'Nuevo Paciente'}</h3>
               <button className="btn-close" onClick={() => setMostrarForm(false)}>&times;</button>
             </div>
             {error && <div className="alert alert-error">{error}</div>}
             <form onSubmit={handleSubmit} className="form">
-              <div className="form-grid">
-                <div className="field">
-                  <label>Nombre completo *</label>
-                  <input type="text" value={form.nombre} onChange={(e) => setForm({...form, nombre: e.target.value})} required />
-                </div>
-                <div className="field">
-                  <label>DNI *</label>
-                  <input type="text" value={form.dni} onChange={(e) => setForm({...form, dni: e.target.value})} required />
-                </div>
-                <div className="field">
-                  <label>Telefono</label>
-                  <input type="text" value={form.telefono} onChange={(e) => setForm({...form, telefono: e.target.value})} />
-                </div>
-                <div className="field">
-                  <label>Email</label>
-                  <input type="email" value={form.email} onChange={(e) => setForm({...form, email: e.target.value})} />
-                </div>
-                <div className="field">
-                  <label>Fecha de nacimiento</label>
-                  <input type="date" value={form.fecha_nacimiento} onChange={(e) => setForm({...form, fecha_nacimiento: e.target.value})} />
-                </div>
-                <div className="field">
-                  <label>Sexo</label>
-                  <select value={form.sexo} onChange={(e) => setForm({...form, sexo: e.target.value})}>
-                    <option value="">Seleccionar...</option>
-                    <option value="M">Masculino</option>
-                    <option value="F">Femenino</option>
-                  </select>
+              <div className="form-section">
+                <h4>Identificacion del Paciente</h4>
+                <div className="form-grid">
+                  <div className="field">
+                    <label>Apellido Paterno *</label>
+                    <input type="text" value={form.apellido_paterno} onChange={(e) => setForm({...form, apellido_paterno: e.target.value})} required />
+                  </div>
+                  <div className="field">
+                    <label>Apellido Materno</label>
+                    <input type="text" value={form.apellido_materno} onChange={(e) => setForm({...form, apellido_materno: e.target.value})} />
+                  </div>
+                  <div className="field">
+                    <label>Nombres *</label>
+                    <input type="text" value={form.nombres} onChange={(e) => setForm({...form, nombres: e.target.value})} required />
+                  </div>
+                  <div className="field">
+                    <label>DNI *</label>
+                    <input type="text" value={form.dni} onChange={(e) => setForm({...form, dni: e.target.value})} required />
+                  </div>
+                  <div className="field">
+                    <label>Fecha de Nacimiento</label>
+                    <input type="date" value={form.fecha_nacimiento} onChange={(e) => setForm({...form, fecha_nacimiento: e.target.value})} />
+                  </div>
+                  <div className="field">
+                    <label>Sexo</label>
+                    <select value={form.sexo} onChange={(e) => setForm({...form, sexo: e.target.value})}>
+                      <option value="">Seleccionar...</option>
+                      <option value="M">Masculino</option>
+                      <option value="F">Femenino</option>
+                    </select>
+                  </div>
+                  <div className="field">
+                    <label>Estado Civil</label>
+                    <select value={form.estado_civil} onChange={(e) => setForm({...form, estado_civil: e.target.value})}>
+                      <option value="">Seleccionar...</option>
+                      <option value="Soltero">Soltero/a</option>
+                      <option value="Casado">Casado/a</option>
+                      <option value="Divorciado">Divorciado/a</option>
+                      <option value="Viudo">Viudo/a</option>
+                      <option value="Conviviente">Conviviente</option>
+                    </select>
+                  </div>
+                  <div className="field">
+                    <label>Telefono</label>
+                    <input type="text" value={form.telefono} onChange={(e) => setForm({...form, telefono: e.target.value})} />
+                  </div>
+                  <div className="field">
+                    <label>Email</label>
+                    <input type="email" value={form.email} onChange={(e) => setForm({...form, email: e.target.value})} />
+                  </div>
+                  <div className="field">
+                    <label>Direccion</label>
+                    <input type="text" value={form.direccion} onChange={(e) => setForm({...form, direccion: e.target.value})} />
+                  </div>
+                  <div className="field">
+                    <label>Lugar de Nacimiento</label>
+                    <input type="text" value={form.lugar_nacimiento} onChange={(e) => setForm({...form, lugar_nacimiento: e.target.value})} />
+                  </div>
+                  <div className="field">
+                    <label>Lugar de Procedencia</label>
+                    <input type="text" value={form.lugar_procedencia} onChange={(e) => setForm({...form, lugar_procedencia: e.target.value})} />
+                  </div>
+                  <div className="field">
+                    <label>Grado de Instruccion</label>
+                    <select value={form.grado_instruccion} onChange={(e) => setForm({...form, grado_instruccion: e.target.value})}>
+                      <option value="">Seleccionar...</option>
+                      <option value="Primaria">Primaria</option>
+                      <option value="Secundaria">Secundaria</option>
+                      <option value="Tecnico">Tecnico</option>
+                      <option value="Universitario">Universitario</option>
+                      <option value="Postgrado">Postgrado</option>
+                    </select>
+                  </div>
+                  <div className="field">
+                    <label>Ocupacion</label>
+                    <input type="text" value={form.ocupacion} onChange={(e) => setForm({...form, ocupacion: e.target.value})} />
+                  </div>
+                  <div className="field">
+                    <label>Acompanante</label>
+                    <input type="text" value={form.nombre_acompanante} onChange={(e) => setForm({...form, nombre_acompanante: e.target.value})} />
+                  </div>
+                  <div className="field">
+                    <label>Contacto de Emergencia</label>
+                    <input type="text" value={form.contacto_emergencia} onChange={(e) => setForm({...form, contacto_emergencia: e.target.value})} />
+                  </div>
+                  <div className="field">
+                    <label>Telefono de Emergencia</label>
+                    <input type="text" value={form.telefono_emergencia} onChange={(e) => setForm({...form, telefono_emergencia: e.target.value})} />
+                  </div>
                 </div>
               </div>
               <div className="form-actions">
@@ -149,14 +238,17 @@ export default function Pacientes({ onVerHistorial }) {
                 ) : (
                   filtrados.map((p) => (
                     <tr key={p.id}>
-                      <td><strong>{p.nombre}</strong></td>
+                      <td><strong>{nombreCompleto(p)}</strong></td>
                       <td>{p.dni}</td>
                       <td>{p.telefono || '-'}</td>
                       <td>{p.email || '-'}</td>
                       <td>{p.sexo === 'M' ? 'Masculino' : p.sexo === 'F' ? 'Femenino' : '-'}</td>
                       <td>
                         <div className="actions">
-                          <button className="btn btn-sm btn-primary" onClick={() => onVerHistorial(p)} title="Ver historial">
+                          <button className="btn btn-sm btn-primary" onClick={() => onVer360(p)} title="Perfil 360">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                          </button>
+                          <button className="btn btn-sm btn-secondary" onClick={() => onVerHistorial(p)} title="Ver historial">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                           </button>
                           <button className="btn btn-sm btn-secondary" onClick={() => handleEditar(p)} title="Editar">

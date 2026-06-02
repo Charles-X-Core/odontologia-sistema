@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const { auth } = require('./middleware/auth');
 
 const app = express();
@@ -12,6 +13,7 @@ app.use(cors({
     const allowed = [
       'http://localhost:5173',
       'http://localhost:3001',
+      'http://localhost:18234',
       process.env.FRONTEND_URL,
     ].filter(Boolean);
 
@@ -38,9 +40,25 @@ app.use('/api/tratamientos', auth, require('./routes/tratamientos'));
 app.use('/api/recetas', auth, require('./routes/recetas'));
 app.use('/api/imagenes', auth, require('./routes/imagenes'));
 app.use('/api/necesidades', auth, require('./routes/necesidades'));
+app.use('/api/pagos', auth, require('./routes/pagos'));
+app.use('/api/dashboard', auth, require('./routes/dashboard'));
+app.use('/api/importacion', auth, require('./routes/importacion'));
+app.use('/api/pdf', auth, require('./routes/pdf'));
+app.use('/api/whatsapp', auth, require('./routes/whatsapp'));
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Serve frontend dist as static files AFTER all API routes
+const frontendPath = path.join(__dirname, '..', '..', 'frontend', 'dist');
+app.use(express.static(frontendPath));
+
+// Catch-all: serve index.html for any non-API route (SPA fallback)
+app.get('*', (req, res) => {
+  if (!req.path.startsWith('/api')) {
+    res.sendFile(path.join(frontendPath, 'index.html'));
+  }
 });
 
 app.listen(PORT, () => {

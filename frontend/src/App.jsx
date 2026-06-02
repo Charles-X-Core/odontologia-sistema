@@ -5,7 +5,12 @@ import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import Pacientes from './components/Pacientes';
 import Historial from './components/Historial';
-import TestOdontograma from './components/odontograma-experimental/TestOdontograma';
+import Recepcion from './components/Recepcion';
+import SesionClinica from './components/SesionClinica';
+import Paciente360 from './components/Paciente360';
+import Configuracion from './components/Configuracion';
+import ImportarDatos from './components/ImportarDatos';
+import WhatsAppPanel from './components/WhatsAppPanel';
 import './App.css';
 
 function App() {
@@ -26,9 +31,24 @@ function LayoutAuth() {
     setView('historial');
   };
 
+  const verPaciente360 = (paciente) => {
+    setPacienteSeleccionado(paciente);
+    setView('paciente360');
+  };
+
   const volverPacientes = () => {
     setPacienteSeleccionado(null);
     setView('pacientes');
+  };
+
+  const iniciarSesion = (paciente) => {
+    setPacienteSeleccionado(paciente);
+    setView('sesion');
+  };
+
+  const sesionCompletada = () => {
+    setPacienteSeleccionado(null);
+    setView('dashboard');
   };
 
   return (
@@ -36,11 +56,28 @@ function LayoutAuth() {
       <Sidebar active={view} onNavigate={setView} />
       <main className="main-content">
         {view === 'dashboard' && <Dashboard onNavigate={setView} />}
-        {view === 'pacientes' && <Pacientes onVerHistorial={verHistorial} />}
+        {view === 'recepcion' && (
+          <Recepcion onVolver={() => setView('dashboard')} onStartSesion={iniciarSesion} />
+        )}
+        {view === 'sesion' && pacienteSeleccionado && (
+          <SesionClinica paciente={pacienteSeleccionado} onVolver={() => setView('recepcion')} onCompletado={sesionCompletada} />
+        )}
+        {view === 'pacientes' && <Pacientes onVerHistorial={verHistorial} onVer360={verPaciente360} />}
         {view === 'historial' && pacienteSeleccionado && (
           <Historial paciente={pacienteSeleccionado} onVolver={volverPacientes} />
         )}
-        {view === 'test-odontograma' && <TestOdontograma />}
+        {view === 'paciente360' && pacienteSeleccionado && (
+          <Paciente360 paciente={pacienteSeleccionado} onVolver={volverPacientes} onVerHistorial={verHistorial} />
+        )}
+        {view === 'configuracion' && (
+          <Configuracion onVolver={() => setView('dashboard')} />
+        )}
+        {view === 'importar' && (
+          <ImportarDatos onVolver={() => setView('dashboard')} />
+        )}
+        {view === 'whatsapp' && (
+          <WhatsAppPanel onVolver={() => setView('dashboard')} />
+        )}
       </main>
     </div>
   );

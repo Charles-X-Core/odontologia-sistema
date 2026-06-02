@@ -6,3 +6,5 @@ dist/
 dist-electron/
 .env
 *.log
+.wwebjs_cache/
+wwebjs_auth/

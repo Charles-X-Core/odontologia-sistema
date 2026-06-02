@@ -36,7 +36,7 @@ exports.porPaciente = (req, res) => {
 
 exports.obtener = (req, res) => {
   const receta = db.prepare(`
-    SELECT r.*, p.nombre as paciente_nombre, p.dni as paciente_dni, c.fecha as consulta_fecha
+    SELECT r.*, p.nombres as paciente_nombre, p.apellido_paterno, p.apellido_materno, p.dni as paciente_dni, c.fecha as consulta_fecha
     FROM recetas r
     JOIN pacientes p ON p.id = r.paciente_id
     JOIN consultas c ON c.id = r.consulta_id

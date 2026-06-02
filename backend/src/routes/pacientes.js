@@ -4,6 +4,7 @@ const ctrl = require('../controllers/pacienteController');
 
 router.post('/', ctrl.crear);
 router.get('/', ctrl.listar);
+router.get('/buscar', ctrl.buscar);
 router.get('/:id', ctrl.obtenerPorId);
 router.get('/:id/historial', ctrl.obtenerHistorial);
 router.put('/:id', ctrl.actualizar);
