@@ -74,7 +74,7 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
   };
 
   // Paso 5: Recetas
-  const [recetas, setRecetas] = useState([{ indicaciones: '', archivos: [] }]);
+  const [recetas, setRecetas] = useState([{ medicamentos: [{ nombre: '', dosis: '', frecuencia: '', duracion: '' }], indicaciones: '', archivos: [] }]);
 
   // Paso 6: Tratamiento
   const [tratamientos, setTratamientos] = useState([{ procedimiento_realizado: '', costo_total: '', monto_a_cuenta: '', pieza_dental: '', notas: '' }]);
@@ -108,9 +108,41 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
     setDiagnosticos(diagnosticos.filter((_, i) => i !== index));
   };
 
-  const agregarReceta = () => setRecetas([...recetas, { indicaciones: '', archivos: [] }]);
+  const agregarReceta = () => setRecetas([...recetas, { medicamentos: [{ nombre: '', dosis: '', frecuencia: '', duracion: '' }], indicaciones: '', archivos: [] }]);
   const eliminarReceta = (i) => { if (recetas.length > 1) setRecetas(recetas.filter((_, idx) => idx !== i)); };
   const actualizarReceta = (i, campo, valor) => { const n = [...recetas]; n[i][campo] = valor; setRecetas(n); };
+
+  const PLANTILLAS = [
+    { nombre: 'Analgesico', medicamentos: [{ nombre: 'Ibuprofeno', dosis: '600mg', frecuencia: 'Cada 8 horas', duracion: '5 dias' }, { nombre: 'Paracetamol', dosis: '500mg', frecuencia: 'Cada 6 horas', duracion: '3 dias' }], indicaciones: 'Tomar solo si hay dolor. No exceder la dosis recomendada.' },
+    { nombre: 'Antibiotico', medicamentos: [{ nombre: 'Amoxicilina', dosis: '500mg', frecuencia: 'Cada 8 horas', duracion: '7 dias' }], indicaciones: 'Completar el tratamiento aunque mejore. No consumir alcohol.' },
+    { nombre: 'Periodontal', medicamentos: [{ nombre: 'Clorhexidina 0.12%', dosis: '15ml', frecuencia: 'Cada 12 horas', duracion: '14 dias' }], indicaciones: 'Enjuague bucal 1 minuto. No ingerir nada por 30 min despues.' },
+  ];
+
+  const aplicarPlantilla = (ri, plantilla) => {
+    const n = [...recetas];
+    n[ri].medicamentos = plantilla.medicamentos.map(m => ({ ...m }));
+    n[ri].indicaciones = plantilla.indicaciones;
+    setRecetas(n);
+  };
+
+  const agregarMedicamentoReceta = (ri) => {
+    const n = [...recetas];
+    n[ri].medicamentos = [...n[ri].medicamentos, { nombre: '', dosis: '', frecuencia: '', duracion: '' }];
+    setRecetas(n);
+  };
+
+  const actualizarMedicamentoReceta = (ri, mi, campo, valor) => {
+    const n = [...recetas];
+    n[ri].medicamentos[mi][campo] = valor;
+    setRecetas(n);
+  };
+
+  const eliminarMedicamentoReceta = (ri, mi) => {
+    const n = [...recetas];
+    if (n[ri].medicamentos.length <= 1) return;
+    n[ri].medicamentos = n[ri].medicamentos.filter((_, idx) => idx !== mi);
+    setRecetas(n);
+  };
 
   const handleSubirArchivoReceta = async (i, e) => {
     const file = e.target.files[0];
@@ -199,11 +231,12 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
       }
 
       for (const r of recetas) {
-        if (r.indicaciones.trim() || (r.archivos && r.archivos.length > 0)) {
+        const meds = r.medicamentos.filter(m => m.nombre.trim());
+        if (meds.length > 0 || r.indicaciones.trim()) {
           await api.recetas.crear({
             consulta_id: res.id,
             paciente_id: paciente.id,
-            medicamentos: [],
+            medicamentos: meds,
             indicaciones: r.indicaciones || '',
           });
         }
@@ -685,17 +718,42 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
         {paso === 5 && (
           <div className="sesion-card">
             <h3>Recetas Medicas</h3>
-            <p className="sesion-hint">Registra las recetas y adjunta imagenes si es necesario</p>
+            <p className="sesion-hint">Registra las recetas medicas para esta consulta</p>
             {recetas.map((r, ri) => (
               <div key={ri} className="sesion-receta-card" style={{ border: '1px solid var(--gray-200)', borderRadius: '10px', padding: '16px', marginBottom: '12px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                   <strong>Receta {ri + 1}</strong>
                   {recetas.length > 1 && <button type="button" className="btn-remove-sesion" onClick={() => eliminarReceta(ri)}>\u00D7</button>}
                 </div>
-                <div className="field">
-                  <label>Indicaciones</label>
-                  <textarea className="sesion-textarea" value={r.indicaciones} onChange={e => actualizarReceta(ri, 'indicaciones', e.target.value)} placeholder="Indicaciones medicas..." rows={3} />
+
+                <div className="field" style={{ marginBottom: '10px' }}>
+                  <label>Plantillas rapidas</label>
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                    {PLANTILLAS.map((p, pi) => (
+                      <button key={pi} type="button" className="btn btn-sm btn-secondary" onClick={() => aplicarPlantilla(ri, p)}>{p.nombre}</button>
+                    ))}
+                  </div>
                 </div>
+
+                <div className="medicamentos-section" style={{ marginBottom: '10px' }}>
+                  <label style={{ fontWeight: 600, fontSize: '13px', marginBottom: '6px', display: 'block' }}>Medicamentos</label>
+                  {r.medicamentos.map((med, mi) => (
+                    <div key={mi} className="medicamento-row" style={{ display: 'flex', gap: '6px', marginBottom: '6px', alignItems: 'center' }}>
+                      <input type="text" placeholder="Nombre" value={med.nombre} onChange={e => actualizarMedicamentoReceta(ri, mi, 'nombre', e.target.value)} style={{ flex: 2, padding: '6px 10px', border: '1px solid var(--gray-200)', borderRadius: '6px', fontSize: '13px' }} />
+                      <input type="text" placeholder="Dosis" value={med.dosis} onChange={e => actualizarMedicamentoReceta(ri, mi, 'dosis', e.target.value)} style={{ flex: 1, padding: '6px 10px', border: '1px solid var(--gray-200)', borderRadius: '6px', fontSize: '13px' }} />
+                      <input type="text" placeholder="Frecuencia" value={med.frecuencia} onChange={e => actualizarMedicamentoReceta(ri, mi, 'frecuencia', e.target.value)} style={{ flex: 1.5, padding: '6px 10px', border: '1px solid var(--gray-200)', borderRadius: '6px', fontSize: '13px' }} />
+                      <input type="text" placeholder="Duracion" value={med.duracion} onChange={e => actualizarMedicamentoReceta(ri, mi, 'duracion', e.target.value)} style={{ flex: 1, padding: '6px 10px', border: '1px solid var(--gray-200)', borderRadius: '6px', fontSize: '13px' }} />
+                      {r.medicamentos.length > 1 && <button type="button" className="btn-remove-sesion" onClick={() => eliminarMedicamentoReceta(ri, mi)}>\u00D7</button>}
+                    </div>
+                  ))}
+                  <button type="button" className="btn btn-sm btn-secondary" onClick={() => agregarMedicamentoReceta(ri)}>+ Agregar medicamento</button>
+                </div>
+
+                <div className="field" style={{ marginBottom: '10px' }}>
+                  <label>Indicaciones</label>
+                  <textarea className="sesion-textarea" value={r.indicaciones} onChange={e => actualizarReceta(ri, 'indicaciones', e.target.value)} placeholder="Instrucciones para el paciente..." rows={2} />
+                </div>
+
                 <div className="field">
                   <label>Imagenes adjuntas</label>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
@@ -783,13 +841,19 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
                 </div>
               </div>
             )}
-            {recetas.some(r => r.indicaciones.trim() || (r.archivos && r.archivos.length > 0)) && (
+            {recetas.some(r => r.medicamentos.some(m => m.nombre.trim()) || r.indicaciones.trim()) && (
               <div className="resumen-section">
-                <h4>Recetas ({recetas.filter(r => r.indicaciones.trim() || (r.archivos && r.archivos.length > 0)).length})</h4>
-                {recetas.filter(r => r.indicaciones.trim() || (r.archivos && r.archivos.length > 0)).map((r, i) => (
-                  <div key={i} style={{ marginBottom: '6px' }}>
-                    <span>Receta {i + 1}: {r.indicaciones.substring(0, 80)}{r.indicaciones.length > 80 ? '...' : ''}</span>
-                    {r.archivos && r.archivos.length > 0 && <span style={{ marginLeft: '8px', fontSize: '12px', color: 'var(--gray-500)' }}>({r.archivos.length} imagen{r.archivos.length > 1 ? 'es' : ''})</span>}
+                <h4>Recetas ({recetas.filter(r => r.medicamentos.some(m => m.nombre.trim()) || r.indicaciones.trim()).length})</h4>
+                {recetas.filter(r => r.medicamentos.some(m => m.nombre.trim()) || r.indicaciones.trim()).map((r, i) => (
+                  <div key={i} style={{ marginBottom: '8px' }}>
+                    <strong>Receta {i + 1}:</strong>
+                    {r.medicamentos.filter(m => m.nombre.trim()).map((m, mi) => (
+                      <span key={mi} style={{ marginLeft: '6px', fontSize: '13px' }}>
+                        {m.nombre} {m.dosis} {m.frecuencia} {m.duracion && `(${m.duracion})`}{mi < r.medicamentos.filter(mm => mm.nombre.trim()).length - 1 ? ',' : ''}
+                      </span>
+                    ))}
+                    {r.indicaciones && <div style={{ fontSize: '12px', color: 'var(--gray-500)', marginTop: '2px' }}>Indicaciones: {r.indicaciones.substring(0, 80)}{r.indicaciones.length > 80 ? '...' : ''}</div>}
+                    {r.archivos && r.archivos.length > 0 && <span style={{ fontSize: '12px', color: 'var(--gray-500)' }}>({r.archivos.length} imagen{r.archivos.length > 1 ? 'es' : ''})</span>}
                   </div>
                 ))}
               </div>
