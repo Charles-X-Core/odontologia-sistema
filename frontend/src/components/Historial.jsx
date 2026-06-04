@@ -8,7 +8,7 @@ import DiagnosticoPlan from './DiagnosticoPlan';
 import Pagos from './Pagos';
 
 const NECESIDADES_DEFAULT = { cariados: 0, curados: 0, por_extraer: 0, endodoncia: 0, ortodoncia: 0, protesis: 0, extraidos: 0, destartraje: 0 };
-const SIGNOS_VITALES_DEFAULT = { presion_arterial: '', pulso: '', temperatura: '', frecuencia_cardiaca: '', frecuencia_respiratoria: '' };
+const SIGNOS_VITALES_DEFAULT = { presion_arterial: '', pulso: '', temperatura: '', frecuencia_cardiaca: '', frecuencia_respiratoria: '', peso: '', altura: '' };
 
 function nombreCompleto(p) {
   return `${p.apellido_paterno || ''} ${p.apellido_materno || ''} ${p.nombres || ''}`.trim();
@@ -68,6 +68,26 @@ function WizardConsulta({ historia, consultas, onCerrar, onGuardado }) {
   const [diagnosticos, setDiagnosticos] = useState([{ texto: '', tipo: 'clinico' }]);
   const [odontogramaForm, setOdontogramaForm] = useState({});
   const [necesidades, setNecesidades] = useState({ ...NECESIDADES_DEFAULT });
+  const [necesidadesAuto, setNecesidadesAuto] = useState(false);
+
+  const calcularNecesidades = (dientes) => {
+    const nec = { cariados: 0, curados: 0, por_extraer: 0, endodoncia: 0, ortodoncia: 0, protesis: 0, extraidos: 0, destartraje: 0 };
+    Object.values(dientes).forEach(estado => {
+      if (estado === 'caries') nec.cariados++;
+      else if (estado === 'obturado') nec.curados++;
+      else if (estado === 'extraccion') nec.por_extraer++;
+      else if (estado === 'endodoncia') nec.endodoncia++;
+      else if (estado === 'ausente') nec.extraidos++;
+      else if (['corona', 'implante', 'puente', 'provisional'].includes(estado)) nec.protesis++;
+    });
+    setNecesidades(nec);
+    setNecesidadesAuto(true);
+  };
+
+  const handleOdontogramaChange = (dientes) => {
+    setOdontogramaForm(dientes);
+    calcularNecesidades(dientes);
+  };
 
   // Paso 3: Tratamientos
   const [tratamientos, setTratamientos] = useState([{ procedimiento_realizado: '', pieza_dental: '', costo_total: '', monto_a_cuenta: '', notas: '' }]);
@@ -206,6 +226,13 @@ function WizardConsulta({ historia, consultas, onCerrar, onGuardado }) {
               <div className="field"><label>FC</label><input type="text" value={signosVitales.frecuencia_cardiaca} onChange={e => setSignosVitales({...signosVitales, frecuencia_cardiaca: e.target.value})} placeholder="72" /></div>
               <div className="field"><label>FR</label><input type="text" value={signosVitales.frecuencia_respiratoria} onChange={e => setSignosVitales({...signosVitales, frecuencia_respiratoria: e.target.value})} placeholder="16" /></div>
             </div>
+            <div className="form-grid-3" style={{ marginTop: '12px' }}>
+              <div className="field"><label>Peso (kg)</label><input type="text" value={signosVitales.peso || ''} onChange={e => setSignosVitales({...signosVitales, peso: e.target.value})} placeholder="70" /></div>
+              <div className="field"><label>Altura (cm)</label><input type="text" value={signosVitales.altura || ''} onChange={e => setSignosVitales({...signosVitales, altura: e.target.value})} placeholder="170" /></div>
+              {signosVitales.peso && signosVitales.altura && (
+                <div className="field"><label>IMC</label><input type="text" readOnly className="field-readonly" value={(parseFloat(signosVitales.peso) / Math.pow(parseFloat(signosVitales.altura) / 100, 2)).toFixed(1)} /></div>
+              )}
+            </div>
             <div className="field"><label>Examen Clinico General</label><textarea value={examenClinico} onChange={e => setExamenClinico(e.target.value)} rows={2} /></div>
             <div className="field"><label>Evaluacion Odontoestomatologica</label><textarea value={evaluacionOdonto} onChange={e => setEvaluacionOdonto(e.target.value)} rows={2} /></div>
           </div>
@@ -217,25 +244,25 @@ function WizardConsulta({ historia, consultas, onCerrar, onGuardado }) {
             <h4>Diagnosticos</h4>
             {diagnosticos.map((d, i) => (
               <div key={i} className="sesion-tratamiento-row">
-                <input type="text" placeholder="Diagnostico" value={d.texto} onChange={e => { const n = [...diagnosticos]; n[i].texto = e.target.value; setDiagnosticos(n); }} />
+                <textarea className="diagnostico-input" placeholder="Diagnostico" value={d.texto} onChange={e => { const n = [...diagnosticos]; n[i].texto = e.target.value; setDiagnosticos(n); }} rows={3} />
                 {diagnosticos.length > 1 && <button type="button" className="btn-remove-sesion" onClick={() => eliminarDiagnostico(i)}>&times;</button>}
               </div>
             ))}
             <button type="button" className="btn btn-sm btn-secondary" onClick={agregarDiagnostico}>+ Diagnostico</button>
 
             <div className="necesidades-inline" style={{ marginTop: '16px' }}>
-              <label className="necesidades-inline-label">Necesidades Odontologicas</label>
+              <label className="necesidades-inline-label">Necesidades Odontologicas {necesidadesAuto && <span style={{ fontSize: '11px', color: 'var(--success)', fontWeight: 400 }}>(calculado del odontograma)</span>}</label>
               <div className="necesidades-inline-grid">
                 {Object.entries({ cariados: 'Cariados', curados: 'Curados', por_extraer: 'Por Extraer', endodoncia: 'Endodoncia', ortodoncia: 'Orto', protesis: 'Protesis', extraidos: 'Extraidos', destartraje: 'Destartraje' }).map(([key, label]) => (
                   <div key={key} className="necesidad-inline-item">
                     <label>{label}</label>
-                    <input type="number" min="0" max="99" value={necesidades[key]} onChange={e => setNecesidades({ ...necesidades, [key]: parseInt(e.target.value) || 0 })} />
+                    <input type="number" min="0" max="99" value={necesidades[key]} onChange={e => { setNecesidades({ ...necesidades, [key]: parseInt(e.target.value) || 0 }); setNecesidadesAuto(false); }} />
                   </div>
                 ))}
               </div>
             </div>
 
-            <Odontograma datos={odontogramaForm} onGuardar={(dientes) => setOdontogramaForm(dientes)} titulo="Odontograma de la consulta (opcional)" />
+            <Odontograma datos={odontogramaForm} onGuardar={handleOdontogramaChange} titulo="Odontograma de la consulta (opcional)" />
           </div>
         )}
 
@@ -528,12 +555,19 @@ function ConsultaTimeline({ c, onRecargar }) {
               <div className="field"><label>FC</label><input type="text" value={editForm.signos_vitales?.frecuencia_cardiaca || ''} onChange={e => setEditForm({...editForm, signos_vitales: {...editForm.signos_vitales, frecuencia_cardiaca: e.target.value}})} /></div>
               <div className="field"><label>FR</label><input type="text" value={editForm.signos_vitales?.frecuencia_respiratoria || ''} onChange={e => setEditForm({...editForm, signos_vitales: {...editForm.signos_vitales, frecuencia_respiratoria: e.target.value}})} /></div>
             </div>
+            <div className="form-grid-3" style={{ marginTop: '12px' }}>
+              <div className="field"><label>Peso (kg)</label><input type="text" value={editForm.signos_vitales?.peso || ''} onChange={e => setEditForm({...editForm, signos_vitales: {...editForm.signos_vitales, peso: e.target.value}})} /></div>
+              <div className="field"><label>Altura (cm)</label><input type="text" value={editForm.signos_vitales?.altura || ''} onChange={e => setEditForm({...editForm, signos_vitales: {...editForm.signos_vitales, altura: e.target.value}})} /></div>
+              {editForm.signos_vitales?.peso && editForm.signos_vitales?.altura && (
+                <div className="field"><label>IMC</label><input type="text" readOnly className="field-readonly" value={(parseFloat(editForm.signos_vitales.peso) / Math.pow(parseFloat(editForm.signos_vitales.altura) / 100, 2)).toFixed(1)} /></div>
+              )}
+            </div>
 
             <div className="field">
               <label>Diagnosticos</label>
               {editForm.diagnostico_lista.map((d, i) => (
                 <div key={i} className="sesion-tratamiento-row">
-                  <input type="text" value={d.texto} onChange={e => { const n = [...editForm.diagnostico_lista]; n[i].texto = e.target.value; setEditForm({...editForm, diagnostico_lista: n}); }} />
+                  <textarea className="diagnostico-input" value={d.texto} onChange={e => { const n = [...editForm.diagnostico_lista]; n[i].texto = e.target.value; setEditForm({...editForm, diagnostico_lista: n}); }} rows={3} />
                   {editForm.diagnostico_lista.length > 1 && <button type="button" className="btn-remove-sesion" onClick={() => setEditForm({...editForm, diagnostico_lista: editForm.diagnostico_lista.filter((_, idx) => idx !== i)})}>x</button>}
                 </div>
               ))}

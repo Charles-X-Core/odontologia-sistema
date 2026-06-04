@@ -59,7 +59,7 @@ exports.receta = (req, res) => {
   try {
     const receta = db.prepare(`
       SELECT r.*, p.apellido_paterno, p.apellido_materno, p.nombres, p.dni, p.telefono,
-             u.nombre as doctor_nombre
+             u.nombre as doctor_nombre, u.titulo as doctor_titulo
       FROM recetas r
       JOIN pacientes p ON p.id = r.paciente_id
       LEFT JOIN usuarios u ON 1=1
@@ -99,7 +99,7 @@ exports.receta = (req, res) => {
 
     doc.font('Helvetica').fontSize(10).text('________________________', { align: 'center' });
     doc.font('Helvetica-Bold').text(receta.doctor_nombre || 'Doctor', { align: 'center' });
-    doc.font('Helvetica').fontSize(8).text('Odontologo', { align: 'center' });
+    doc.font('Helvetica').fontSize(8).text(receta.doctor_titulo || 'C.D Odontologia', { align: 'center' });
 
     addFooter(doc);
     doc.end();

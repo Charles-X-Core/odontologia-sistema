@@ -715,7 +715,8 @@ exports.enviarPdf = async (req, res) => {
           ? db.prepare('SELECT * FROM recetas WHERE id = ?').get(receta_id)
           : db.prepare('SELECT * FROM recetas WHERE paciente_id = ? ORDER BY created_at DESC LIMIT 1').get(paciente_id);
         if (!receta) return res.status(404).json({ error: 'Receta no encontrada' });
-        html = generateRecetaHtml(paciente, receta);
+        const doctor = db.prepare('SELECT nombre, titulo FROM usuarios LIMIT 1').get();
+        html = generateRecetaHtml(paciente, receta, doctor);
         filename = `Receta_${nombreCompleto(paciente).replace(/\s+/g, '_')}.html`;
         break;
       }

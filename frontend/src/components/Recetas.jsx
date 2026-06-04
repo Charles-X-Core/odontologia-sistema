@@ -207,7 +207,7 @@ export default function Recetas({ pacienteId, paciente, consultas }) {
             <div className="receta-print">
               <div className="receta-header-print">
                 <h2>Receta Medica</h2>
-                <p>{usuario?.nombre || 'Dr.'} - Odontologia</p>
+                <p>{usuario?.nombre || 'Dr.'} - {usuario?.titulo || 'C.D Odontologia'}</p>
                 <p>Fecha: {new Date(recetaDetalle.consulta_fecha).toLocaleDateString()}</p>
               </div>
               <div className="receta-paciente">
@@ -238,7 +238,7 @@ export default function Recetas({ pacienteId, paciente, consultas }) {
               <div className="receta-firma">
                 <div className="firma-linea"></div>
                 <p>{usuario?.nombre || 'Dr.'}</p>
-                <p>Lic. en Odontologia</p>
+                <p>{usuario?.titulo || 'C.D Odontologia'}</p>
               </div>
               <div className="form-actions" style={{ marginTop: '12px' }}>
                 <button className="btn btn-success btn-sm" onClick={() => setMostrarWhatsApp(true)}>

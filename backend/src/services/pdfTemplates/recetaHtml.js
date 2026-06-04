@@ -2,7 +2,7 @@ function nombreCompleto(p) {
   return `${p.apellido_paterno || ''} ${p.apellido_materno || ''} ${p.nombres || ''}`.trim();
 }
 
-function generateRecetaHtml(paciente, receta) {
+function generateRecetaHtml(paciente, receta, doctor) {
   const meds = typeof receta.medicamentos === 'string' ? JSON.parse(receta.medicamentos) : receta.medicamentos;
   const medsHtml = meds.map(m => `
     <tr>
@@ -32,6 +32,9 @@ function generateRecetaHtml(paciente, receta) {
     th, td { border: 1px solid #e5e7eb; padding: 8px 12px; text-align: left; }
     th { background: #f8fafc; color: #2563eb; font-weight: 600; }
     .indicaciones { background: #f0f7ff; padding: 12px; border-radius: 6px; border-left: 3px solid #2563eb; margin-top: 15px; }
+    .firma { text-align: center; margin-top: 60px; }
+    .firma-linea { width: 200px; border-top: 1px solid #333; margin: 0 auto 8px; }
+    .firma p { margin: 2px 0; font-size: 12px; }
     .footer { text-align: center; margin-top: 40px; color: #999; font-size: 11px; border-top: 1px solid #e5e7eb; padding-top: 10px; }
   </style>
 </head>
@@ -62,6 +65,12 @@ function generateRecetaHtml(paciente, receta) {
   </div>
 
   ${receta.indicaciones ? `<div class="indicaciones"><strong>Indicaciones:</strong> ${receta.indicaciones}</div>` : ''}
+
+  <div class="firma">
+    <div class="firma-linea"></div>
+    <p><strong>${doctor?.nombre || 'Doctor'}</strong></p>
+    <p>${doctor?.titulo || 'C.D Odontologia'}</p>
+  </div>
 
   <div class="footer">Vita Mirabilis - Clinica Odontologica | Receta generada electronicamente</div>
 </body>

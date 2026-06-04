@@ -108,15 +108,15 @@ exports.cambiarPassword = (req, res) => {
 };
 
 exports.actualizarPerfil = (req, res) => {
-  const { nombre, email } = req.body;
+  const { nombre, email, titulo } = req.body;
   if (!nombre || !email) {
     return res.status(400).json({ error: 'Nombre y email son obligatorios' });
   }
   try {
     const existente = db.prepare('SELECT id FROM usuarios WHERE email = ? AND id != ?').get(email, req.usuario.id);
     if (existente) return res.status(409).json({ error: 'Ya existe otro usuario con ese email' });
-    db.prepare('UPDATE usuarios SET nombre = ?, email = ? WHERE id = ?').run(nombre, email, req.usuario.id);
-    const usuarioActualizado = db.prepare('SELECT id, nombre, email, rol FROM usuarios WHERE id = ?').get(req.usuario.id);
+    db.prepare('UPDATE usuarios SET nombre = ?, email = ?, titulo = ? WHERE id = ?').run(nombre, email, titulo || 'C.D Odontologia', req.usuario.id);
+    const usuarioActualizado = db.prepare('SELECT id, nombre, email, rol, titulo FROM usuarios WHERE id = ?').get(req.usuario.id);
     res.json({ message: 'Perfil actualizado', usuario: usuarioActualizado });
   } catch (err) {
     res.status(500).json({ error: err.message });

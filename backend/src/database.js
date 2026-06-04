@@ -59,6 +59,7 @@ try { db.exec("ALTER TABLE whatsapp_cola ADD COLUMN batch_id INTEGER"); } catch 
 try { db.exec("ALTER TABLE whatsapp_log ADD COLUMN delivery_status TEXT DEFAULT 'enviado'"); } catch {}
 try { db.exec("ALTER TABLE whatsapp_log ADD COLUMN message_id TEXT DEFAULT ''"); } catch {}
 try { db.exec("ALTER TABLE pacientes ADD COLUMN tipo_documento TEXT DEFAULT 'dni'"); } catch {}
+try { db.exec("ALTER TABLE usuarios ADD COLUMN titulo TEXT DEFAULT 'C.D Odontologia'"); } catch {}
 
 db.exec("CREATE TABLE IF NOT EXISTS importaciones_historial (id INTEGER PRIMARY KEY AUTOINCREMENT, archivo_nombre TEXT, archivo_hash TEXT, fecha_importacion TEXT DEFAULT (datetime('now')), pacientes_creados INTEGER DEFAULT 0, pacientes_duplicados INTEGER DEFAULT 0, consultas_creadas INTEGER DEFAULT 0, tratamientos_creados INTEGER DEFAULT 0, pagos_creados INTEGER DEFAULT 0, total_errores INTEGER DEFAULT 0, usuario_id INTEGER)");
 

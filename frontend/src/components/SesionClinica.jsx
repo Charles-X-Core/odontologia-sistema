@@ -7,8 +7,9 @@ const PASOS = [
   { id: 2, label: 'Enfermedad', icon: '\u{1F4CB}' },
   { id: 3, label: 'Diagnostico', icon: '\u{1F50D}' },
   { id: 4, label: 'Odontograma', icon: '\u{1F9B7}' },
-  { id: 5, label: 'Tratamiento', icon: '\u{1F48A}' },
-  { id: 6, label: 'Resumen', icon: '\u{1F4CB}' },
+  { id: 5, label: 'Recetas', icon: '\u{1F48A}' },
+  { id: 6, label: 'Tratamiento', icon: '\u{1F9B7}' },
+  { id: 7, label: 'Resumen', icon: '\u{1F4CB}' },
 ];
 
 const NECESIDADES_DEFAULT = {
@@ -17,7 +18,7 @@ const NECESIDADES_DEFAULT = {
 };
 
 const SIGNOS_VITALES_DEFAULT = {
-  presion_arterial: '', pulso: '', temperatura: '', frecuencia_cardiaca: '', frecuencia_respiratoria: '',
+  presion_arterial: '', pulso: '', temperatura: '', frecuencia_cardiaca: '', frecuencia_respiratoria: '', peso: '', altura: '',
 };
 
 function nombreCompleto(p) {
@@ -51,8 +52,31 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
   // Paso 4: Odontograma
   const [odontograma, setOdontograma] = useState({});
   const [necesidades, setNecesidades] = useState({ ...NECESIDADES_DEFAULT });
+  const [necesidadesAuto, setNecesidadesAuto] = useState(false);
 
-  // Paso 5: Tratamiento
+  const calcularNecesidades = (dientes) => {
+    const nec = { cariados: 0, curados: 0, por_extraer: 0, endodoncia: 0, ortodoncia: 0, protesis: 0, extraidos: 0, destartraje: 0 };
+    Object.values(dientes).forEach(estado => {
+      if (estado === 'caries') nec.cariados++;
+      else if (estado === 'obturado') nec.curados++;
+      else if (estado === 'extraccion') nec.por_extraer++;
+      else if (estado === 'endodoncia') nec.endodoncia++;
+      else if (estado === 'ausente') nec.extraidos++;
+      else if (['corona', 'implante', 'puente', 'provisional'].includes(estado)) nec.protesis++;
+    });
+    setNecesidades(nec);
+    setNecesidadesAuto(true);
+  };
+
+  const handleOdontogramaChange = (dientes) => {
+    setOdontograma(dientes);
+    calcularNecesidades(dientes);
+  };
+
+  // Paso 5: Recetas
+  const [recetas, setRecetas] = useState([{ indicaciones: '', archivos: [] }]);
+
+  // Paso 6: Tratamiento
   const [tratamientos, setTratamientos] = useState([{ procedimiento_realizado: '', costo_total: '', monto_a_cuenta: '', pieza_dental: '', notas: '' }]);
 
   useEffect(() => { cargarDatos(); }, [paciente.id]);
@@ -82,6 +106,35 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
   const eliminarDiagnostico = (index) => {
     if (diagnosticos.length <= 1) return;
     setDiagnosticos(diagnosticos.filter((_, i) => i !== index));
+  };
+
+  const agregarReceta = () => setRecetas([...recetas, { indicaciones: '', archivos: [] }]);
+  const eliminarReceta = (i) => { if (recetas.length > 1) setRecetas(recetas.filter((_, idx) => idx !== i)); };
+  const actualizarReceta = (i, campo, valor) => { const n = [...recetas]; n[i][campo] = valor; setRecetas(n); };
+
+  const handleSubirArchivoReceta = async (i, e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('archivo', file);
+    formData.append('paciente_id', paciente.id);
+    formData.append('tipo', 'foto');
+    formData.append('descripcion', 'Imagen de receta');
+    try {
+      const res = await api.imagenes.subir(formData);
+      if (res.id) {
+        const n = [...recetas];
+        n[i].archivos = [...(n[i].archivos || []), { id: res.id, nombre: res.archivo_nombre, original: res.archivo_original }];
+        setRecetas(n);
+      }
+    } catch {}
+    e.target.value = '';
+  };
+
+  const eliminarArchivoReceta = (ri, ai) => {
+    const n = [...recetas];
+    n[ri].archivos = n[ri].archivos.filter((_, idx) => idx !== ai);
+    setRecetas(n);
   };
 
   const agregarTratamiento = () => {
@@ -143,6 +196,17 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
       const tieneNecesidades = Object.values(necesidades).some(v => v > 0);
       if (tieneNecesidades) {
         await api.necesidades.crear({ consulta_id: res.id, ...necesidades });
+      }
+
+      for (const r of recetas) {
+        if (r.indicaciones.trim() || (r.archivos && r.archivos.length > 0)) {
+          await api.recetas.crear({
+            consulta_id: res.id,
+            paciente_id: paciente.id,
+            medicamentos: [],
+            indicaciones: r.indicaciones || '',
+          });
+        }
       }
 
       const TratsValidos = tratamientos.filter(t => t.procedimiento_realizado.trim());
@@ -534,6 +598,22 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
                   <input type="text" value={signosVitales.frecuencia_respiratoria} onChange={e => setSignosVitales({...signosVitales, frecuencia_respiratoria: e.target.value})} placeholder="Ej: 16" />
                 </div>
               </div>
+              <div className="form-grid-3" style={{ marginTop: '12px' }}>
+                <div className="field">
+                  <label>Peso (kg)</label>
+                  <input type="text" value={signosVitales.peso} onChange={e => setSignosVitales({...signosVitales, peso: e.target.value})} placeholder="Ej: 70" />
+                </div>
+                <div className="field">
+                  <label>Altura (cm)</label>
+                  <input type="text" value={signosVitales.altura} onChange={e => setSignosVitales({...signosVitales, altura: e.target.value})} placeholder="Ej: 170" />
+                </div>
+                {signosVitales.peso && signosVitales.altura && (
+                  <div className="field">
+                    <label>IMC</label>
+                    <input type="text" readOnly className="field-readonly" value={(parseFloat(signosVitales.peso) / Math.pow(parseFloat(signosVitales.altura) / 100, 2)).toFixed(1)} />
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="sesion-section">
@@ -552,7 +632,7 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
               <h4>Diagnostico</h4>
               {diagnosticos.map((d, i) => (
                 <div key={i} className="sesion-tratamiento-row">
-                  <input type="text" placeholder="Diagnostico clinico" value={d.texto} onChange={e => actualizarDiagnostico(i, e.target.value)} />
+                  <textarea className="diagnostico-input" placeholder="Diagnostico clinico" value={d.texto} onChange={e => actualizarDiagnostico(i, e.target.value)} rows={3} />
                   {diagnosticos.length > 1 && (
                     <button type="button" className="btn-remove-sesion" onClick={() => eliminarDiagnostico(i)}>\u00D7</button>
                   )}
@@ -585,16 +665,16 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
             <p className="sesion-hint">Registra el estado actual de las piezas dentales</p>
             <Odontograma
               datos={odontograma}
-              onGuardar={(dientes) => setOdontograma(dientes)}
+              onGuardar={handleOdontogramaChange}
               titulo="Estado dental actual"
             />
             <div className="sesion-necesidades">
-              <h4>Necesidades Odontologicas</h4>
+              <h4>Necesidades Odontologicas {necesidadesAuto && <span style={{ fontSize: '12px', color: 'var(--success)', fontWeight: 400 }}>(calculado del odontograma)</span>}</h4>
               <div className="necesidades-inline-grid">
                 {Object.entries({ cariados: 'Cariados', curados: 'Curados', por_extraer: 'Por Extraer', endodoncia: 'Endodoncia', ortodoncia: 'Orto', protesis: 'Protesis', extraidos: 'Extraidos', destartraje: 'Destartraje' }).map(([key, label]) => (
                   <div key={key} className="necesidad-inline-item">
                     <label>{label}</label>
-                    <input type="number" min="0" max="99" value={necesidades[key]} onChange={e => setNecesidades({ ...necesidades, [key]: parseInt(e.target.value) || 0 })} />
+                    <input type="number" min="0" max="99" value={necesidades[key]} onChange={e => { setNecesidades({ ...necesidades, [key]: parseInt(e.target.value) || 0 }); setNecesidadesAuto(false); }} />
                   </div>
                 ))}
               </div>
@@ -603,6 +683,41 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
         )}
 
         {paso === 5 && (
+          <div className="sesion-card">
+            <h3>Recetas Medicas</h3>
+            <p className="sesion-hint">Registra las recetas y adjunta imagenes si es necesario</p>
+            {recetas.map((r, ri) => (
+              <div key={ri} className="sesion-receta-card" style={{ border: '1px solid var(--gray-200)', borderRadius: '10px', padding: '16px', marginBottom: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                  <strong>Receta {ri + 1}</strong>
+                  {recetas.length > 1 && <button type="button" className="btn-remove-sesion" onClick={() => eliminarReceta(ri)}>\u00D7</button>}
+                </div>
+                <div className="field">
+                  <label>Indicaciones</label>
+                  <textarea className="sesion-textarea" value={r.indicaciones} onChange={e => actualizarReceta(ri, 'indicaciones', e.target.value)} placeholder="Indicaciones medicas..." rows={3} />
+                </div>
+                <div className="field">
+                  <label>Imagenes adjuntas</label>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+                    <label className="btn btn-sm btn-secondary" style={{ cursor: 'pointer' }}>
+                      Adjuntar imagen
+                      <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => handleSubirArchivoReceta(ri, e)} />
+                    </label>
+                    {(r.archivos || []).map((a, ai) => (
+                      <span key={ai} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'var(--gray-100)', padding: '4px 8px', borderRadius: '6px', fontSize: '12px' }}>
+                        {a.original}
+                        <button type="button" onClick={() => eliminarArchivoReceta(ri, ai)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontWeight: 700 }}>\u00D7</button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))}
+            <button type="button" className="btn btn-sm btn-secondary btn-add-tratamiento" onClick={agregarReceta}>+ Agregar receta</button>
+          </div>
+        )}
+
+        {paso === 6 && (
           <div className="sesion-card">
             <h3>Registro de Tratamientos</h3>
             <p className="sesion-hint">Define los procedimientos a realizar con sus costos</p>
@@ -625,7 +740,7 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
           </div>
         )}
 
-        {paso === 6 && (
+        {paso === 7 && (
           <div className="sesion-card">
             <h3>Resumen de la Sesion</h3>
             <div className="resumen-section">
@@ -666,6 +781,17 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
                     <span key={k} className="resumen-badge">{k.replace(/_/g, ' ')}: {v}</span>
                   ))}
                 </div>
+              </div>
+            )}
+            {recetas.some(r => r.indicaciones.trim() || (r.archivos && r.archivos.length > 0)) && (
+              <div className="resumen-section">
+                <h4>Recetas ({recetas.filter(r => r.indicaciones.trim() || (r.archivos && r.archivos.length > 0)).length})</h4>
+                {recetas.filter(r => r.indicaciones.trim() || (r.archivos && r.archivos.length > 0)).map((r, i) => (
+                  <div key={i} style={{ marginBottom: '6px' }}>
+                    <span>Receta {i + 1}: {r.indicaciones.substring(0, 80)}{r.indicaciones.length > 80 ? '...' : ''}</span>
+                    {r.archivos && r.archivos.length > 0 && <span style={{ marginLeft: '8px', fontSize: '12px', color: 'var(--gray-500)' }}>({r.archivos.length} imagen{r.archivos.length > 1 ? 'es' : ''})</span>}
+                  </div>
+                ))}
               </div>
             )}
             {tratamientos.filter(t => t.procedimiento_realizado.trim()).length > 0 && (

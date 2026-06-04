@@ -133,7 +133,7 @@ export default function Configuracion({ onVolver }) {
 // TAB: MI PERFIL
 // ============================================
 function PerfilTab({ usuario }) {
-  const [perfil, setPerfil] = useState({ nombre: usuario?.nombre || '', email: usuario?.email || '' });
+  const [perfil, setPerfil] = useState({ nombre: usuario?.nombre || '', email: usuario?.email || '', titulo: usuario?.titulo || 'C.D Odontologia' });
   const [mensaje, setMensaje] = useState('');
   const [error, setError] = useState('');
   const [guardando, setGuardando] = useState(false);
@@ -162,6 +162,10 @@ function PerfilTab({ usuario }) {
             <label>Email *</label>
             <input type="email" value={perfil.email} onChange={e => setPerfil({ ...perfil, email: e.target.value })} required />
           </div>
+        </div>
+        <div className="field">
+          <label>Titulo Profesional</label>
+          <input type="text" value={perfil.titulo} onChange={e => setPerfil({ ...perfil, titulo: e.target.value })} placeholder="Ej: C.D Odontologia" />
         </div>
         <div className="field">
           <label>Rol</label>
