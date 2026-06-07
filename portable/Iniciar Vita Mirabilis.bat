@@ -8,6 +8,24 @@ cd /d "%~dp0"
 :: VITA MIRABILIS - INICIO PORTABLE
 :: Verifica e instala Chrome + Node.js automaticamente
 :: ============================================================
+::
+:: USO:
+::   Iniciar Vita Mirabilis.bat              (modo normal)
+::   Iniciar Vita Mirabilis.bat --no-install  (sin instalar nada)
+::
+::   --no-install:   No instala dependencias. Solo verifica que
+::                   Chrome y Node.js esten en el sistema. Si
+::                   falta alguno, avisa y sale. Usar este modo
+::                   si ya tienes todo instalado o si prefieres
+::                   gestionar las dependencias manualmente.
+:: ============================================================
+
+:: Detectar flag --no-install
+set "NO_INSTALL=0"
+for %%A in (%*) do (
+    if /i "%%A"=="--no-install" set "NO_INSTALL=1"
+    if /i "%%A"=="/no-install"  set "NO_INSTALL=1"
+)
 
 color 0B
 echo.
@@ -15,13 +33,20 @@ echo ============================================================
 echo         VITA MIRABILIS - INICIO PORTABLE
 echo ============================================================
 echo.
-echo  Este script verificara que tengas las dependencias
-echo  necesarias. Si falta Chrome o Node.js, los descargara
-echo  automaticamente desde internet.
-echo.
-echo  Requisito: conexion a internet la primera vez
-echo  Permiso:   administrador (solo primera vez)
-echo.
+if "%NO_INSTALL%"=="1" (
+    echo  MODO: --no-install
+    echo  Este modo NO instalara nada. Solo verificara que
+    echo  Chrome y Node.js ya esten en tu sistema.
+    echo.
+) else (
+    echo  Este script verificara que tengas las dependencias
+    echo  necesarias. Si falta Chrome o Node.js, los descargara
+    echo  automaticamente desde internet.
+    echo.
+    echo  Requisito: conexion a internet la primera vez
+    echo  Permiso:   administrador (solo primera vez)
+    echo.
+)
 pause
 echo.
 
@@ -59,6 +84,14 @@ if exist "%SystemRoot%\System32\vcruntime140.dll" if exist "%SystemRoot%\System3
 if "%VC_OK%"=="1" (
     echo       [OK] vcruntime140.dll y msvcp140.dll encontrados
 ) else (
+    if "%NO_INSTALL%"=="1" (
+        echo       [X] VC++ Runtime no encontrado.
+        echo           Modo --no-install activo: la app NO se instalara.
+        echo           Descarga manual: https://aka.ms/vs/17/release/vc_redist.x64.exe
+        echo.
+        pause
+        exit /b 1
+    )
     echo       [!] VC++ Runtime no encontrado. Instalando...
     if "%HAS_WINGET%"=="1" (
         winget install Microsoft.VCRedist.2015+.x64 --accept-package-agreements --accept-source-agreements --silent
@@ -97,6 +130,14 @@ for %%P in (
 if defined CHROME_PATH (
     echo       [OK] Chrome: %CHROME_PATH%
 ) else (
+    if "%NO_INSTALL%"=="1" (
+        echo       [X] Google Chrome no encontrado.
+        echo           Modo --no-install activo: la app NO se instalara.
+        echo           Descarga manual: https://www.google.com/chrome/
+        echo.
+        pause
+        exit /b 1
+    )
     echo       [!] Google Chrome no encontrado. Instalando...
     if "%HAS_WINGET%"=="1" (
         winget install Google.Chrome --accept-package-agreements --accept-source-agreements --silent
@@ -132,6 +173,14 @@ for %%P in (
 if defined NODE_PATH (
     echo       [OK] Node.js: %NODE_PATH%
 ) else (
+    if "%NO_INSTALL%"=="1" (
+        echo       [X] Node.js no encontrado.
+        echo           Modo --no-install activo: la app NO se instalara.
+        echo           Descarga manual: https://nodejs.org/
+        echo.
+        pause
+        exit /b 1
+    )
     echo       [!] Node.js no encontrado. Instalando...
     if "%HAS_WINGET%"=="1" (
         winget install OpenJS.NodeJS.LTS --accept-package-agreements --accept-source-agreements --silent

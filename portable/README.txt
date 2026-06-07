@@ -154,6 +154,95 @@ SISTEMA DE GESTIÓN ODONTOLÓGICA
   Chrome requerido:      v100+ (se descarga automáticamente)
 
 
+------------------------------------------------------------
+11. TRANSPARENCIA: ¿QUÉ HACE ESTA APP?
+------------------------------------------------------------
+
+Esta sección es para que sepas exactamente qué hace (y qué NO)
+la app en tu PC, sin tecnicismos.
+
+✅ LO QUE SÍ HACE:
+
+  • Crea una carpeta con los archivos del programa
+    (donde descomprimiste el .rar / .7z / .exe)
+  • Crea una carpeta con tus datos en:
+        %APPDATA%\Vita Mirabilis\
+    Ahí se guardan: la base de datos, sesión de WhatsApp
+    y logs de diagnóstico.
+  • La primera vez, instala 3 cosas oficiales:
+      - Microsoft Visual C++ Redistributable (de Microsoft)
+      - Google Chrome (de Google)
+      - Node.js LTS (de OpenJS Foundation)
+    Se instalan vía "winget" (el instalador oficial de Windows)
+  • Abre Google Chrome para conectarse a WhatsApp Web
+  • Lee y guarda archivos en su propia carpeta
+    (nada fuera de %APPDATA%\Vita Mirabilis\ y donde la
+    descomprimiste)
+
+❌ LO QUE NO HACE (verificado por el código fuente):
+
+  • NO instala ni modifica drivers de tu PC
+    (los drivers son los que controlan tu sonido, cámara,
+     gráficos, etc.)
+  • NO modifica el registro de Windows
+  • NO crea servicios de Windows
+  • NO accede a C:\Windows\ ni a carpetas de sistema
+  • NO se conecta a internet salvo para:
+      - Descargar Chrome/Node.js/VC++ la primera vez
+      - Conectarse a WhatsApp Web (solo si tú lo activas)
+  • NO envía tus datos a servidores externos
+    (toda la información queda en tu PC)
+  • NO modifica tu firewall, antivirus, ni políticas
+    de seguridad
+  • NO se inicia automáticamente con Windows
+
+🔍 SI TU PC TIENE PROBLEMAS DESPUÉS DE INSTALAR:
+
+  Si notas que algo dejó de funcionar (sonido, cámara, etc.):
+
+  1. Abre "Configuración" → "Aplicaciones" → busca
+     "Vita Mirabilis". Si NO aparece listada, la app
+     no se "instaló" en el sentido tradicional.
+  2. La app solo agrega 3 cosas oficiales de Microsoft,
+     Google y OpenJS. Ninguna de ellas toca drivers.
+  3. Las causas más comunes de problemas de drivers
+     son: Windows Update, actualizaciones de otros
+     programas (Zoom, Teams, etc.), o malware.
+  4. Para verificar, abre PowerShell como admin y corre:
+        Get-Service | Where-Object Name -like "*Vita*"
+     Si no muestra nada, la app no creó servicios.
+
+  Si quieres estar 100% seguro, desinstala la app
+  (borrar la carpeta + %APPDATA%\Vita Mirabilis\)
+  y reinicia la PC. Si el problema persiste, NO era
+  la app.
+
+
+------------------------------------------------------------
+12. AVISO DE WINGET (instalador de Windows)
+------------------------------------------------------------
+
+  La primera vez, el "Iniciar.bat" usa "winget"
+  (el instalador de línea de comandos de Windows) para
+  instalar Chrome, Node.js y VC++ Redistributable.
+
+  • "winget" es una herramienta oficial de Microsoft
+    incluida en Windows 10 (1809+) y Windows 11.
+  • Los paquetes que instala son las versiones oficiales
+    publicadas por Google, OpenJS Foundation y Microsoft.
+  • Si tu PC tiene "winget" deshabilitado por política
+    corporativa, la app te lo dirá y puedes instalarlos
+    manualmente descargándolos de las webs oficiales.
+
+  Si prefieres instalar tú mismo las dependencias (sin
+  que la app lo haga automáticamente), ejecuta:
+
+      Iniciar Vita Mirabilis.bat --no-install
+
+  Este modo asume que ya tienes Chrome y Node.js
+  instalados en tu sistema.
+
+
 ============================================================
    ¿Más ayuda? Revisa el log en:
    %APPDATA%\Vita Mirabilis\runner.log

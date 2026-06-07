@@ -15,3 +15,23 @@ Odontografo/
 Thumbs.db
 .idea/
 .vscode/
+
+# Build artifacts (se distribuyen por fuera del repo)
+Vita*Mirabilis*Portable*.7z
+Vita*Mirabilis*Portable*.exe
+Vita*Mirabilis*Portable*.rar
+Vita*Mirabilis*v*.7z
+Vita*Mirabilis*v*.exe
+Vita*Mirabilis*v*.rar
+
+# Debug / temp (Fase 2 limpieza)
+qr-para-escanear.png
+run-diagnostico.js
+save-qr.ps1
+electron/diagnostico.js
+electron/diagnostico-node.js
+electron/logo.ico.exe
+
+# Archivos viejos que fueron movidos a electron/
+/openwa-runner.js
+/openwaSetup.js

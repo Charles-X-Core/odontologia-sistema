@@ -57,22 +57,91 @@ const logFile = path.join(process.env.APPDATA || process.env.TEMP || __dirname, 
 try {
   fs.mkdirSync(path.dirname(logFile), { recursive: true });
 } catch (e) {}
+
+// Log levels: INFO, WARN, ERROR, DEBUG
+// Format: [TIMESTAMP] [LEVEL] [MODULE] message
+// Example: [2025-12-15T10:30:45.123Z] [INFO ] [OPENWA] Auth path: C:\...
+function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+function fmtTime(d) {
+  return d.getFullYear() + '-' + pad2(d.getMonth()+1) + '-' + pad2(d.getDate())
+    + 'T' + pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds())
+    + '.' + String(d.getMilliseconds()).padStart(3, '0') + 'Z';
+}
 function fileLog(msg) {
   try {
-    const line = '[' + new Date().toISOString() + '] ' + msg + '\n';
+    const line = '[' + fmtTime(new Date()) + '] ' + msg + '\n';
     fs.appendFileSync(logFile, line);
   } catch (e) {}
 }
+function levelTag(level) {
+  return '[' + (level || 'INFO').padEnd(5) + ']';
+}
+function logWithLevel(level, module, ...args) {
+  const text = levelTag(level) + ' [' + (module || 'APP') + '] ' + args.map(a =>
+    typeof a === 'string' ? a : (a && a.stack) ? a.stack : JSON.stringify(a)
+  ).join(' ');
+  fileLog(text);
+}
+
+// Rotar log si excede 5 MB (evita que el archivo crezca infinito)
+function rotateLogIfNeeded() {
+  try {
+    if (!fs.existsSync(logFile)) return;
+    const stat = fs.statSync(logFile);
+    const MAX_BYTES = 5 * 1024 * 1024;
+    if (stat.size < MAX_BYTES) return;
+    const backup = logFile + '.old';
+    if (fs.existsSync(backup)) fs.unlinkSync(backup);
+    fs.renameSync(logFile, backup);
+    fileLog('=== LOG ROTATED (prev: ' + stat.size + ' bytes) ===');
+  } catch (e) {}
+}
+
 fileLog('=== RUNNER STARTED, PID: ' + process.pid + ' ===');
+fileLog('=== Node: ' + process.version + ' | Platform: ' + process.platform + ' ===');
+fileLog('Log path: ' + logFile);
+rotateLogIfNeeded();
 fileLog('wwjsPath: ' + wwjsPath);
 fileLog('authPath: ' + baseAuthDir);
-// Override console.* to also write to file
+
+// Override console.* to also write to file con nivel
 const origLog = console.log;
 const origErr = console.error;
-console.log = function(...args) { fileLog(args.join(' ')); origLog.apply(console, args); };
-console.error = function(...args) { fileLog('[ERR] ' + args.join(' ')); origErr.apply(console, args); };
+const origWarn = console.warn || origLog;
+const origInfo = console.info || origLog;
+const origDebug = console.debug || origLog;
+
+console.log   = function(...args) { logWithLevel('INFO',  'OPENWA', ...args); origLog.apply(console, args); };
+console.info  = function(...args) { logWithLevel('INFO',  'OPENWA', ...args); origInfo.apply(console, args); };
+console.warn  = function(...args) { logWithLevel('WARN',  'OPENWA', ...args); origWarn.apply(console, args); };
+console.error = function(...args) { logWithLevel('ERROR', 'OPENWA', ...args); origErr.apply(console, args); };
+console.debug = function(...args) { logWithLevel('DEBUG', 'OPENWA', ...args); origDebug.apply(console, args); };
+
+// Helper para que otros modulos puedan loguear con modulo custom
+global.waLog = function(level, module, ...args) {
+  logWithLevel(level, module, ...args);
+  // Tambien a stdout segun nivel
+  const out = (level === 'ERROR') ? origErr : (level === 'WARN' ? origWarn : origLog);
+  out.apply(console, ['[' + (module || 'APP') + ']', ...args]);
+};
+
 const _origStderrWrite = process.stderr.write.bind(process.stderr);
-process.stderr.write = function(msg) { fileLog('[STDERR] ' + (typeof msg === 'string' ? msg.trim() : msg)); return _origStderrWrite(msg); };
+process.stderr.write = function(msg) {
+  const text = typeof msg === 'string' ? msg.trim() : String(msg);
+  logWithLevel('ERROR', 'STDERR', text);
+  return _origStderrWrite(msg);
+};
+
+// Manejo de excepciones no capturadas (antes de que el proceso muera)
+process.on('uncaughtException', (err) => {
+  logWithLevel('ERROR', 'UNCAUGHT', err && err.message);
+  if (err && err.stack) logWithLevel('ERROR', 'UNCAUGHT', err.stack);
+});
+process.on('unhandledRejection', (reason) => {
+  logWithLevel('ERROR', 'UNHANDLED', String(reason));
+  if (reason && reason.stack) logWithLevel('ERROR', 'UNHANDLED', reason.stack);
+});
+
 const authPath = baseAuthDir;
 try { if (!fs.existsSync(authPath)) fs.mkdirSync(authPath, { recursive: true }); } catch(e) {}
 console.log('[OPENWA] Auth path:', authPath);
