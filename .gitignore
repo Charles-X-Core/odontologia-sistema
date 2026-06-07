@@ -8,3 +8,10 @@ dist-electron/
 *.log
 .wwebjs_cache/
 wwebjs_auth/
+Odontografo/
+*.tmp
+*.bak
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

@@ -248,10 +248,15 @@ function WhatsAppTab() {
   useEffect(() => {
     cargarTodo();
     pollingRef.current = setInterval(() => {
-      api.whatsapp.estado().then(setEstado).catch(() => {});
+      api.whatsapp.estado().then(s => {
+        setEstado(s);
+        if (s?.connected && mensaje.includes('reiniciando')) {
+          setMensaje('');
+        }
+      }).catch(() => {});
     }, 3000);
     return () => clearInterval(pollingRef.current);
-  }, []);
+  }, [mensaje]);
 
   const cargarTodo = async () => {
     setCargando(true);
@@ -281,6 +286,7 @@ function WhatsAppTab() {
       await api.whatsapp.restart();
       setMensaje('WhatsApp reiniciando... espera unos segundos');
       setTimeout(() => { api.whatsapp.estado().then(setEstado); }, 5000);
+      setTimeout(() => { setMensaje(''); }, 15000);
     } catch (err) { setError('Error: ' + err.message); }
     setReiniciando(false);
   };

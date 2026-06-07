@@ -7,9 +7,11 @@
     "start": "electron .",
     "dev": "concurrently \"npm run dev:backend\" \"sleep 3 && electron .\"",
     "dev:backend": "cd backend && node src/index.js",
-    "build": "npm run build:frontend && electron-builder --win",
+    "build": "npm run build:frontend && electron-builder --win && npm run postbuild",
     "build:frontend": "cd frontend && npm run build",
-    "pack": "npm run build:frontend && electron-builder --dir",
+    "pack": "npm run build:frontend && electron-builder --dir && npm run postbuild",
+    "postbuild": "node scripts/copy-portable.js",
+    "postinstall": "patch-package",
     "seed": "cd backend && node src/seed.js",
     "install:all": "cd backend && npm install && cd ../frontend && npm install && cd .. && npm install"
   },
@@ -25,7 +27,13 @@
       "backend/package.json",
       "backend/node_modules/**/*",
       "frontend/dist/**/*",
+      "node_modules/**/*",
+      "portable/**/*",
       "package.json"
+    ],
+    "asarUnpack": [
+      "**/node_modules/**",
+      "**/electron/**"
     ],
     "extraResources": [],
     "win": {
@@ -43,12 +51,26 @@
     }
   },
   "dependencies": {
+    "@puppeteer/browsers": "^2.10.0",
+    "bcryptjs": "^2.4.3",
     "concurrently": "^9.0.0",
+    "cors": "^2.8.5",
+    "csv-parse": "^6.2.1",
+    "express": "^4.21.0",
+    "fs-extra": "^11.3.5",
+    "jsonfile": "^6.2.1",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.1.1",
+    "pdfmake": "^0.3.9",
+    "puppeteer-core": "^25.1.0",
     "qrcode": "^1.5.4",
-    "whatsapp-web.js": "^1.34.7"
+    "universalify": "^2.0.1",
+    "whatsapp-web.js": "^1.34.7",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "electron": "^35.0.0",
-    "electron-builder": "^26.0.0"
+    "electron-builder": "^26.0.0",
+    "patch-package": "^8.0.1"
   }
 }

@@ -138,9 +138,22 @@ export const api = {
     devReset: (confirmation) => request('/importacion/dev-reset', { method: 'POST', body: JSON.stringify({ confirmation }) }),
   },
 
+  exportacion: {
+    completo: (fmt = 'xlsx') => `${API_URL}/exportacion/completo?formato=${fmt}&token=${getToken()}`,
+    pacientes: (fmt = 'xlsx') => `${API_URL}/exportacion/pacientes?formato=${fmt}&token=${getToken()}`,
+    consultas: (fmt = 'xlsx') => `${API_URL}/exportacion/consultas?formato=${fmt}&token=${getToken()}`,
+    tratamientos: (fmt = 'xlsx') => `${API_URL}/exportacion/tratamientos?formato=${fmt}&token=${getToken()}`,
+    pagos: (fmt = 'xlsx') => `${API_URL}/exportacion/pagos?formato=${fmt}&token=${getToken()}`,
+    recetas: (fmt = 'xlsx') => `${API_URL}/exportacion/recetas?formato=${fmt}&token=${getToken()}`,
+    estadisticas: () => request('/exportacion/estadisticas'),
+    backupBD: () => `${API_URL}/exportacion/backup-db?token=${getToken()}`,
+    importarBD: (formData) => uploadFile('/exportacion/importar-db', formData),
+  },
+
   pdf: {
     receta: (id) => `${API_URL}/pdf/receta/${id}?token=${getToken()}`,
     historia: (id) => `${API_URL}/pdf/historia/${id}?token=${getToken()}`,
+    historiaConsulta: (pacienteId, consultaId) => `${API_URL}/pdf/historia/${pacienteId}/consulta/${consultaId}?token=${getToken()}`,
     pago: (id) => `${API_URL}/pdf/pago/${id}?token=${getToken()}`,
     tratamientos: (id) => `${API_URL}/pdf/tratamientos/${id}?token=${getToken()}`,
   },

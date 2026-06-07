@@ -1,287 +1,122 @@
+// openwaSetup.js - Maneja el ciclo de vida del OpenWA runner
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
+const { app } = require('electron');
 
 const OPENWA_URL = process.env.OPENWA_URL || 'http://localhost:3002';
 const OPENWA_PORT = 3002;
 let openwaProcess = null;
 
-function cleanOldSessions() {
-  // NO borrar sesiones - queremos que persistan
-  // Solo limpiar cache obsoleto si existe
-  const projectRoot = path.join(__dirname, '..');
-  const cachePath = path.join(projectRoot, 'wwebjs_cache');
-  try {
-    if (fs.existsSync(cachePath)) {
-      fs.rmSync(cachePath, { recursive: true, force: true });
+// En dev: el runner esta en electron/, project root es __dirname/..
+// En dist: el runner esta en resources/app/electron/, project root es resources/app
+function getProjectRoot() {
+  if (app && app.isPackaged) {
+    const dir = path.join(process.resourcesPath, 'app');
+    if (!fs.existsSync(dir)) {
+      try { fs.mkdirSync(dir, { recursive: true }); } catch(e) {}
     }
-  } catch (e) {}
+    return dir;
+  }
+  return path.join(__dirname, '..');
 }
 
-function getChromePath() {
-  const homeCache = path.join(process.env.USERPROFILE || '', '.cache', 'puppeteer', 'chrome');
-  if (fs.existsSync(homeCache)) {
-    const versions = fs.readdirSync(homeCache);
-    for (const v of versions) {
-      if (v.startsWith('win64-131')) {
-        const chrome = path.join(homeCache, v, 'chrome-win64', 'chrome.exe');
-        if (fs.existsSync(chrome)) return chrome;
-      }
+function getRunnerScriptPath() {
+  let dir = __dirname;
+  // En produccion (asar), __dirname apunta a app.asar/electron
+  // Preferimos app.asar.unpacked/electron si existe (compatible con builds viejos)
+  // Si no, usamos app.asar/electron directamente (electron-builder ya no lo desempaqueta)
+  if (dir.indexOf('app.asar') !== -1 && dir.indexOf('app.asar.unpacked') === -1) {
+    const unpackedDir = dir.replace('app.asar', 'app.asar.unpacked');
+    if (fs.existsSync(path.join(unpackedDir, 'openwa-runner.js'))) {
+      dir = unpackedDir;
     }
-    const sorted = versions.sort().reverse();
-    for (const v of sorted) {
-      const chrome = path.join(homeCache, v, 'chrome-win64', 'chrome.exe');
-      if (fs.existsSync(chrome)) return chrome;
+    // Si no existe en unpacked, usar la ruta del asar (funciona porque es solo JS)
+  }
+  return path.join(dir, 'openwa-runner.js');
+}
+
+// Buscar Chrome en el sistema
+function findChrome() {
+  const candidates = [
+    path.join(process.env.USERPROFILE || '', '.cache', 'puppeteer', 'chrome'),
+    'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+    'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+    path.join(process.env.LOCALAPPDATA || '', 'Google', 'Chrome', 'Application', 'chrome.exe'),
+    // Rutas alternativas para instalaciones manuales
+    path.join(process.env.LOCALAPPDATA || '', 'Google', 'Chrome SxS', 'Application', 'chrome.exe'),
+    path.join(process.env.PROGRAMFILES || 'C:\\Program Files', 'Google', 'Chrome', 'Application', 'chrome.exe'),
+  ];
+  for (const base of candidates) {
+    if (fs.existsSync(base)) {
+      if (base.includes('puppeteer')) {
+        try {
+          const versions = fs.readdirSync(base);
+          const sorted = versions.slice().sort().reverse();
+          for (const v of sorted) {
+            const c1 = path.join(base, v, 'chrome-win64', 'chrome.exe');
+            const c2 = path.join(base, v, 'chrome-win32', 'chrome.exe');
+            if (fs.existsSync(c1)) return c1;
+            if (fs.existsSync(c2)) return c2;
+          }
+        } catch (e) {}
+      } else {
+        if (fs.existsSync(base)) return base;
+      }
     }
   }
   return null;
 }
 
-function createWWebJSRunner() {
-  const projectRoot = path.join(__dirname, '..');
-  const scriptPath = path.join(projectRoot, 'openwa-runner.js');
-  const chromePath = getChromePath();
-  const port = OPENWA_PORT;
+// Instalar Chrome via Puppeteer si no existe
+async function installChrome() {
+  console.log('[OPENWA-SETUP] Chrome no encontrado, instalando...');
+  return new Promise(function(resolve, reject) {
+    try {
+      // Buscar puppeteer
+      let puppeteerPath = null;
+      const pupCandidates = [
+        path.join(__dirname, '..', 'node_modules', 'puppeteer'),
+        path.join(__dirname, '..', '..', 'node_modules', 'puppeteer'),
+      ];
+      for (const p of pupCandidates) {
+        if (fs.existsSync(p)) { puppeteerPath = p; break; }
+      }
+      if (!puppeteerPath) {
+        console.log('[OPENWA-SETUP] Puppeteer (full) no disponible, intentando winget...');
+        // Intentar via winget como ultimo recurso
+        const { execSync } = require('child_process');
+        try {
+          execSync('winget install Google.Chrome --accept-package-agreements --accept-source-agreements --silent',
+            { stdio: 'inherit', timeout: 300000 });
+          resolve(true);
+          return;
+        } catch (we) {
+          console.error('[OPENWA-SETUP] winget Chrome install fallo:', we.message);
+          resolve(false);
+          return;
+        }
+      }
+      const puppeteer = require(puppeteerPath);
+      const browserFetcher = puppeteer.createBrowserFetcher();
+      browserFetcher.download('chrome', puppeteer.PUPPETEER_REVISIONS.chromium || '131.0.6778.204')
+        .then(() => resolve(true))
+        .catch(err => { console.error('[OPENWA-SETUP] Install error:', err.message); resolve(false); });
+    } catch (e) {
+      console.error('[OPENWA-SETUP] Install exception:', e.message);
+      resolve(false);
+    }
+  });
+}
 
-  const script = [
-    "const { Client, LocalAuth } = require('whatsapp-web.js');",
-    "const http = require('http');",
-    "const qrcode = require('qrcode');",
-    "const port = " + port + ";",
-    "",
-    "let currentQR = null;",
-    "let clientStatus = 'starting';",
-    "let waClient = null;",
-    "",
-    "const client = new Client({",
-    "  authStrategy: new LocalAuth({ dataPath: './wwebjs_auth' }),",
-    "  puppeteer: {",
-    "    headless: true,",
-    (chromePath ? "    executablePath: '" + chromePath.replace(/\\/g, '\\\\') + "'," : ""),
-    "    args: [",
-    "      '--no-sandbox',",
-    "      '--disable-setuid-sandbox',",
-    "      '--disable-dev-shm-usage',",
-    "      '--disable-accelerated-2d-canvas',",
-    "      '--no-first-run',",
-    "      '--disable-gpu',",
-    "      '--disable-extensions',",
-    "    ],",
-    "  },",
-    "});",
-    "",
-    "client.on('qr', (qr) => {",
-    "  console.log('QR received');",
-    "  qrcode.toDataURL(qr, (err, url) => {",
-    "    if (!err) currentQR = url;",
-    "  });",
-    "  clientStatus = 'qr';",
-    "});",
-    "",
-    "client.on('ready', () => {",
-    "  console.log('WhatsApp client ready!');",
-    "  clientStatus = 'ready';",
-    "  currentQR = null;",
-    "});",
-    "",
-    "client.on('authenticated', () => {",
-    "  console.log('Authenticated');",
-    "  clientStatus = 'authenticated';",
-    "});",
-    "",
-    "client.on('auth_failure', (msg) => {",
-    "  console.error('Auth failure:', msg);",
-    "  clientStatus = 'auth_failure';",
-    "  // Auto-restart after auth failure",
-    "  setTimeout(() => {",
-    "    console.log('Restarting after auth failure...');",
-    "    client.initialize().catch(e => console.error('Restart failed:', e.message));",
-    "  }, 3000);",
-    "});",
-    "",
-    "client.on('disconnected', (reason) => {",
-    "  console.log('Disconnected:', reason);",
-    "  clientStatus = 'disconnected';",
-    "  // Auto-reconnect after 5 seconds",
-    "  setTimeout(() => {",
-    "    if (clientStatus === 'disconnected') {",
-    "      console.log('Attempting reconnect...');",
-    "      client.initialize().catch(e => console.error('Reconnect failed:', e.message));",
-    "    }",
-    "  }, 5000);",
-    "});",
-    "",
-    "client.on('message_ack', (msg, ack) => {",
-    "  if (msg.id && msg.id.id) {",
-    "    const http2 = require('http');",
-    "    const data = JSON.stringify({ messageId: msg.id.id, ack: ack });",
-    "    const req = http2.request({",
-    "      hostname: 'localhost',",
-    "      port: 3001,",
-    "      path: '/api/whatsapp/ack',",
-    "      method: 'POST',",
-    "      headers: { 'Content-Type': 'application/json', 'Content-Length': data.length },",
-    "    }, () => {});",
-    "    req.on('error', () => {});",
-    "    req.write(data);",
-    "    req.end();",
-    "    console.log('ACK update sent: ' + msg.id.id + ' ack=' + ack);",
-    "  }",
-    "});",
-    "",
-    "function parsePhone(phone) {",
-    "  let p = phone.replace(/[^0-9]/g, '');",
-    "  if (p.length > 10 && !p.startsWith('51')) {",
-    "    p = '51' + p.slice(-9);",
-    "  }",
-    "  return p + '@c.us';",
-    "}",
-    "",
-    "const server = http.createServer(async (req, res) => {",
-    "  res.setHeader('Content-Type', 'application/json');",
-    "",
-    "  if (req.url === '/api/getStatus') {",
-    "    return res.end(JSON.stringify({",
-    "      connected: clientStatus === 'ready',",
-    "      status: clientStatus,",
-    "    }));",
-    "  }",
-    "",
-    "  if (req.url === '/api/logout' && req.method === 'POST') {",
-    "    try {",
-    "      await client.logout();",
-    "      clientStatus = 'disconnected';",
-    "      res.end(JSON.stringify({ success: true }));",
-    "    } catch (err) {",
-    "      res.statusCode = 500;",
-    "      res.end(JSON.stringify({ success: false, message: err.message }));",
-    "    }",
-    "    return;",
-    "  }",
-    "",
-    "  if (req.url === '/api/restart' && req.method === 'POST') {",
-    "    try {",
-    "      clientStatus = 'starting';",
-    "      client.destroy().catch(() => {});",
-    "      setTimeout(() => {",
-    "        client.initialize().catch(e => console.error('Restart failed:', e.message));",
-    "      }, 2000);",
-    "      res.end(JSON.stringify({ success: true }));",
-    "    } catch (err) {",
-    "      res.statusCode = 500;",
-    "      res.end(JSON.stringify({ success: false, message: err.message }));",
-    "    }",
-    "    return;",
-    "  }",
-    "",
-    "  if (req.url === '/api/getQR') {",
-    "    return res.end(JSON.stringify({ qr: currentQR }));",
-    "  }",
-    "",
-    "  if (req.url === '/api/sendText' && req.method === 'POST') {",
-    "    let body = '';",
-    "    req.on('data', c => body += c);",
-    "    req.on('end', async () => {",
-    "      try {",
-    "        const data = JSON.parse(body);",
-    "        const chatId = parsePhone(data.phone);",
-    "        const result = await client.sendMessage(chatId, data.message);",
-    "        res.end(JSON.stringify({ success: true, id: result.id }));",
-    "      } catch (err) {",
-    "        res.statusCode = 500;",
-    "        res.end(JSON.stringify({ success: false, message: err.message }));",
-    "      }",
-    "    });",
-    "    return;",
-    "  }",
-    "",
-    "  if (req.url === '/api/sendImage' && req.method === 'POST') {",
-    "    let body = '';",
-    "    req.on('data', c => body += c);",
-    "    req.on('end', async () => {",
-    "      try {",
-    "        const data = JSON.parse(body);",
-    "        const chatId = parsePhone(data.phone);",
-    "        const { MessageMedia } = require('whatsapp-web.js');",
-    "        let media;",
-    "        if (data.base64) {",
-    "          const base64Data = data.base64.replace(/^data:image\\/\\w+;base64,/, '');",
-    "          media = new MessageMedia('image/png', base64Data);",
-    "        }",
-    "        const opts = data.caption ? { caption: data.caption } : {};",
-    "        const result = await client.sendMessage(chatId, media, opts);",
-    "        res.end(JSON.stringify({ success: true, id: result.id }));",
-    "      } catch (err) {",
-    "        res.statusCode = 500;",
-    "        res.end(JSON.stringify({ success: false, message: err.message }));",
-    "      }",
-    "    });",
-    "    return;",
-    "  }",
-    "",
-    "  if (req.url === '/api/sendDocument' && req.method === 'POST') {",
-    "    let body = '';",
-    "    req.on('data', c => body += c);",
-    "    req.on('end', async () => {",
-    "      try {",
-    "        const data = JSON.parse(body);",
-    "        const chatId = parsePhone(data.phone);",
-    "        const { MessageMedia } = require('whatsapp-web.js');",
-    "        let media;",
-    "        if (data.base64) {",
-    "          const base64Data = data.base64.replace(/^data:[^;]+;base64,/, '');",
-    "          media = new MessageMedia(data.mimetype || 'application/pdf', base64Data, data.filename || 'documento.pdf');",
-    "        }",
-    "        const opts = { sendMediaAsDocument: true };",
-    "        if (data.caption) opts.caption = data.caption;",
-    "        const result = await client.sendMessage(chatId, media, opts);",
-    "        res.end(JSON.stringify({ success: true, id: result.id }));",
-    "      } catch (err) {",
-    "        res.statusCode = 500;",
-    "        res.end(JSON.stringify({ success: false, message: err.message }));",
-    "      }",
-    "    });",
-    "    return;",
-    "  }",
-    "",
-    "  if (req.url === '/api/sendFile' && req.method === 'POST') {",
-    "    let body = '';",
-    "    req.on('data', c => body += c);",
-    "    req.on('end', async () => {",
-    "      try {",
-    "        const data = JSON.parse(body);",
-    "        const chatId = parsePhone(data.phone);",
-    "        const { MessageMedia } = require('whatsapp-web.js');",
-    "        const media = await MessageMedia.fromFilePath(data.filePath);",
-    "        const opts = { sendMediaAsDocument: true };",
-    "        if (data.caption) opts.caption = data.caption;",
-    "        const result = await client.sendMessage(chatId, media, opts);",
-    "        res.end(JSON.stringify({ success: true, id: result.id }));",
-    "      } catch (err) {",
-    "        res.statusCode = 500;",
-    "        res.end(JSON.stringify({ success: false, message: err.message }));",
-    "      }",
-    "    });",
-    "    return;",
-    "  }",
-    "",
-    "  res.statusCode = 404;",
-    "  res.end(JSON.stringify({ error: 'Not found' }));",
-    "});",
-    "",
-    "server.listen(port, () => {",
-    "  console.log('OpenWA-compatible API listening on port ' + port);",
-    "});",
-    "",
-    "client.initialize().catch(err => {",
-    "  console.error('Failed to initialize:', err.message);",
-    "  process.exit(1);",
-    "});",
-  ].join('\n');
+function getRunnerDir() {
+  // El wwebjs_auth va junto al script runner
+  return __dirname;
+}
 
-  fs.writeFileSync(scriptPath, script, 'utf-8');
-  return scriptPath;
+function getAuthPath() {
+  return path.join(getRunnerDir(), 'wwebjs_auth');
 }
 
 function checkOpenWA() {
@@ -318,34 +153,84 @@ function getQR() {
   });
 }
 
-function startOpenWA(onProgress) {
-  return new Promise(function(resolve, reject) {
-    if (openwaProcess) {
-      checkOpenWA().then(function(s) { if (s.running) return resolve({ success: true }); });
+async function startOpenWA(onProgress) {
+  if (openwaProcess) {
+    const s = await checkOpenWA();
+    if (s.running) return { success: true };
+  }
+
+  if (onProgress) onProgress({ phase: 'starting', message: 'Iniciando WhatsApp Web...' });
+
+  const scriptPath = getRunnerScriptPath();
+  console.log('[OPENWA-SETUP] Script path:', scriptPath);
+  console.log('[OPENWA-SETUP] Script existe:', fs.existsSync(scriptPath));
+
+  let chromePath = findChrome();
+  if (!chromePath) {
+    if (onProgress) onProgress({ phase: 'installing', message: 'Instalando Chrome (puede tardar)...' });
+    await installChrome();
+    chromePath = findChrome();
+    if (!chromePath) {
+      throw new Error('Chrome no encontrado y no se pudo instalar automaticamente. Por favor instale Google Chrome desde https://www.google.com/chrome/');
     }
+    console.log('[OPENWA-SETUP] Chrome instalado en:', chromePath);
+  }
 
-    if (onProgress) onProgress({ phase: 'starting', message: 'Iniciando WhatsApp Web...' });
+  if (!fs.existsSync(scriptPath)) {
+    throw new Error('openwa-runner.js no encontrado en: ' + scriptPath);
+  }
 
-    cleanOldSessions();
+  let nodeBin = 'C:\\Program Files\\nodejs\\node.exe';
+  let useElectronAsNode = false;
+  if (fs.existsSync(nodeBin)) {
+    console.log('[OPENWA-SETUP] Node bin:', nodeBin);
+  } else {
+    // Buscar Node.js en otras rutas comunes
+    const nodeCandidates = [
+      'C:\\Program Files (x86)\\nodejs\\node.exe',
+      path.join(process.env.LOCALAPPDATA || '', 'nodejs', 'node.exe'),
+      path.join(process.env.APPDATA || '', 'nodejs', 'node.exe'),
+      'C:\\nodejs\\node.exe',
+    ];
+    let found = false;
+    for (const p of nodeCandidates) {
+      if (fs.existsSync(p)) {
+        nodeBin = p;
+        found = true;
+        console.log('[OPENWA-SETUP] Node bin (alternativo):', nodeBin);
+        break;
+      }
+    }
+    if (!found) {
+      // Fallback: usar el binario de Electron con ELECTRON_RUN_AS_NODE=1
+      // (esto evita requerir Node.js del sistema en PCs nuevas)
+      nodeBin = process.execPath;
+      useElectronAsNode = true;
+      console.log('[OPENWA-SETUP] Node no encontrado, usando Electron como Node:', nodeBin);
+    }
+  }
 
-    const scriptPath = createWWebJSRunner();
-    const nodeBin = process.execPath;
-
+  return new Promise(function(resolve, reject) {
+    const childEnv = Object.assign({}, process.env);
+    if (useElectronAsNode) {
+      childEnv.ELECTRON_RUN_AS_NODE = '1';
+    }
     const child = spawn(nodeBin, [scriptPath], {
       stdio: ['pipe', 'pipe', 'pipe'],
       shell: false,
-      env: process.env,
-      cwd: path.join(__dirname, '..'),
+      env: childEnv,
+      cwd: getProjectRoot(),
     });
 
     openwaProcess = child;
-    var started = false;
-    var output = '';
+    let started = false;
+    let output = '';
 
     child.stdout.on('data', function(d) {
       try {
-        var text = d.toString();
+        const text = d.toString();
         output += text;
+        process.stdout.write('[WA-CHILD] ' + text);
         if (!started && text.indexOf('listening on port') !== -1) {
           started = true;
           resolve({ success: true });
@@ -354,10 +239,15 @@ function startOpenWA(onProgress) {
     });
 
     child.stderr.on('data', function(d) {
-      try { output += d.toString(); } catch (e) {}
+      try {
+        const text = d.toString();
+        output += text;
+        process.stderr.write('[WA-CHILD-ERR] ' + text);
+      } catch (e) {}
     });
 
     child.on('close', function(code) {
+      console.log('[OPENWA-SETUP] Child process closed, code:', code);
       openwaProcess = null;
       if (!started) {
         reject(new Error('WhatsApp termino con codigo ' + code + ': ' + output.slice(-500)));
@@ -365,6 +255,7 @@ function startOpenWA(onProgress) {
     });
 
     child.on('error', function(err) {
+      console.error('[OPENWA-SETUP] Child process error:', err.message);
       openwaProcess = null;
       reject(err);
     });
@@ -401,9 +292,9 @@ function stopOpenWA() {
 
 async function waitForOpenWA(maxWait) {
   maxWait = maxWait || 60000;
-  var start = Date.now();
+  const start = Date.now();
   while (Date.now() - start < maxWait) {
-    var status = await checkOpenWA();
+    const status = await checkOpenWA();
     if (status.running) return true;
     await new Promise(function(r) { setTimeout(r, 2000); });
   }

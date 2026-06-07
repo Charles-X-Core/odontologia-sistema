@@ -91,7 +91,7 @@ export default function DiagnosticoPlan({ paciente, onVolver }) {
                 {diagnosticos.map((d, i) => (
                   <div key={i} className="sesion-tratamiento-row">
                     <input type="text" value={d.texto} onChange={e => actualizarDiagnostico(i, e.target.value)} placeholder="Diagnostico clinico" />
-                    {diagnosticos.length > 1 && <button className="btn-remove-sesion" onClick={() => eliminarDiagnostico(i)}>\u00D7</button>}
+                    {diagnosticos.length > 1 && <button className="btn-remove-sesion" onClick={() => eliminarDiagnostico(i)}>×</button>}
                   </div>
                 ))}
                 <button type="button" className="btn btn-sm btn-secondary" onClick={agregarDiagnostico}>+ Diagnostico</button>
