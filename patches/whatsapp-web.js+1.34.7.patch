@@ -1,0 +1,50 @@
+diff --git a/node_modules/whatsapp-web.js/src/Client.js b/node_modules/whatsapp-web.js/src/Client.js
+index 800109e..a07fd91 100644
+--- a/node_modules/whatsapp-web.js/src/Client.js
++++ b/node_modules/whatsapp-web.js/src/Client.js
+@@ -244,6 +244,7 @@ class Client extends EventEmitter {
+                     },
+                 );
+ 
++                try {
+                 await this.pupPage.evaluate(async () => {
+                     const registrationInfo =
+                         await window.AuthStore.RegistrationUtils.waSignalStore.getRegistrationInfo();
+@@ -275,6 +276,9 @@ class Client extends EventEmitter {
+                         window.onQRChangedEvent(getQR(ref));
+                     }); // future QR changes
+                 });
++                } catch(e) {
++                    // evaluation failed
++                }
+             }
+         }
+ 
+@@ -398,16 +402,18 @@ class Client extends EventEmitter {
+             },
+         );
+         await this.pupPage.evaluate(() => {
+-            window
+-                .require('WAWebSocketModel')
+-                .Socket.on('change:state', (_AppState, state) => {
+-                    window.onAuthAppStateChangedEvent(state);
+-                });
+-            window
+-                .require('WAWebSocketModel')
+-                .Socket.on('change:hasSynced', () => {
++            const appState = window.require('WAWebSocketModel').Socket;
++            if (appState.hasSynced) {
++                window.onAppStateHasSyncedEvent();
++            }
++            appState.on('change:hasSynced', (_AppState, hasSynced) => {
++                if (hasSynced) {
+                     window.onAppStateHasSyncedEvent();
+-                });
++                }
++            });
++            appState.on('change:state', (_AppState, state) => {
++                window.onAuthAppStateChangedEvent(state);
++            });
+             const Cmd = window.require('WAWebCmd').Cmd;
+             Cmd.on('offline_progress_update_from_bridge', () => {
+                 window.onOfflineProgressUpdateEvent(

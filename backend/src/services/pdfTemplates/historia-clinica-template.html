@@ -62,14 +62,27 @@
     table td.empty {
       background: #fff;
     }
-    .odontograma-img {
-      text-align: center;
-      padding: 8px 0;
-    }
-    .odontograma-img img {
-      max-width: 100%;
-      height: auto;
-    }
+    .odontograma-container { text-align: center; padding: 10px 0; }
+    .odontograma-arcada { display: flex; justify-content: center; align-items: center; gap: 6px; padding: 4px 0; }
+    .odontograma-row { display: flex; gap: 2px; }
+    .separador-vertical { width: 2px; background: #999; margin: 0 6px; border-radius: 1px; align-self: stretch; }
+    .separador-temporal { height: 40px; }
+    .diente-separador { width: 100%; border-top: 2px solid #000; margin: 10px 0; }
+    .diente-box { display: flex; flex-direction: column; align-items: center; width: 52px; height: 60px; border: 1.5px solid #000; border-radius: 3px; background: #fff; position: relative; overflow: hidden; flex-shrink: 0; }
+    .diente-box svg { width: 44px; height: 44px; }
+    .diente-box .diente-num { font-size: 9px; font-weight: 700; color: #000; line-height: 1; margin-bottom: 1px; z-index: 2; }
+    .diente-badge { display: block; background: #000; color: #fff; font-size: 7px; font-weight: 800; padding: 1px 3px; border-radius: 3px; text-align: center; line-height: 1.2; letter-spacing: -0.3px; margin-top: 1px; }
+    .leyenda-odontograma { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 8px; font-size: 8px; }
+    .leyenda-item { display: flex; align-items: center; gap: 3px; }
+    .leyenda-cuadro { width: 16px; height: 16px; border: 1px solid #000; border-radius: 2px; display: flex; align-items: center; justify-content: center; }
+    .necesidades-row { display: flex; justify-content: center; gap: 15px; margin: 6px 0; font-size: 9px; }
+    .nec-item { text-align: center; }
+    .nec-item .nec-valor { font-size: 16px; font-weight: 700; color: #1e40af; display: block; }
+    .nec-item .nec-label { color: #666; font-size: 8px; }
+    .receta-box { background: #fefce8; border: 1px solid #fbbf24; border-radius: 4px; padding: 6px 10px; margin-bottom: 6px; }
+    .receta-box h4 { font-size: 9px; font-weight: 700; color: #92400e; margin-bottom: 4px; }
+    .receta-med { font-size: 9px; margin-bottom: 2px; padding-left: 8px; }
+    .receta-indicaciones { font-size: 8.5px; color: #78716c; font-style: italic; margin-top: 3px; padding-left: 8px; }
     .firma-area {
       margin-top: 40px;
       text-align: center;
@@ -93,7 +106,7 @@
 
 <h1>FICHA DE HISTORIA CLINICA ODONTOLOGICA</h1>
 <div style="text-align:center; margin-bottom:8px;">
-  <img src="https://cdn.mathpix.com/snip/images/vudTDSEYOmug6FudJ24B9V-V16kvr15mnQBs92Q3ULk.original.fullsize.png" alt="Logo Clinica" style="max-width:100%; height:auto;" />
+  <img src="{{logo_base64}}" alt="Logo Clinica" style="max-width:100%; height:auto; max-height:120px; filter: grayscale(100%) brightness(0);" />
 </div>
 <hr class="header-line">
 
@@ -215,23 +228,30 @@
     <td class="label">Diabetes / familiar</td>
     <td class="value" style="text-align:center">{{diabetes_si}}</td>
     <td class="value" style="text-align:center">{{diabetes_no}}</td>
-    <td class="label">Odontoestomatologico:</td>
-    <td class="value">{{odontoestomatologico}}</td>
+    <td class="label">Peso:</td>
+    <td class="value">{{peso}} kg</td>
   </tr>
   <tr>
     <td class="label">Hepatitis (tipo A B C)</td>
     <td class="value" style="text-align:center">{{hepatitis_si}}</td>
     <td class="value" style="text-align:center">{{hepatitis_no}}</td>
-    <td class="label">Examen Clinico General:</td>
-    <td class="value">{{examen_general}}</td>
+    <td class="label">Altura:</td>
+    <td class="value">{{altura}} cm</td>
   </tr>
   <tr>
     <td class="label" colspan="3">Otras enfermedades: {{otras_enfermedades}}</td>
-    <td class="empty" colspan="2"></td>
+    <td class="label">IMC:</td>
+    <td class="value">{{imc}}</td>
   </tr>
   <tr>
     <td class="label" colspan="3">Enfermedad actual / medicacion: {{enfermedad_actual_medicacion}}</td>
-    <td class="empty" colspan="2"></td>
+    <td class="label">Odontoestomatologico:</td>
+    <td class="value">{{odontoestomatologico}}</td>
+  </tr>
+  <tr>
+    <td class="empty" colspan="3"></td>
+    <td class="label">Examen Clinico General:</td>
+    <td class="value">{{examen_general}}</td>
   </tr>
 </table>
 
@@ -261,17 +281,17 @@
 </table>
 
 <h2>ODONTOGRAMA</h2>
-<div class="odontograma-img">
-  <img src="https://cdn.mathpix.com/cropped/ddb7f91e-425c-40d4-ae7e-305bbfebdb0a-2.jpg?height=131&width=1664&top_left_y=196&top_left_x=178" alt="Odontograma 1" />
+<div class="odontograma-container">
+  {{odontograma_svg}}
 </div>
-<div class="odontograma-img">
-  <img src="https://cdn.mathpix.com/cropped/ddb7f91e-425c-40d4-ae7e-305bbfebdb0a-2.jpg?height=358&width=1666&top_left_y=335&top_left_x=178" alt="Odontograma 2" />
-</div>
-<div class="odontograma-img">
-  <img src="https://cdn.mathpix.com/cropped/ddb7f91e-425c-40d4-ae7e-305bbfebdb0a-2.jpg?height=332&width=1657&top_left_y=667&top_left_x=185" alt="Odontograma 3" />
-</div>
-<div class="odontograma-img">
-  <img src="https://cdn.mathpix.com/cropped/ddb7f91e-425c-40d4-ae7e-305bbfebdb0a-2.jpg?height=129&width=1671&top_left_y=1007&top_left_x=178" alt="Odontograma 4" />
+
+<h2>NECESIDADES ODONTOLOGICAS</h2>
+<div class="necesidades-row">
+  <div class="nec-item"><span class="nec-valor">{{nec_cariados}}</span><span class="nec-label">Cariados</span></div>
+  <div class="nec-item"><span class="nec-valor">{{nec_curados}}</span><span class="nec-label">Curados</span></div>
+  <div class="nec-item"><span class="nec-valor">{{nec_por_extraer}}</span><span class="nec-label">Por Extraer</span></div>
+  <div class="nec-item"><span class="nec-valor">{{nec_ausentes}}</span><span class="nec-label">Ausentes</span></div>
+  <div class="nec-item"><span class="nec-valor">{{nec_protesis}}</span><span class="nec-label">Protesis</span></div>
 </div>
 
 <h2>TRATAMIENTO</h2>
@@ -298,13 +318,18 @@
   <tr><td class="value">{{trat_fecha_12}}</td><td class="value">{{trat_pza_12}}</td><td class="value">{{trat_proc_12}}</td><td class="value">{{trat_total_12}}</td><td class="value">{{trat_cuenta_12}}</td><td class="value">{{trat_saldo_12}}</td></tr>
 </table>
 
+{{#if hay_recetas}}
+<h2>RECETAS MEDICAS</h2>
+{{recetas_html}}
+{{/if}}
+
 <div class="firma-area">
   <div class="firma-line">Firma del Odontologo</div>
-  <div style="font-size:9px;margin-top:3px">C.M.P.: _______________</div>
+  <div style="font-size:9px;margin-top:3px">{{doctor_nombre}} - {{doctor_titulo}}</div>
+  <div style="font-size:8px;margin-top:2px;color:#888">C.M.P.: _______________</div>
 </div>
 
 <script>
-  // Auto-print when opened in browser (generates PDF dialog)
   window.onload = function() {
     setTimeout(function() { window.print(); }, 500);
   };

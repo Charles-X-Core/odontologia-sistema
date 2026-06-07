@@ -9,7 +9,7 @@ import Recepcion from './components/Recepcion';
 import SesionClinica from './components/SesionClinica';
 import Paciente360 from './components/Paciente360';
 import Configuracion from './components/Configuracion';
-import ImportarDatos from './components/ImportarDatos';
+import EstacionDatos from './components/EstacionDatos';
 import WhatsAppPanel from './components/WhatsAppPanel';
 import './App.css';
 
@@ -72,8 +72,8 @@ function LayoutAuth() {
         {view === 'configuracion' && (
           <Configuracion onVolver={() => setView('dashboard')} />
         )}
-        {view === 'importar' && (
-          <ImportarDatos onVolver={() => setView('dashboard')} />
+        {view === 'estacion-datos' && (
+          <EstacionDatos onVolver={() => setView('dashboard')} />
         )}
         {view === 'whatsapp' && (
           <WhatsAppPanel onVolver={() => setView('dashboard')} />

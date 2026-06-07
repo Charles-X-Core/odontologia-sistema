@@ -217,7 +217,7 @@ export default function Paciente360({ paciente, onVolver, onVerHistorial }) {
               {consultas.length === 0 && pagos.length === 0 ? (
                 <p className="empty">No hay actividad registrada</p>
               ) : (
-                [...consultas.map(c => ({ tipo: 'consulta', fecha: c.fecha, texto: `Consulta: ${c.motivo}`, id: c.id })),
+                [...consultas.map(c => ({ tipo: 'consulta', fecha: c.fecha, texto: `Consulta: ${c.motivo}`, id: c.id, consultaId: c.id })),
                   ...pagos.map(p => ({ tipo: 'pago', fecha: p.fecha, texto: `Pago: $${(p.total || 0).toLocaleString()} - ${p.procedimiento || 'Sin descripcion'}`, id: p.id }))]
                   .sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
                   .slice(0, 15)
@@ -226,6 +226,11 @@ export default function Paciente360({ paciente, onVolver, onVerHistorial }) {
                       <span className={`actividad-tipo ${item.tipo}`}>{item.tipo === 'consulta' ? 'Consulta' : 'Pago'}</span>
                       <span className="actividad-texto">{item.texto}</span>
                       <span className="actividad-fecha">{new Date(item.fecha).toLocaleDateString()}</span>
+                      {item.tipo === 'consulta' && (
+                        <a className="btn btn-sm btn-secondary" href={api.pdf.historiaConsulta(paciente.id, item.consultaId)} target="_blank" rel="noopener noreferrer" style={{ marginLeft: '8px', padding: '2px 8px', fontSize: '11px' }}>
+                          PDF
+                        </a>
+                      )}
                     </div>
                   ))
                 )}

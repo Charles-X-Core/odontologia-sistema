@@ -79,6 +79,11 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
   // Paso 6: Tratamiento
   const [tratamientos, setTratamientos] = useState([{ procedimiento_realizado: '', costo_total: '', monto_a_cuenta: '', pieza_dental: '', notas: '' }]);
 
+  // Antecedentes
+  const [editandoAntecedentes, setEditandoAntecedentes] = useState(false);
+  const [antecedentesForm, setAntecedentesForm] = useState({});
+  const [guardandoAntecedentes, setGuardandoAntecedentes] = useState(false);
+
   useEffect(() => { cargarDatos(); }, [paciente.id]);
 
   const cargarDatos = async () => {
@@ -87,7 +92,38 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
       setHistoria(data.historia);
       setConsultas(data.consultas || []);
       setNecesidadesPrevias(data.necesidades || null);
+      if (data.historia) {
+        setAntecedentesForm({
+          alergia_medicamentos: data.historia.alergia_medicamentos || '',
+          propension_hemorragias: data.historia.propension_hemorragias || '',
+          complicaciones_anestesia: data.historia.complicaciones_anestesia || '',
+          presion_arterial_medicacion: data.historia.presion_arterial_medicacion || '',
+          cardiopatias_personales: data.historia.cardiopatias_personales || '',
+          cardiopatias_familiares: data.historia.cardiopatias_familiares || '',
+          diabetes_personal: data.historia.diabetes_personal || '',
+          diabetes_familiar: data.historia.diabetes_familiar || '',
+          hepatitis: data.historia.hepatitis || '',
+          otras_enfermedades: data.historia.otras_enfermedades || '',
+          enfermedad_actual_medicacion: data.historia.enfermedad_actual_medicacion || '',
+        });
+      }
     } catch {}
+  };
+
+  const guardarAntecedentes = async () => {
+    if (!historia) return;
+    setGuardandoAntecedentes(true);
+    try {
+      await api.historias.actualizar(historia.id, antecedentesForm);
+      setHistoria({ ...historia, ...antecedentesForm });
+      setEditandoAntecedentes(false);
+      setMensaje('Antecedentes guardados correctamente');
+      setTimeout(() => setMensaje(''), 3000);
+    } catch (e) {
+      setMensaje('Error al guardar antecedentes');
+      setTimeout(() => setMensaje(''), 3000);
+    }
+    setGuardandoAntecedentes(false);
   };
 
   const siguiente = () => { if (paso < PASOS.length) setPaso(paso + 1); };
@@ -358,53 +394,143 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
                 {historia && (
                   <div className="paso-paciente-card paso-historia-card">
                     <div className="paso-historia-header">
-                      <h4>Historia Clinica</h4>
-                      <span className="historia-numero">N\u00ba {historia.numero_historia || '-'}</span>
+                      <h4>Antecedentes Personales y Familiares</h4>
+                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                        <span className="historia-numero">N° {historia.numero_historia || '-'}</span>
+                        {!editandoAntecedentes ? (
+                          <button className="btn btn-sm btn-secondary" onClick={() => setEditandoAntecedentes(true)}>Editar</button>
+                        ) : (
+                          <>
+                            <button className="btn btn-sm btn-primary" onClick={guardarAntecedentes} disabled={guardandoAntecedentes}>
+                              {guardandoAntecedentes ? 'Guardando...' : 'Guardar'}
+                            </button>
+                            <button className="btn btn-sm btn-secondary" onClick={() => setEditandoAntecedentes(false)}>Cancelar</button>
+                          </>
+                        )}
+                      </div>
                     </div>
-                    <div className="paso-historia-datos">
-                      {historia.alergia_medicamentos && historia.alergia_medicamentos !== 'No' && (
-                        <div className="historia-dato alerta">
-                          <span className="historia-dato-label">Alergias a Medicamentos</span>
-                          <span className="historia-dato-value">{historia.alergia_medicamentos}</span>
-                        </div>
-                      )}
-                      {historia.presion_arterial_medicacion && historia.presion_arterial_medicacion !== 'No' && (
-                        <div className="historia-dato">
-                          <span className="historia-dato-label">Presion Arterial / Medicacion</span>
-                          <span className="historia-dato-value">{historia.presion_arterial_medicacion}</span>
-                        </div>
-                      )}
-                      {historia.diabetes_personal && historia.diabetes_personal !== 'No' && (
-                        <div className="historia-dato">
-                          <span className="historia-dato-label">Diabetes Personal</span>
-                          <span className="historia-dato-value">{historia.diabetes_personal}</span>
-                        </div>
-                      )}
-                      {historia.diabetes_familiar && historia.diabetes_familiar !== 'No' && (
-                        <div className="historia-dato">
-                          <span className="historia-dato-label">Diabetes Familiar</span>
-                          <span className="historia-dato-value">{historia.diabetes_familiar}</span>
-                        </div>
-                      )}
-                      {historia.cardiopatias_personales && historia.cardiopatias_personales !== 'No' && (
-                        <div className="historia-dato">
-                          <span className="historia-dato-label">Cardiopatias Personales</span>
-                          <span className="historia-dato-value">{historia.cardiopatias_personales}</span>
-                        </div>
-                      )}
-                      {historia.otras_enfermedades && (
-                        <div className="historia-dato">
-                          <span className="historia-dato-label">Otras Enfermedades</span>
-                          <span className="historia-dato-value">{historia.otras_enfermedades}</span>
-                        </div>
-                      )}
-                      {historia.enfermedad_actual_medicacion && (
-                        <div className="historia-dato">
-                          <span className="historia-dato-label">Medicacion Actual</span>
-                          <span className="historia-dato-value">{historia.enfermedad_actual_medicacion}</span>
-                        </div>
-                      )}
-                    </div>
+                    {editandoAntecedentes ? (
+                      <div className="antecedentes-form">
+                        {[
+                          { key: 'alergia_medicamentos', label: 'Alergia a medicamentos' },
+                          { key: 'propension_hemorragias', label: 'Propension a hemorragia' },
+                          { key: 'complicaciones_anestesia', label: 'Complicaciones con anestesia' },
+                          { key: 'presion_arterial_medicacion', label: 'Presion Arterial / Medicacion' },
+                          { key: 'cardiopatias_personales', label: 'Cardiopatias personales' },
+                          { key: 'cardiopatias_familiares', label: 'Cardiopatias familiares' },
+                          { key: 'diabetes_personal', label: 'Diabetes personal' },
+                          { key: 'diabetes_familiar', label: 'Diabetes familiar' },
+                          { key: 'hepatitis', label: 'Hepatitis (tipo A B C)' },
+                          { key: 'otras_enfermedades', label: 'Otras enfermedades' },
+                          { key: 'enfermedad_actual_medicacion', label: 'Enfermedad actual / Medicacion' },
+                        ].map(({ key, label }) => {
+                          const valor = antecedentesForm[key] || '';
+                          const isYes = valor && valor !== 'No' && valor !== '';
+                          return (
+                            <div key={key} className="antecedente-field">
+                              <label>{label}</label>
+                              <div className="antecedente-sino">
+                                <button
+                                  type="button"
+                                  className={`antecedente-btn ${isYes ? 'si-activo' : ''}`}
+                                  onClick={() => setAntecedentesForm({ ...antecedentesForm, [key]: isYes ? '' : 'Si' })}
+                                >
+                                  Si
+                                </button>
+                                <button
+                                  type="button"
+                                  className={`antecedente-btn ${!isYes && valor === 'No' ? 'no-activo' : ''}`}
+                                  onClick={() => setAntecedentesForm({ ...antecedentesForm, [key]: 'No' })}
+                                >
+                                  No
+                                </button>
+                              </div>
+                              {isYes && (
+                                <input
+                                  type="text"
+                                  value={valor === 'Si' ? '' : valor}
+                                  onChange={e => setAntecedentesForm({ ...antecedentesForm, [key]: e.target.value || 'Si' })}
+                                  placeholder="Observaciones (opcional)"
+                                  className="antecedente-obs"
+                                />
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="paso-historia-datos">
+                        {historia.alergia_medicamentos && historia.alergia_medicamentos !== 'No' && (
+                          <div className="historia-dato alerta">
+                            <span className="historia-dato-label">Alergias a Medicamentos</span>
+                            <span className="historia-dato-value">{historia.alergia_medicamentos}</span>
+                          </div>
+                        )}
+                        {historia.propension_hemorragias && historia.propension_hemorragias !== 'No' && (
+                          <div className="historia-dato">
+                            <span className="historia-dato-label">Propension a hemorragia</span>
+                            <span className="historia-dato-value">{historia.propension_hemorragias}</span>
+                          </div>
+                        )}
+                        {historia.complicaciones_anestesia && historia.complicaciones_anestesia !== 'No' && (
+                          <div className="historia-dato">
+                            <span className="historia-dato-label">Complicaciones con anestesia</span>
+                            <span className="historia-dato-value">{historia.complicaciones_anestesia}</span>
+                          </div>
+                        )}
+                        {historia.presion_arterial_medicacion && historia.presion_arterial_medicacion !== 'No' && (
+                          <div className="historia-dato">
+                            <span className="historia-dato-label">Presion Arterial / Medicacion</span>
+                            <span className="historia-dato-value">{historia.presion_arterial_medicacion}</span>
+                          </div>
+                        )}
+                        {historia.cardiopatias_personales && historia.cardiopatias_personales !== 'No' && (
+                          <div className="historia-dato">
+                            <span className="historia-dato-label">Cardiopatias Personales</span>
+                            <span className="historia-dato-value">{historia.cardiopatias_personales}</span>
+                          </div>
+                        )}
+                        {historia.cardiopatias_familiares && historia.cardiopatias_familiares !== 'No' && (
+                          <div className="historia-dato">
+                            <span className="historia-dato-label">Cardiopatias Familiares</span>
+                            <span className="historia-dato-value">{historia.cardiopatias_familiares}</span>
+                          </div>
+                        )}
+                        {historia.diabetes_personal && historia.diabetes_personal !== 'No' && (
+                          <div className="historia-dato">
+                            <span className="historia-dato-label">Diabetes Personal</span>
+                            <span className="historia-dato-value">{historia.diabetes_personal}</span>
+                          </div>
+                        )}
+                        {historia.diabetes_familiar && historia.diabetes_familiar !== 'No' && (
+                          <div className="historia-dato">
+                            <span className="historia-dato-label">Diabetes Familiar</span>
+                            <span className="historia-dato-value">{historia.diabetes_familiar}</span>
+                          </div>
+                        )}
+                        {historia.hepatitis && historia.hepatitis !== 'No' && (
+                          <div className="historia-dato">
+                            <span className="historia-dato-label">Hepatitis</span>
+                            <span className="historia-dato-value">{historia.hepatitis}</span>
+                          </div>
+                        )}
+                        {historia.otras_enfermedades && (
+                          <div className="historia-dato">
+                            <span className="historia-dato-label">Otras Enfermedades</span>
+                            <span className="historia-dato-value">{historia.otras_enfermedades}</span>
+                          </div>
+                        )}
+                        {historia.enfermedad_actual_medicacion && (
+                          <div className="historia-dato">
+                            <span className="historia-dato-label">Medicacion Actual</span>
+                            <span className="historia-dato-value">{historia.enfermedad_actual_medicacion}</span>
+                          </div>
+                        )}
+                        {!historia.alergia_medicamentos && !historia.propension_hemorragias && !historia.complicaciones_anestesia && !historia.presion_arterial_medicacion && !historia.cardiopatias_personales && !historia.diabetes_personal && !historia.otras_enfermedades && (
+                          <p className="paso-sin-historia">Sin antecedentes registrados. Haz click en Editar para agregar.</p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -667,7 +793,7 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
                 <div key={i} className="sesion-tratamiento-row">
                   <textarea className="diagnostico-input" placeholder="Diagnostico clinico" value={d.texto} onChange={e => actualizarDiagnostico(i, e.target.value)} rows={3} />
                   {diagnosticos.length > 1 && (
-                    <button type="button" className="btn-remove-sesion" onClick={() => eliminarDiagnostico(i)}>\u00D7</button>
+                    <button type="button" className="btn-remove-sesion" onClick={() => eliminarDiagnostico(i)}>×</button>
                   )}
                 </div>
               ))}
@@ -723,7 +849,7 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
               <div key={ri} className="sesion-receta-card" style={{ border: '1px solid var(--gray-200)', borderRadius: '10px', padding: '16px', marginBottom: '12px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                   <strong>Receta {ri + 1}</strong>
-                  {recetas.length > 1 && <button type="button" className="btn-remove-sesion" onClick={() => eliminarReceta(ri)}>\u00D7</button>}
+                  {recetas.length > 1 && <button type="button" className="btn-remove-sesion" onClick={() => eliminarReceta(ri)}>×</button>}
                 </div>
 
                 <div className="field" style={{ marginBottom: '10px' }}>
@@ -743,7 +869,7 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
                       <input type="text" placeholder="Dosis" value={med.dosis} onChange={e => actualizarMedicamentoReceta(ri, mi, 'dosis', e.target.value)} style={{ flex: 1, padding: '6px 10px', border: '1px solid var(--gray-200)', borderRadius: '6px', fontSize: '13px' }} />
                       <input type="text" placeholder="Frecuencia" value={med.frecuencia} onChange={e => actualizarMedicamentoReceta(ri, mi, 'frecuencia', e.target.value)} style={{ flex: 1.5, padding: '6px 10px', border: '1px solid var(--gray-200)', borderRadius: '6px', fontSize: '13px' }} />
                       <input type="text" placeholder="Duracion" value={med.duracion} onChange={e => actualizarMedicamentoReceta(ri, mi, 'duracion', e.target.value)} style={{ flex: 1, padding: '6px 10px', border: '1px solid var(--gray-200)', borderRadius: '6px', fontSize: '13px' }} />
-                      {r.medicamentos.length > 1 && <button type="button" className="btn-remove-sesion" onClick={() => eliminarMedicamentoReceta(ri, mi)}>\u00D7</button>}
+                      {r.medicamentos.length > 1 && <button type="button" className="btn-remove-sesion" onClick={() => eliminarMedicamentoReceta(ri, mi)}>×</button>}
                     </div>
                   ))}
                   <button type="button" className="btn btn-sm btn-secondary" onClick={() => agregarMedicamentoReceta(ri)}>+ Agregar medicamento</button>
@@ -764,7 +890,7 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
                     {(r.archivos || []).map((a, ai) => (
                       <span key={ai} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'var(--gray-100)', padding: '4px 8px', borderRadius: '6px', fontSize: '12px' }}>
                         {a.original}
-                        <button type="button" onClick={() => eliminarArchivoReceta(ri, ai)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontWeight: 700 }}>\u00D7</button>
+                        <button type="button" onClick={() => eliminarArchivoReceta(ri, ai)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontWeight: 700 }}>×</button>
                       </span>
                     ))}
                   </div>
@@ -788,7 +914,7 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
                   <input type="number" placeholder="A cuenta $" value={t.monto_a_cuenta} onChange={e => actualizarTratamiento(i, 'monto_a_cuenta', e.target.value)} min="0" step="0.01" className="input-costo" />
                 </div>
                 {tratamientos.length > 1 && (
-                  <button type="button" className="btn-remove-sesion" onClick={() => eliminarTratamiento(i)}>\u00D7</button>
+                  <button type="button" className="btn-remove-sesion" onClick={() => eliminarTratamiento(i)}>×</button>
                 )}
               </div>
             ))}

@@ -130,6 +130,19 @@ exports.historia = (req, res) => {
   }
 };
 
+exports.historiaConsulta = (req, res) => {
+  try {
+    const { pacienteId, consultaId } = req.params;
+    const { generateHistoriaConsultaHtml } = require('../services/pdfTemplates/historiaHtmlPdf');
+    const html = generateHistoriaConsultaHtml(parseInt(pacienteId), parseInt(consultaId));
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(html);
+  } catch (err) {
+    console.error('Error generando historia por consulta:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+};
+
 exports.pago = (req, res) => {
   try {
     const pago = db.prepare('SELECT * FROM pagos WHERE id = ?').get(req.params.id);

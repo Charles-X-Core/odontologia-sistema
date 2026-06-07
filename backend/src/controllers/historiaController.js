@@ -23,7 +23,7 @@ exports.crear = (req, res) => {
     return res.status(409).json({ error: 'El paciente ya tiene una historia clinica' });
   }
 
-  const ultimo = db.prepare('SELECT MAX(CAST(numero_historia AS INTEGER)) as max_num FROM historias_clinicas WHERE numero_historia IS NOT NULL AND numero_historia != ""').get();
+  const ultimo = db.prepare("SELECT MAX(CAST(numero_historia AS INTEGER)) as max_num FROM historias_clinicas WHERE numero_historia IS NOT NULL AND numero_historia != ''").get();
   const siguienteNumero = (ultimo?.max_num || 0) + 1;
 
   try {
