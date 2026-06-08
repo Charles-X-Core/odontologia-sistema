@@ -184,35 +184,10 @@ const port = 3002;
 let currentQR = null;
 let clientStatus = 'starting';
 
-// Buscar Chrome
+// Buscar Chrome (delegado a chromeFinder compartido)
+const { findChrome } = require('../backend/src/utils/chromeFinder');
 function getChromePath() {
-  const candidates = [
-    'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-    'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-    path.join(process.env.LOCALAPPDATA || '', 'Google', 'Chrome', 'Application', 'chrome.exe'),
-    path.join(process.env.USERPROFILE || '', '.cache', 'puppeteer', 'chrome'),
-  ];
-  for (const base of candidates) {
-    if (fs.existsSync(base)) {
-      if (base.includes('puppeteer')) {
-        try {
-          const versions = fs.readdirSync(base);
-          // Preferir version 146 (estable, no 149 que tiene bugs con whatsapp-web)
-          const stable = versions.filter(v => v.includes('146'));
-          const sorted = stable.length > 0 ? stable : versions.slice().sort().reverse();
-          for (const v of sorted) {
-            const c1 = path.join(base, v, 'chrome-win64', 'chrome.exe');
-            const c2 = path.join(base, v, 'chrome-win32', 'chrome.exe');
-            if (fs.existsSync(c1)) return c1;
-            if (fs.existsSync(c2)) return c2;
-          }
-        } catch (e) {}
-      } else {
-        if (fs.existsSync(base)) return base;
-      }
-    }
-  }
-  return null;
+  return findChrome();
 }
 
 const chromePath = getChromePath();

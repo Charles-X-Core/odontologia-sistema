@@ -37,37 +37,8 @@ function getRunnerScriptPath() {
   return path.join(dir, 'openwa-runner.js');
 }
 
-// Buscar Chrome en el sistema
-function findChrome() {
-  const candidates = [
-    path.join(process.env.USERPROFILE || '', '.cache', 'puppeteer', 'chrome'),
-    'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-    'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-    path.join(process.env.LOCALAPPDATA || '', 'Google', 'Chrome', 'Application', 'chrome.exe'),
-    // Rutas alternativas para instalaciones manuales
-    path.join(process.env.LOCALAPPDATA || '', 'Google', 'Chrome SxS', 'Application', 'chrome.exe'),
-    path.join(process.env.PROGRAMFILES || 'C:\\Program Files', 'Google', 'Chrome', 'Application', 'chrome.exe'),
-  ];
-  for (const base of candidates) {
-    if (fs.existsSync(base)) {
-      if (base.includes('puppeteer')) {
-        try {
-          const versions = fs.readdirSync(base);
-          const sorted = versions.slice().sort().reverse();
-          for (const v of sorted) {
-            const c1 = path.join(base, v, 'chrome-win64', 'chrome.exe');
-            const c2 = path.join(base, v, 'chrome-win32', 'chrome.exe');
-            if (fs.existsSync(c1)) return c1;
-            if (fs.existsSync(c2)) return c2;
-          }
-        } catch (e) {}
-      } else {
-        if (fs.existsSync(base)) return base;
-      }
-    }
-  }
-  return null;
-}
+// Buscar Chrome en el sistema (delegado a chromeFinder compartido)
+const { findChrome, installChromeViaWinget } = require('../backend/src/utils/chromeFinder');
 
 // Instalar Chrome via Puppeteer si no existe
 async function installChrome() {

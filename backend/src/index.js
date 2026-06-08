@@ -139,7 +139,7 @@ server.on('listening', () => {
   console.log('[INDEX] Server address:', addr);
 });
 
-server.listen(PORT, '0.0.0.0', () => {
+server.listen(PORT, '127.0.0.1', () => {
   console.log(`[INDEX] SUCCESS: Servidor corriendo en http://localhost:${PORT}`);
 });
 

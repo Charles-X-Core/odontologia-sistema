@@ -1,26 +1,5 @@
 const puppeteer = require('puppeteer-core');
-const fs = require('fs');
-const path = require('path');
-
-function findChrome() {
-  const candidates = [
-    path.join(process.env.USERPROFILE || '', '.cache', 'puppeteer', 'chrome'),
-    path.join(process.env.LOCALAPPDATA || '', 'puppeteer', 'chrome'),
-    path.join(process.env.LOCALAPPDATA || '', 'Google', 'Chrome', 'Application', 'chrome.exe'),
-  ];
-
-  for (const base of candidates) {
-    if (!fs.existsSync(base)) continue;
-    const stat = fs.statSync(base);
-    if (stat.isFile() && base.endsWith('chrome.exe')) return base;
-    const versions = fs.readdirSync(base).filter(d => d.startsWith('win64-')).sort().reverse();
-    for (const v of versions) {
-      const exe = path.join(base, v, 'chrome-win64', 'chrome.exe');
-      if (fs.existsSync(exe)) return exe;
-    }
-  }
-  return null;
-}
+const { findChrome } = require('../../../utils/chromeFinder');
 
 async function htmlToPdf(htmlContent, options = {}) {
   const chromePath = findChrome();

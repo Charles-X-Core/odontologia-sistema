@@ -2,11 +2,17 @@ const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
+const { execSync } = require('child_process');
 const openwaSetup = require('./openwaSetup');
 
 let mainWindow;
 const PORT = 18234;
 let serverStarted = false;
+
+// Validar process.env con fallbacks seguros
+function safeEnv(key, fallback) {
+  return process.env[key] || fallback;
+}
 
 function getDataPath() {
   if (app.isPackaged) return path.join(process.resourcesPath, 'data');
@@ -19,7 +25,7 @@ function checkSystemHealth() {
 
   // 1. VC++ Runtime (vcruntime140.dll + msvcp140.dll)
   if (process.platform === 'win32') {
-    const sysRoot = process.env.SystemRoot || 'C:\\Windows';
+    const sysRoot = safeEnv('SystemRoot', 'C:\\Windows');
     const hasVc = fs.existsSync(path.join(sysRoot, 'System32', 'vcruntime140.dll'))
       && fs.existsSync(path.join(sysRoot, 'System32', 'msvcp140.dll'));
     if (!hasVc) {
@@ -28,14 +34,9 @@ function checkSystemHealth() {
     }
   }
 
-  // 2. Google Chrome (busca en multiples rutas)
-  const chromeCandidates = [
-    'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-    'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-    path.join(process.env.LOCALAPPDATA || '', 'Google', 'Chrome', 'Application', 'chrome.exe'),
-    path.join(process.env.USERPROFILE || '', '.cache', 'puppeteer', 'chrome'),
-  ];
-  const hasChrome = chromeCandidates.some(p => fs.existsSync(p));
+  // 2. Google Chrome (delegado a chromeFinder compartido)
+  const { findChrome } = require('../backend/src/utils/chromeFinder');
+  const hasChrome = findChrome() !== null;
   if (!hasChrome) {
     result.missing.push('Google Chrome (https://www.google.com/chrome/)');
     result.ok = false;
@@ -44,14 +45,33 @@ function checkSystemHealth() {
   // 3. Node.js o Electron (siempre presente en dist, solo warning en dev)
   const hasNode = fs.existsSync('C:\\Program Files\\nodejs\\node.exe')
     || fs.existsSync('C:\\Program Files (x86)\\nodejs\\node.exe')
-    || fs.existsSync(path.join(process.env.LOCALAPPDATA || '', 'nodejs', 'node.exe'));
+    || fs.existsSync(path.join(safeEnv('LOCALAPPDATA', ''), 'nodejs', 'node.exe'));
   if (!hasNode) {
-    // En dist esto esta OK porque usamos Electron como Node
-    // Solo es warning
     result.warnings.push('Node.js no detectado (se usara el runtime de Electron, esto es normal)');
   }
 
   return result;
+}
+
+// Matar procesos que usan un puerto especifico (Windows)
+function killPortProcess(port) {
+  try {
+    const output = execSync(`netstat -ano | findstr :${port} | findstr LISTENING`,
+      { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
+    const lines = output.trim().split('\n').filter(l => l.trim());
+    for (const line of lines) {
+      const parts = line.trim().split(/\s+/);
+      const pid = parts[parts.length - 1];
+      if (pid && pid !== '0') {
+        try {
+          execSync(`taskkill /F /PID ${pid}`, { stdio: 'ignore' });
+          console.log(`[MAIN] Mato proceso PID ${pid} en puerto ${port}`);
+        } catch (e) {}
+      }
+    }
+  } catch (e) {
+    // netstat no encontro nada o error — no hay problema
+  }
 }
 
 function ensureDatabase(dataPath) {
@@ -75,6 +95,9 @@ function startBackend() {
   if (serverStarted) return Promise.resolve();
   return new Promise((resolve) => {
     try {
+      // Verificar si el puerto esta en uso y matar proceso previo
+      killPortProcess(PORT);
+
       const dataPath = getDataPath();
       console.log('[MAIN] Data path:', dataPath);
 
