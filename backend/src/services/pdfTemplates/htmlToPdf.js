@@ -1,5 +1,5 @@
 const puppeteer = require('puppeteer-core');
-const { findChrome } = require('../../../utils/chromeFinder');
+const { findChrome } = require('../../utils/chromeFinder');
 
 async function htmlToPdf(htmlContent, options = {}) {
   const chromePath = findChrome();

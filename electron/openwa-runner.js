@@ -197,6 +197,7 @@ const clientConfig = {
   authStrategy: new LocalAuth({ dataPath: authPath }),
   puppeteer: {
     headless: true,
+    protocolTimeout: 120000,
     args: [
       '--no-sandbox',
       '--disable-setuid-sandbox',
