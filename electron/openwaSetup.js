@@ -38,7 +38,7 @@ function getRunnerScriptPath() {
 }
 
 // Buscar Chrome en el sistema (delegado a chromeFinder compartido)
-const { findChrome, installChromeViaWinget } = require('../backend/src/utils/chromeFinder');
+const { findChrome, installChromeViaWinget } = require('./chromeFinder');
 
 // Instalar Chrome via Puppeteer si no existe
 async function installChrome() {

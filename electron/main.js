@@ -35,7 +35,7 @@ function checkSystemHealth() {
   }
 
   // 2. Google Chrome (delegado a chromeFinder compartido)
-  const { findChrome } = require('../backend/src/utils/chromeFinder');
+  const { findChrome } = require('./chromeFinder');
   const hasChrome = findChrome() !== null;
   if (!hasChrome) {
     result.missing.push('Google Chrome (https://www.google.com/chrome/)');

@@ -185,7 +185,7 @@ let currentQR = null;
 let clientStatus = 'starting';
 
 // Buscar Chrome (delegado a chromeFinder compartido)
-const { findChrome } = require('../backend/src/utils/chromeFinder');
+const { findChrome } = require('./chromeFinder');
 function getChromePath() {
   return findChrome();
 }
