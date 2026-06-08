@@ -57,8 +57,15 @@ function findInPuppeteerCache(cacheDir) {
     const win32 = entries.filter(d => d.startsWith('win32-'));
     const all = [...win64, ...win32];
 
-    // Tomar la version mas nueva disponible (win64 primero)
-    const sorted = all.sort().reverse();
+    // Chrome 149 tiene bugs con whatsapp-web.js (QR se queda en loop, sendMessage timeout)
+    // Preferir 146 (estable) > 131 > cualquier otra
+    const preferred = all.filter(v => v.includes('146'));
+    const fallback = all.filter(v => v.includes('131'));
+    const sorted = preferred.length > 0
+      ? preferred.sort().reverse()
+      : fallback.length > 0
+        ? fallback.sort().reverse()
+        : all.sort().reverse();
 
     for (const v of sorted) {
       const exe64 = path.join(cacheDir, v, 'chrome-win64', 'chrome.exe');
