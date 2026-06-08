@@ -24,12 +24,15 @@ Vita*Mirabilis*v*.7z
 Vita*Mirabilis*v*.exe
 Vita*Mirabilis*v*.rar
 
-# Debug / temp (Fase 2 limpieza)
+# Debug / temp (eliminados en Fase 2)
 qr-para-escanear.png
 run-diagnostico.js
 save-qr.ps1
+openwaSetup.js
 electron/diagnostico.js
 electron/diagnostico-node.js
+electron/dockerSetup.js
+electron/debug_docker.js
 electron/logo.ico.exe
 
 # Archivos viejos que fueron movidos a electron/
