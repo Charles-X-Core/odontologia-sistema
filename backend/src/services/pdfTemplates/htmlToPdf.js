@@ -8,6 +8,7 @@ async function htmlToPdf(htmlContent, options = {}) {
   const browser = await puppeteer.launch({
     executablePath: chromePath,
     headless: true,
+    protocolTimeout: 120000,
     args: [
       '--no-sandbox',
       '--disable-setuid-sandbox',

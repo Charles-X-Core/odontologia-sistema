@@ -49,17 +49,18 @@ function findChrome() {
 
 // Busca chrome.exe dentro de un directorio de puppeteer cache
 // Estructura: cache/win64-131.0.6778.204/chrome-win64/chrome.exe
+// Chrome 149 tiene bugs con whatsapp-web.js, preferir 146 o 131
 function findInPuppeteerCache(cacheDir) {
   try {
     const entries = fs.readdirSync(cacheDir);
-
-    // Preferir versiones con win64, y ordenar alfabeticamente descendente (la mas nueva primero)
-    const win64 = entries.filter(d => d.startsWith('win64-')).sort().reverse();
-    const win32 = entries.filter(d => d.startsWith('win32-')).sort().reverse();
+    const win64 = entries.filter(d => d.startsWith('win64-'));
+    const win32 = entries.filter(d => d.startsWith('win32-'));
     const all = [...win64, ...win32];
 
-    for (const v of all) {
-      // Intentar chrome-win64 primero, luego chrome-win32
+    // Tomar la version mas nueva disponible (win64 primero)
+    const sorted = all.sort().reverse();
+
+    for (const v of sorted) {
       const exe64 = path.join(cacheDir, v, 'chrome-win64', 'chrome.exe');
       if (fs.existsSync(exe64)) return exe64;
 

@@ -398,11 +398,19 @@ const server = http.createServer(async (req, res) => {
     req.on('data', c => body += c);
     req.on('end', async () => {
       try {
+        if (clientStatus !== 'ready') {
+          res.statusCode = 503;
+          res.end(JSON.stringify({ success: false, message: 'WhatsApp no esta listo (status: ' + clientStatus + ')' }));
+          return;
+        }
         const data = JSON.parse(body);
         const chatId = parsePhone(data.phone);
+        console.log('[OPENWA] Sending to:', chatId, 'msg:', (data.message || '').substring(0, 50));
         const result = await client.sendMessage(chatId, data.message);
+        console.log('[OPENWA] Message sent OK, id:', result.id);
         res.end(JSON.stringify({ success: true, id: result.id }));
       } catch (err) {
+        console.error('[OPENWA] sendText error:', err.message);
         res.statusCode = 500;
         res.end(JSON.stringify({ success: false, message: err.message }));
       }
