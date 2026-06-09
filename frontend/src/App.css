@@ -1928,6 +1928,341 @@ body {
 
 .galeria-ampliada-info p { margin-bottom: 6px; }
 
+/* ========== GALERIA: THUMB + VIEWER ========== */
+.galeria-thumb {
+  position: relative;
+  height: 140px;
+  cursor: pointer;
+  overflow: hidden;
+  border-radius: 8px 8px 0 0;
+  background: var(--gray-100);
+}
+
+.galeria-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s;
+}
+
+.galeria-thumb:hover img { transform: scale(1.05); }
+
+.galeria-thumb-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.galeria-thumb-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.galeria-thumb:hover .galeria-thumb-overlay { opacity: 1; }
+
+/* ========== IMAGE VIEWER ========== */
+.image-viewer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.92);
+  z-index: 9999;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  animation: fadeIn 0.15s ease;
+}
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.image-viewer {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+}
+
+.image-viewer-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: rgba(15, 23, 42, 0.95);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  min-height: 48px;
+  flex-shrink: 0;
+}
+
+.image-viewer-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.image-viewer-counter {
+  color: rgba(255,255,255,0.6);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.image-viewer-filename {
+  color: rgba(255,255,255,0.4);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 300px;
+}
+
+.image-viewer-toolbar-center {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.image-viewer-toolbar-center button {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.7);
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.image-viewer-toolbar-center button:hover {
+  background: rgba(255,255,255,0.1);
+  color: white;
+}
+
+.image-viewer-zoom {
+  color: rgba(255,255,255,0.7);
+  font-size: 12px;
+  font-weight: 600;
+  min-width: 40px;
+  text-align: center;
+}
+
+.image-viewer-toolbar-sep {
+  width: 1px;
+  height: 20px;
+  background: rgba(255,255,255,0.12);
+  margin: 0 4px;
+}
+
+.image-viewer-toolbar-right {
+  display: flex;
+  align-items: center;
+}
+
+.image-viewer-close {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.6);
+  padding: 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  transition: all 0.15s;
+}
+
+.image-viewer-close:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+.image-viewer-canvas {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  cursor: grab;
+  user-select: none;
+  position: relative;
+}
+
+.image-viewer-canvas.dragging { cursor: grabbing; }
+
+.image-viewer-canvas img {
+  max-width: calc(100% - 280px);
+  max-height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.image-viewer-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(255,255,255,0.1);
+  border: none;
+  color: white;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  z-index: 10;
+  backdrop-filter: blur(4px);
+}
+
+.image-viewer-nav:hover:not(:disabled) {
+  background: rgba(255,255,255,0.25);
+  transform: translateY(-50%) scale(1.1);
+}
+
+.image-viewer-nav:disabled {
+  opacity: 0.2;
+  cursor: default;
+}
+
+.image-viewer-nav-prev { left: 16px; }
+.image-viewer-nav-next { right: 296px; }
+
+.image-viewer-sidebar {
+  position: absolute;
+  right: 0;
+  top: 48px;
+  bottom: 0;
+  width: 260px;
+  background: rgba(15, 23, 42, 0.95);
+  border-left: 1px solid rgba(255,255,255,0.08);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.image-viewer-sidebar-header {
+  padding: 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.image-viewer-sidebar-header h4 {
+  color: white;
+  font-size: 14px;
+  margin: 0;
+}
+
+.image-viewer-sidebar-content {
+  padding: 16px;
+  flex: 1;
+}
+
+.image-viewer-detail {
+  margin-bottom: 14px;
+}
+
+.image-viewer-detail .detail-label {
+  display: block;
+  font-size: 11px;
+  color: rgba(255,255,255,0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.image-viewer-detail .detail-value {
+  display: block;
+  color: rgba(255,255,255,0.85);
+  font-size: 13px;
+}
+
+.detail-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.detail-filename {
+  font-size: 11px;
+  color: rgba(255,255,255,0.4);
+  word-break: break-all;
+}
+
+.image-viewer-sidebar-footer {
+  padding: 12px 16px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+
+.image-viewer-shortcuts {
+  color: rgba(255,255,255,0.3);
+  font-size: 10px;
+  margin: 0;
+  line-height: 1.8;
+}
+
+.image-viewer-shortcuts kbd {
+  background: rgba(255,255,255,0.1);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: 10px;
+}
+
+/* ========== TIMELINE EVIDENCIAS ========== */
+.badge-fotos { background: #ede9fe; color: #5b21b6; cursor: pointer; }
+
+.timeline-evidencias-grid {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.timeline-evidencia-thumb {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  border: 2px solid var(--gray-200);
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.timeline-evidencia-thumb:hover {
+  border-color: var(--primary);
+  transform: scale(1.05);
+}
+
+.timeline-evidencia-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.timeline-evidencia-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.timeline-evidencia-thumb:hover .timeline-evidencia-overlay { opacity: 1; }
+
 /* ========== ODONTOGRAMA FDI ========== */
 .odontograma-fdi-container {
   margin-top: 16px;

@@ -25,6 +25,7 @@ const upload = multer({
 
 router.post('/upload', upload.single('archivo'), ctrl.subir);
 router.get('/paciente/:pacienteId', ctrl.porPaciente);
+router.get('/consulta/:consultaId', ctrl.porConsulta);
 router.delete('/:id', ctrl.eliminar);
 
 module.exports = router;

@@ -1,18 +1,216 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { api } from '../services/api';
 
-const API_BASE = import.meta.env.VITE_API_URL || window.location.origin;
+const isElectron = window.location.protocol === 'file:' || window.electronAPI?.isElectron;
+const API_BASE = isElectron
+  ? `http://localhost:18234`
+  : (import.meta.env.VITE_API_URL || window.location.origin);
 
 const TIPO_COLORS = {
-  radiografia: { bg: '#dbeafe', text: '#1e40af', icon: 'X-RAY' },
-  foto: { bg: '#dcfce7', text: '#166534', icon: 'FOTO' },
+  radiografia: { bg: '#dbeafe', text: '#1e40af', label: 'Radiografia' },
+  foto: { bg: '#dcfce7', text: '#166534', label: 'Foto' },
+  panoramica: { bg: '#fef3c7', text: '#92400e', label: 'Panoramica' },
+  intraoral: { bg: '#ede9fe', text: '#5b21b6', label: 'Intraoral' },
+  documento: { bg: '#f3f4f6', text: '#374151', label: 'Documento' },
 };
+
+function ImageViewer({ imagenes, index, onClose, onNavigate }) {
+  const [zoom, setZoom] = useState(1);
+  const [rotation, setRotation] = useState(0);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [dragging, setDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const imgRef = useRef(null);
+  const containerRef = useRef(null);
+
+  const img = imagenes[index];
+  const imageUrl = img ? `${API_BASE}/uploads/${img.archivo_nombre}` : '';
+
+  useEffect(() => {
+    setZoom(1);
+    setRotation(0);
+    setPan({ x: 0, y: 0 });
+  }, [index]);
+
+  useEffect(() => {
+    const handleKey = (e) => {
+      if (e.key === 'Escape') onClose();
+      if (e.key === 'ArrowLeft') onNavigate(-1);
+      if (e.key === 'ArrowRight') onNavigate(1);
+      if (e.key === '+' || e.key === '=') setZoom(z => Math.min(z + 0.25, 5));
+      if (e.key === '-') setZoom(z => Math.max(z - 0.25, 0.25));
+      if (e.key === 'r') setRotation(r => r + 90);
+      if (e.key === '0') { setZoom(1); setRotation(0); setPan({ x: 0, y: 0 }); }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [onClose, onNavigate]);
+
+  const handleWheel = useCallback((e) => {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? -0.1 : 0.1;
+    setZoom(z => Math.min(Math.max(z + delta, 0.25), 5));
+  }, []);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (el) {
+      el.addEventListener('wheel', handleWheel, { passive: false });
+      return () => el.removeEventListener('wheel', handleWheel);
+    }
+  }, [handleWheel]);
+
+  const handleMouseDown = (e) => {
+    if (e.button !== 0) return;
+    setDragging(true);
+    setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+  };
+
+  const handleMouseMove = (e) => {
+    if (!dragging) return;
+    setPan({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
+  };
+
+  const handleMouseUp = () => setDragging(false);
+
+  const handleDoubleClick = () => {
+    if (zoom === 1) {
+      setZoom(2);
+      setPan({ x: 0, y: 0 });
+    } else {
+      setZoom(1);
+      setPan({ x: 0, y: 0 });
+    }
+  };
+
+  const handleDownload = () => {
+    const a = document.createElement('a');
+    a.href = imageUrl;
+    a.download = img.archivo_original || `imagen-${img.id}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  if (!img) return null;
+
+  return (
+    <div className="image-viewer-overlay" onClick={onClose}>
+      <div className="image-viewer" onClick={e => e.stopPropagation()}>
+        <div className="image-viewer-toolbar">
+          <div className="image-viewer-toolbar-left">
+            <span className="image-viewer-counter">{index + 1} / {imagenes.length}</span>
+            <span className="image-viewer-filename">{img.archivo_original}</span>
+          </div>
+          <div className="image-viewer-toolbar-center">
+            <button onClick={() => setZoom(z => Math.min(z + 0.25, 5))} title="Acercar (+)">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35M11 8v6M8 11h6"/></svg>
+            </button>
+            <span className="image-viewer-zoom">{Math.round(zoom * 100)}%</span>
+            <button onClick={() => setZoom(z => Math.max(z - 0.25, 0.25))} title="Alejar (-)">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35M8 11h6"/></svg>
+            </button>
+            <div className="image-viewer-toolbar-sep" />
+            <button onClick={() => setRotation(r => r - 90)} title="Rotar izquierda (R)">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 4v6h6M23 20v-6h-6"/><path d="M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15"/></svg>
+            </button>
+            <button onClick={() => setRotation(r => r + 90)} title="Rotar derecha">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M23 4v6h-6M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15"/></svg>
+            </button>
+            <div className="image-viewer-toolbar-sep" />
+            <button onClick={() => { setZoom(1); setRotation(0); setPan({ x: 0, y: 0 }); }} title="Reset (0)">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 12a9 9 0 109-9"/><path d="M3 3v6h6"/></svg>
+            </button>
+            <button onClick={handleDownload} title="Descargar">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+            </button>
+          </div>
+          <div className="image-viewer-toolbar-right">
+            <button className="image-viewer-close" onClick={onClose} title="Cerrar (Esc)">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div
+          className={`image-viewer-canvas ${dragging ? 'dragging' : ''}`}
+          ref={containerRef}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+          onDoubleClick={handleDoubleClick}
+        >
+          <img
+            ref={imgRef}
+            src={imageUrl}
+            alt={img.descripcion || img.archivo_original}
+            style={{
+              transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom}) rotate(${rotation}deg)`,
+              transition: dragging ? 'none' : 'transform 0.2s ease',
+            }}
+            draggable={false}
+          />
+        </div>
+
+        {imagenes.length > 1 && (
+          <>
+            <button className="image-viewer-nav image-viewer-nav-prev" onClick={() => onNavigate(-1)} disabled={index === 0}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 18l-6-6 6-6"/></svg>
+            </button>
+            <button className="image-viewer-nav image-viewer-nav-next" onClick={() => onNavigate(1)} disabled={index === imagenes.length - 1}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18l6-6-6-6"/></svg>
+            </button>
+          </>
+        )}
+
+        <div className="image-viewer-sidebar">
+          <div className="image-viewer-sidebar-header">
+            <h4>Detalles</h4>
+          </div>
+          <div className="image-viewer-sidebar-content">
+            <div className="image-viewer-detail">
+              <span className="detail-label">Tipo</span>
+              <span className="detail-value">
+                <span className="detail-badge" style={{ background: TIPO_COLORS[img.tipo]?.bg, color: TIPO_COLORS[img.tipo]?.text }}>
+                  {TIPO_COLORS[img.tipo]?.label || img.tipo}
+                </span>
+              </span>
+            </div>
+            <div className="image-viewer-detail">
+              <span className="detail-label">Fecha</span>
+              <span className="detail-value">{new Date(img.created_at).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+            </div>
+            {img.descripcion && (
+              <div className="image-viewer-detail">
+                <span className="detail-label">Descripcion</span>
+                <span className="detail-value">{img.descripcion}</span>
+              </div>
+            )}
+            <div className="image-viewer-detail">
+              <span className="detail-label">Archivo</span>
+              <span className="detail-value detail-filename">{img.archivo_original}</span>
+            </div>
+          </div>
+          <div className="image-viewer-sidebar-footer">
+            <p className="image-viewer-shortcuts">
+              <kbd>+</kbd>/<kbd>-</kbd> Zoom &nbsp;
+              <kbd>R</kbd> Rotar &nbsp;
+              <kbd>0</kbd> Reset &nbsp;
+              <kbd>←</kbd><kbd>→</kbd> Navegar
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function Galeria({ pacienteId }) {
   const [imagenes, setImagenes] = useState([]);
   const [filtro, setFiltro] = useState('todas');
   const [cargando, setCargando] = useState(true);
-  const [imagenAmpliada, setImagenAmpliada] = useState(null);
+  const [viewerIndex, setViewerIndex] = useState(null);
   const [mostrarUpload, setMostrarUpload] = useState(false);
   const [subiendo, setSubiendo] = useState(false);
   const [uploadForm, setUploadForm] = useState({ tipo: 'foto', descripcion: '' });
@@ -57,15 +255,25 @@ export default function Galeria({ pacienteId }) {
 
   const filtradas = filtro === 'todas' ? imagenes : imagenes.filter(i => i.tipo === filtro);
 
+  const handleNavigate = useCallback((dir) => {
+    setViewerIndex(prev => {
+      const next = prev + dir;
+      if (next < 0 || next >= filtradas.length) return prev;
+      return next;
+    });
+  }, [filtradas.length]);
+
   if (cargando) return <div className="loading">Cargando galeria...</div>;
 
   return (
     <div className="galeria-panel">
       <div className="tratamientos-header">
         <div className="galeria-filtros">
-          <button className={`filtro-btn ${filtro === 'todas' ? 'active' : ''}`} onClick={() => setFiltro('todas')}>Todas</button>
+          <button className={`filtro-btn ${filtro === 'todas' ? 'active' : ''}`} onClick={() => setFiltro('todas')}>Todas ({imagenes.length})</button>
           <button className={`filtro-btn ${filtro === 'radiografia' ? 'active' : ''}`} onClick={() => setFiltro('radiografia')}>Radiografias</button>
           <button className={`filtro-btn ${filtro === 'foto' ? 'active' : ''}`} onClick={() => setFiltro('foto')}>Fotos</button>
+          <button className={`filtro-btn ${filtro === 'panoramica' ? 'active' : ''}`} onClick={() => setFiltro('panoramica')}>Panoramicas</button>
+          <button className={`filtro-btn ${filtro === 'intraoral' ? 'active' : ''}`} onClick={() => setFiltro('intraoral')}>Intraorales</button>
         </div>
         <button className="btn btn-primary btn-sm" onClick={() => setMostrarUpload(true)}>
           + Subir Imagen
@@ -85,6 +293,8 @@ export default function Galeria({ pacienteId }) {
                 <select value={uploadForm.tipo} onChange={e => setUploadForm({ ...uploadForm, tipo: e.target.value })}>
                   <option value="foto">Foto</option>
                   <option value="radiografia">Radiografia</option>
+                  <option value="panoramica">Panoramica</option>
+                  <option value="intraoral">Intraoral</option>
                 </select>
               </div>
               <div className="field">
@@ -114,27 +324,28 @@ export default function Galeria({ pacienteId }) {
         </div>
       ) : (
         <div className="galeria-grid">
-          {filtradas.map(img => {
+          {filtradas.map((img, idx) => {
             const tipoInfo = TIPO_COLORS[img.tipo] || TIPO_COLORS.foto;
             return (
               <div key={img.id} className="galeria-item">
-                <div className="galeria-placeholder" style={{ background: tipoInfo.bg }} onClick={() => setImagenAmpliada(img)}>
+                <div className="galeria-thumb" onClick={() => setViewerIndex(idx)}>
                   {img.archivo_nombre ? (
                     <img
                       src={`${API_BASE}/uploads/${img.archivo_nombre}`}
-                      alt={img.descripcion}
-                      style={{ width: '100%', height: '120px', objectFit: 'cover', borderRadius: '8px 8px 0 0' }}
-                      onError={(e) => { e.target.style.display = 'none'; }}
+                      alt={img.descripcion || img.archivo_original}
+                      loading="lazy"
+                      onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
                     />
-                  ) : (
-                    <>
-                      <span className="galeria-placeholder-icon">{tipoInfo.icon}</span>
-                      <span className="galeria-placeholder-text">{img.archivo_original}</span>
-                    </>
-                  )}
+                  ) : null}
+                  <div className="galeria-thumb-placeholder" style={{ display: img.archivo_nombre ? 'none' : 'flex', background: tipoInfo.bg }}>
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={tipoInfo.text} strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+                  </div>
+                  <div className="galeria-thumb-overlay">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+                  </div>
                 </div>
                 <div className="galeria-item-info">
-                  <span className="galeria-item-tipo" style={{ background: tipoInfo.bg, color: tipoInfo.text }}>{img.tipo}</span>
+                  <span className="galeria-item-tipo" style={{ background: tipoInfo.bg, color: tipoInfo.text }}>{tipoInfo.label}</span>
                   <span className="galeria-item-desc">{img.descripcion || img.archivo_original}</span>
                   <span className="galeria-item-fecha">{new Date(img.created_at).toLocaleDateString()}</span>
                 </div>
@@ -145,34 +356,13 @@ export default function Galeria({ pacienteId }) {
         </div>
       )}
 
-      {imagenAmpliada && (
-        <div className="modal-overlay" onClick={() => setImagenAmpliada(null)}>
-          <div className="modal modal-lg" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>{imagenAmpliada.descripcion || imagenAmpliada.archivo_original}</h3>
-              <button className="btn-close" onClick={() => setImagenAmpliada(null)}>&times;</button>
-            </div>
-            <div className="galeria-ampliada">
-              {imagenAmpliada.archivo_nombre ? (
-                <img
-                  src={`${API_BASE}/uploads/${imagenAmpliada.archivo_nombre}`}
-                  alt={imagenAmpliada.descripcion}
-                  style={{ width: '100%', maxHeight: '400px', objectFit: 'contain', borderRadius: '8px' }}
-                />
-              ) : (
-                <div className="galeria-placeholder-large" style={{ background: TIPO_COLORS[imagenAmpliada.tipo]?.bg || '#f3f4f6' }}>
-                  <span className="galeria-placeholder-icon-large">{TIPO_COLORS[imagenAmpliada.tipo]?.icon || 'IMG'}</span>
-                  <span>{imagenAmpliada.archivo_original}</span>
-                </div>
-              )}
-              <div className="galeria-ampliada-info">
-                <p><strong>Tipo:</strong> {imagenAmpliada.tipo}</p>
-                <p><strong>Fecha:</strong> {new Date(imagenAmpliada.created_at).toLocaleDateString()}</p>
-                <p><strong>Descripcion:</strong> {imagenAmpliada.descripcion}</p>
-              </div>
-            </div>
-          </div>
-        </div>
+      {viewerIndex !== null && filtradas.length > 0 && (
+        <ImageViewer
+          imagenes={filtradas}
+          index={viewerIndex}
+          onClose={() => setViewerIndex(null)}
+          onNavigate={handleNavigate}
+        />
       )}
     </div>
   );

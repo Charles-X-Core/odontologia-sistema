@@ -32,6 +32,11 @@ exports.porPaciente = (req, res) => {
   res.json(imagenes);
 };
 
+exports.porConsulta = (req, res) => {
+  const imagenes = db.prepare('SELECT * FROM imagenes WHERE consulta_id = ? ORDER BY created_at DESC').all(req.params.consultaId);
+  res.json(imagenes);
+};
+
 exports.eliminar = (req, res) => {
   const img = db.prepare('SELECT * FROM imagenes WHERE id = ?').get(req.params.id);
   if (!img) return res.status(404).json({ error: 'Imagen no encontrada' });

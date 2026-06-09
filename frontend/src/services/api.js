@@ -103,6 +103,7 @@ export const api = {
 
   imagenes: {
     porPaciente: (pacienteId) => request(`/imagenes/paciente/${pacienteId}`),
+    porConsulta: (consultaId) => request(`/imagenes/consulta/${consultaId}`),
     eliminar: (id) => request(`/imagenes/${id}`, { method: 'DELETE' }),
     subir: (formData) => uploadFile('/imagenes/upload', formData),
   },

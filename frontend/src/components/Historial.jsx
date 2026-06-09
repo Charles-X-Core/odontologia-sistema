@@ -50,6 +50,8 @@ function ConsultaTimeline({ c, onRecargar }) {
   const [editando, setEditando] = useState(false);
   const [editForm, setEditForm] = useState({});
   const [guardando, setGuardando] = useState(false);
+  const [imagenes, setImagenes] = useState([]);
+  const [viewerIndex, setViewerIndex] = useState(null);
 
   const iniciarEdicion = () => {
     setEditando(true);
@@ -102,22 +104,37 @@ function ConsultaTimeline({ c, onRecargar }) {
   const signos = typeof c.signos_vitales === 'string' ? parseJson(c.signos_vitales) : (c.signos_vitales || {});
   const plan = typeof c.plan_tratamiento === 'string' ? parseJson(c.plan_tratamiento) : (c.plan_tratamiento || {});
 
+  const toggleExpand = async () => {
+    const next = !expandido;
+    setExpandido(next);
+    if (next && imagenes.length === 0 && c.id) {
+      try {
+        const imgs = await api.imagenes.porConsulta(c.id);
+        setImagenes(imgs || []);
+      } catch { setImagenes([]); }
+    }
+  };
+
+  const isElectron = window.location.protocol === 'file:' || window.electronAPI?.isElectron;
+  const IMG_BASE = isElectron ? 'http://localhost:18234' : (import.meta.env.VITE_API_URL || window.location.origin);
+
   return (
     <div className="timeline-item">
       <div className="timeline-dot"></div>
       <div className="timeline-content">
-        <div className="timeline-date" onClick={() => setExpandido(!expandido)} style={{ cursor: 'pointer' }}>
+        <div className="timeline-date" onClick={toggleExpand} style={{ cursor: 'pointer' }}>
           {new Date(c.fecha).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}{c.hora ? ` - ${c.hora}` : ''}
           <span className="timeline-expand-icon">{expandido ? '▼' : '▶'}</span>
         </div>
 
-        <h4 onClick={() => setExpandido(!expandido)} style={{ cursor: 'pointer' }}>{c.motivo}</h4>
+        <h4 onClick={toggleExpand} style={{ cursor: 'pointer' }}>{c.motivo}</h4>
 
         <div className="timeline-badges">
           {trats.length > 0 && <span className="badge badge-tratamientos" onClick={() => setExpandido(true)}>🦷 {trats.length} tratamiento(s)</span>}
           {recetasArr.length > 0 && <span className="badge badge-recetas" onClick={() => setExpandido(true)}>💊 {recetasArr.length} receta(s)</span>}
           {pagosArr.length > 0 && <span className="badge badge-pagos" onClick={() => setExpandido(true)}>💰 S/ {totalPagado.toFixed(0)}</span>}
           {c.odontograma && <span className="badge badge-odontograma" onClick={() => setExpandido(true)}>🩺 Odontograma</span>}
+          {imagenes.length > 0 && <span className="badge badge-fotos" onClick={() => setExpandido(true)}>🖼️ {imagenes.length} foto(s)</span>}
         </div>
 
         <div className="timeline-details">
@@ -227,6 +244,27 @@ function ConsultaTimeline({ c, onRecargar }) {
               </div>
             )}
 
+            {imagenes.length > 0 && (
+              <div className="timeline-section">
+                <h5>Evidencias ({imagenes.length})</h5>
+                <div className="timeline-evidencias-grid">
+                  {imagenes.map((img, i) => (
+                    <div key={img.id} className="timeline-evidencia-thumb" onClick={() => setViewerIndex(i)}>
+                      <img
+                        src={`${IMG_BASE}/uploads/${img.archivo_nombre}`}
+                        alt={img.descripcion || img.archivo_original}
+                        loading="lazy"
+                        onError={(e) => { e.target.style.display = 'none'; }}
+                      />
+                      <div className="timeline-evidencia-overlay">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="timeline-actions">
               <button className="btn btn-sm btn-secondary" onClick={iniciarEdicion}>Editar</button>
               <button className="btn btn-sm btn-danger" onClick={eliminarConsulta}>Eliminar</button>
@@ -278,6 +316,39 @@ function ConsultaTimeline({ c, onRecargar }) {
           </div>
         )}
       </div>
+      {viewerIndex !== null && imagenes.length > 0 && (
+        <div className="image-viewer-overlay" onClick={() => setViewerIndex(null)}>
+          <div className="image-viewer" onClick={e => e.stopPropagation()}>
+            <div className="image-viewer-toolbar">
+              <div className="image-viewer-toolbar-left">
+                <span className="image-viewer-counter">{viewerIndex + 1} / {imagenes.length}</span>
+              </div>
+              <div className="image-viewer-toolbar-center">
+                <button className="image-viewer-close" onClick={() => setViewerIndex(null)}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
+              </div>
+            </div>
+            <div className="image-viewer-canvas">
+              <img
+                src={`${IMG_BASE}/uploads/${imagenes[viewerIndex]?.archivo_nombre}`}
+                alt={imagenes[viewerIndex]?.descripcion || ''}
+                style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain' }}
+              />
+            </div>
+            {imagenes.length > 1 && (
+              <>
+                <button className="image-viewer-nav image-viewer-nav-prev" onClick={() => setViewerIndex(i => Math.max(0, i - 1))} disabled={viewerIndex === 0}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 18l-6-6 6-6"/></svg>
+                </button>
+                <button className="image-viewer-nav image-viewer-nav-next" onClick={() => setViewerIndex(i => Math.min(imagenes.length - 1, i + 1))} disabled={viewerIndex === imagenes.length - 1}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18l6-6-6-6"/></svg>
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

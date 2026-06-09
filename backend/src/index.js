@@ -118,6 +118,9 @@ const frontendPath = path.join(__dirname, '..', '..', 'frontend', 'dist');
 console.log('[INDEX] Frontend path:', frontendPath);
 console.log('[INDEX] Frontend exists:', require('fs').existsSync(frontendPath));
 
+const uploadsPath = path.join(__dirname, '..', '..', 'uploads');
+app.use('/uploads', express.static(uploadsPath));
+
 app.use(express.static(frontendPath));
 app.get('*', (req, res) => {
   if (!req.path.startsWith('/api')) {
