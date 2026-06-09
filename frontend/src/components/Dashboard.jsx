@@ -7,11 +7,12 @@ import {
   BarElement,
   ArcElement,
   Tooltip,
+  Legend,
   Filler,
 } from 'chart.js';
 import { Bar, Doughnut } from 'react-chartjs-2';
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Filler);
+ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend, Filler);
 
 const FILTROS_FECHA = [
   { value: 'hoy', label: 'Hoy' },
@@ -21,7 +22,7 @@ const FILTROS_FECHA = [
   { value: 'todo', label: 'Todo' },
 ];
 
-const MONTHS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+const MONTHS_SHORT = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
 function filtrarPorFecha(items, filtro) {
   if (filtro === 'todo') return items;
@@ -47,13 +48,37 @@ function filtrarPorFecha(items, filtro) {
   return items.filter(c => new Date(c.fecha) >= inicio);
 }
 
-function contarPorMes(consultas) {
-  const counts = new Array(12).fill(0);
+function getUltimosMeses(consultas, numMeses = 6) {
+  const ahora = new Date();
+  const meses = [];
+  for (let i = numMeses - 1; i >= 0; i--) {
+    const fecha = new Date(ahora.getFullYear(), ahora.getMonth() - i, 1);
+    meses.push({
+      year: fecha.getFullYear(),
+      month: fecha.getMonth(),
+      label: MONTHS_SHORT[fecha.getMonth()],
+      fullLabel: `${MONTHS_SHORT[fecha.getMonth()]} ${fecha.getFullYear()}`,
+      count: 0,
+    });
+  }
+
   consultas.forEach(c => {
-    const month = new Date(c.fecha).getMonth();
-    counts[month]++;
+    const fecha = new Date(c.fecha);
+    const mes = meses.find(m => m.year === fecha.getFullYear() && m.month === fecha.getMonth());
+    if (mes) mes.count++;
   });
-  return counts;
+
+  return meses;
+}
+
+function getDiasSemana(consultas) {
+  const dias = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
+  const counts = new Array(7).fill(0);
+  consultas.forEach(c => {
+    const day = new Date(c.fecha).getDay();
+    counts[day]++;
+  });
+  return { labels: dias, counts };
 }
 
 export default function Dashboard({ onNavigate }) {
@@ -88,22 +113,31 @@ export default function Dashboard({ onNavigate }) {
     ? filtrarPorFecha(stats.ultimasConsultas, filtroFecha)
     : [];
 
-  const consultasMes = stats?.ultimasConsultas
-    ? filtrarPorFecha(stats.ultimasConsultas, 'mes')
-    : [];
+  const ultimosMeses = useMemo(() => {
+    return stats?.ultimasConsultas ? getUltimosMeses(stats.ultimasConsultas, 6) : [];
+  }, [stats]);
 
-  const consultasPorMes = useMemo(() => {
-    return stats?.ultimasConsultas ? contarPorMes(stats.ultimasConsultas) : new Array(12).fill(0);
+  const diasSemana = useMemo(() => {
+    return stats?.ultimasConsultas ? getDiasSemana(stats.ultimasConsultas) : { labels: [], counts: [] };
   }, [stats]);
 
   const barData = {
-    labels: MONTHS,
+    labels: ultimosMeses.map(m => m.label),
     datasets: [{
       label: 'Consultas',
-      data: consultasPorMes,
-      backgroundColor: 'rgba(67, 97, 238, 0.8)',
-      borderRadius: 6,
+      data: ultimosMeses.map(m => m.count),
+      backgroundColor: (ctx) => {
+        const chart = ctx.chart;
+        const { ctx: canvasCtx, chartArea } = chart;
+        if (!chartArea) return 'rgba(67, 97, 238, 0.8)';
+        const gradient = canvasCtx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
+        gradient.addColorStop(0, 'rgba(67, 97, 238, 0.6)');
+        gradient.addColorStop(1, 'rgba(67, 97, 238, 0.9)');
+        return gradient;
+      },
+      borderRadius: 8,
       borderSkipped: false,
+      barThickness: 40,
     }]
   };
 
@@ -116,20 +150,34 @@ export default function Dashboard({ onNavigate }) {
         backgroundColor: '#1f2937',
         titleColor: '#fff',
         bodyColor: '#fff',
-        padding: 12,
-        cornerRadius: 8,
+        padding: 14,
+        cornerRadius: 10,
         displayColors: false,
+        titleFont: { size: 13, weight: '600' },
+        bodyFont: { size: 12 },
+        callbacks: {
+          title: (items) => {
+            const idx = items[0].dataIndex;
+            return ultimosMeses[idx].fullLabel;
+          },
+          label: (item) => `${item.raw} consulta${item.raw !== 1 ? 's' : ''}`,
+        }
       }
     },
     scales: {
       y: {
         beginAtZero: true,
-        ticks: { stepSize: 1, color: '#9ca3af', font: { size: 11 } },
-        grid: { color: 'rgba(0,0,0,0.04)' },
+        ticks: {
+          stepSize: 1,
+          color: '#9ca3af',
+          font: { size: 11 },
+          callback: (val) => Number.isInteger(val) ? val : '',
+        },
+        grid: { color: 'rgba(0,0,0,0.04)', drawBorder: false },
         border: { display: false },
       },
       x: {
-        ticks: { color: '#9ca3af', font: { size: 11 } },
+        ticks: { color: '#6b7280', font: { size: 12, weight: '500' } },
         grid: { display: false },
         border: { display: false },
       }
@@ -138,7 +186,9 @@ export default function Dashboard({ onNavigate }) {
 
   const pendiente = stats?.tratamientosPendientes || 0;
   const enProceso = stats?.tratamientosEnProceso || 0;
-  const completado = Math.max((stats?.tratamientos || 0) - pendiente - enProceso, 0);
+  const totalTratamientos = stats?.tratamientos || 0;
+  const completado = Math.max(totalTratamientos - pendiente - enProceso, 0);
+  const totalDP = pendiente + enProceso + completado;
 
   const doughnutData = {
     labels: ['Pendiente', 'En Proceso', 'Completado'],
@@ -146,31 +196,57 @@ export default function Dashboard({ onNavigate }) {
       data: [pendiente, enProceso, completado],
       backgroundColor: ['#f59e0b', '#3b82f6', '#22c55e'],
       borderWidth: 0,
-      spacing: 3,
-      borderRadius: 4,
+      spacing: 4,
+      borderRadius: 6,
     }]
   };
 
   const doughnutOptions = {
     responsive: true,
     maintainAspectRatio: false,
-    cutout: '70%',
+    cutout: '72%',
     plugins: {
       legend: {
         position: 'bottom',
         labels: {
           usePointStyle: true,
           pointStyle: 'circle',
-          padding: 16,
-          font: { size: 12 },
+          padding: 20,
+          font: { size: 12, weight: '500' },
+          generateLabels: (chart) => {
+            const data = chart.data;
+            if (data.labels.length && data.datasets.length) {
+              return data.labels.map((label, i) => {
+                const val = data.datasets[0].data[i];
+                const pct = totalDP > 0 ? Math.round((val / totalDP) * 100) : 0;
+                return {
+                  text: `${label}: ${val} (${pct}%)`,
+                  fillStyle: data.datasets[0].backgroundColor[i],
+                  strokeStyle: 'transparent',
+                  pointStyle: 'circle',
+                  hidden: false,
+                  index: i,
+                };
+              });
+            }
+            return [];
+          }
         }
       },
       tooltip: {
         backgroundColor: '#1f2937',
         titleColor: '#fff',
         bodyColor: '#fff',
-        padding: 12,
-        cornerRadius: 8,
+        padding: 14,
+        cornerRadius: 10,
+        bodyFont: { size: 12 },
+        callbacks: {
+          label: (item) => {
+            const val = item.raw;
+            const pct = totalDP > 0 ? Math.round((val / totalDP) * 100) : 0;
+            return `${item.label}: ${val} (${pct}%)`;
+          }
+        }
       }
     }
   };
@@ -289,19 +365,34 @@ export default function Dashboard({ onNavigate }) {
         <div className="dashboard-chart-card">
           <div className="dashboard-chart-header">
             <h3>Consultas por Mes</h3>
-            <span className="dashboard-chart-badge">2026</span>
+            <span className="dashboard-chart-badge">
+              {ultimosMeses.length > 0 ? `${ultimosMeses[0].label} - ${ultimosMeses[ultimosMeses.length - 1].label}` : 'Sin datos'}
+            </span>
           </div>
           <div className="dashboard-chart-body">
-            <Bar data={barData} options={barOptions} />
+            {ultimosMeses.length > 0 && ultimosMeses.some(m => m.count > 0) ? (
+              <Bar data={barData} options={barOptions} />
+            ) : (
+              <div className="chart-empty">
+                <p>No hay datos de consultas para mostrar</p>
+              </div>
+            )}
           </div>
         </div>
 
         <div className="dashboard-chart-card dashboard-chart-small">
           <div className="dashboard-chart-header">
             <h3>Estado Tratamientos</h3>
+            <span className="dashboard-chart-badge">{totalDP} total</span>
           </div>
           <div className="dashboard-chart-body">
-            <Doughnut data={doughnutData} options={doughnutOptions} />
+            {totalDP > 0 ? (
+              <Doughnut data={doughnutData} options={doughnutOptions} />
+            ) : (
+              <div className="chart-empty">
+                <p>No hay tratamientos registrados</p>
+              </div>
+            )}
           </div>
         </div>
       </div>

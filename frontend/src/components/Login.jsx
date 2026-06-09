@@ -23,11 +23,7 @@ export default function Login() {
       <div className="login-container">
         <div className="login-branding">
           <div className="login-branding-content">
-            <div className="login-logo-circle">
-              <img src="/logo2.png" alt="Logo" className="login-branding-logo" />
-            </div>
-            <h1>Vita Mirabilis</h1>
-            <p className="login-branding-subtitle">Sistema de Gestion Odontologica</p>
+            <img src="/logo2.png" alt="Vita Mirabilis" className="login-branding-logo" />
             <div className="login-divider"></div>
             <div className="login-features">
               <div className="login-feature">
