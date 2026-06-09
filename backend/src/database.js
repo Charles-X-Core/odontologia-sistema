@@ -18,7 +18,7 @@ db.exec("CREATE TABLE IF NOT EXISTS consultas (id INTEGER PRIMARY KEY AUTOINCREM
 
 db.exec("CREATE TABLE IF NOT EXISTS odontogramas (id INTEGER PRIMARY KEY AUTOINCREMENT, consulta_id INTEGER NOT NULL, datos_json TEXT NOT NULL DEFAULT '{}', created_at TEXT DEFAULT (datetime('now')), FOREIGN KEY (consulta_id) REFERENCES consultas(id) ON DELETE CASCADE)");
 
-db.exec("CREATE TABLE IF NOT EXISTS tratamientos (id INTEGER PRIMARY KEY AUTOINCREMENT, paciente_id INTEGER NOT NULL, consulta_id INTEGER, fecha TEXT NOT NULL, pieza_dental TEXT DEFAULT '', procedimiento_realizado TEXT NOT NULL, costo_total REAL DEFAULT 0, monto_a_cuenta REAL DEFAULT 0, saldo_pendiente REAL DEFAULT 0, estado TEXT DEFAULT 'pendiente', notas TEXT DEFAULT '', created_at TEXT DEFAULT (datetime('now')), FOREIGN KEY (paciente_id) REFERENCES pacientes(id) ON DELETE CASCADE)");
+db.exec("CREATE TABLE IF NOT EXISTS tratamientos (id INTEGER PRIMARY KEY AUTOINCREMENT, paciente_id INTEGER NOT NULL, consulta_id INTEGER, fecha TEXT NOT NULL, pieza_dental TEXT DEFAULT '', procedimiento_realizado TEXT NOT NULL, costo_total REAL DEFAULT 0, monto_a_cuenta REAL DEFAULT 0, saldo_pendiente REAL DEFAULT 0, estado TEXT DEFAULT 'planificado', notas TEXT DEFAULT '', created_at TEXT DEFAULT (datetime('now')), FOREIGN KEY (paciente_id) REFERENCES pacientes(id) ON DELETE CASCADE)");
 
 db.exec("CREATE TABLE IF NOT EXISTS recetas (id INTEGER PRIMARY KEY AUTOINCREMENT, consulta_id INTEGER NOT NULL, paciente_id INTEGER NOT NULL, medicamentos TEXT NOT NULL DEFAULT '[]', indicaciones TEXT DEFAULT '', created_at TEXT DEFAULT (datetime('now')), FOREIGN KEY (consulta_id) REFERENCES consultas(id) ON DELETE CASCADE, FOREIGN KEY (paciente_id) REFERENCES pacientes(id) ON DELETE CASCADE)");
 
@@ -80,6 +80,12 @@ const cfgCount = db.prepare('SELECT COUNT(*) as total FROM whatsapp_config').get
 if (cfgCount.total === 0) {
   const insertCfg = db.prepare('INSERT INTO whatsapp_config (clave, valor, descripcion) VALUES (?, ?, ?)');
   for (const [k, v, d] of configDefaults) insertCfg.run(k, v, d);
+}
+
+try {
+  db.exec("ALTER TABLE tratamientos ALTER COLUMN estado TEXT DEFAULT 'planificado'");
+} catch (e) {
+  // Column already has correct default or ALTER not supported
 }
 
 module.exports = db;

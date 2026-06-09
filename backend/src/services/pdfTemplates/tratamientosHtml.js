@@ -7,7 +7,7 @@ function generateTratamientosHtml(paciente, tratamientos, pagos) {
   const pags = Array.isArray(pagos) ? pagos : [];
 
   const tratsHtml = trats.length > 0 ? trats.map(t => {
-    const icon = t.estado === 'completado' ? '✅' : t.estado === 'en_proceso' ? '🔄' : '⏳';
+    const icon = t.estado === 'realizado' ? '✅' : '⏳';
     return `<tr>
       <td>${t.fecha ? new Date(t.fecha).toLocaleDateString('es-PE') : '-'}</td>
       <td>${t.pieza_dental || '-'}</td>
@@ -15,7 +15,7 @@ function generateTratamientosHtml(paciente, tratamientos, pagos) {
       <td>S/ ${(t.costo_total || 0).toFixed(2)}</td>
       <td>S/ ${(t.monto_a_cuenta || 0).toFixed(2)}</td>
       <td>S/ ${(t.saldo_pendiente || 0).toFixed(2)}</td>
-      <td>${t.estado || 'pendiente'}</td>
+      <td>${t.estado || 'planificado'}</td>
     </tr>`;
   }).join('') : '<tr><td colspan="7" style="text-align:center">No hay tratamientos registrados</td></tr>';
 

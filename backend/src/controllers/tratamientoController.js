@@ -3,7 +3,7 @@ const db = require('../database');
 exports.crear = (req, res) => {
   const {
     paciente_id, consulta_id, fecha, pieza_dental,
-    procedimiento_realizado, costo_total, monto_a_cuenta, notas
+    procedimiento_realizado, costo_total, monto_a_cuenta, estado, notas
   } = req.body;
 
   if (!paciente_id || !procedimiento_realizado) {
@@ -16,18 +16,19 @@ exports.crear = (req, res) => {
   const costoTotalNum = parseFloat(costo_total) || 0;
   const montoCuentaNum = parseFloat(monto_a_cuenta) || 0;
   const saldoPendiente = costoTotalNum - montoCuentaNum;
+  const estadoFinal = (estado === 'realizado' || estado === 'planificado') ? estado : 'planificado';
 
   try {
     const result = db.prepare(`
       INSERT INTO tratamientos (
         paciente_id, consulta_id, fecha, pieza_dental,
-        procedimiento_realizado, costo_total, monto_a_cuenta, saldo_pendiente, notas
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        procedimiento_realizado, costo_total, monto_a_cuenta, saldo_pendiente, estado, notas
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       paciente_id, consulta_id || null,
       fecha || new Date().toISOString().split('T')[0],
       pieza_dental || '', procedimiento_realizado,
-      costoTotalNum, montoCuentaNum, saldoPendiente, notas || ''
+      costoTotalNum, montoCuentaNum, saldoPendiente, estadoFinal, notas || ''
     );
     res.status(201).json({ id: result.lastInsertRowid, paciente_id, saldo_pendiente: saldoPendiente });
   } catch (err) {

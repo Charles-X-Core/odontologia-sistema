@@ -32,7 +32,7 @@ function ResumenCards({ resumen, onTab }) {
       </div>
       <div className="resumen-card" onClick={() => onTab('tratamientos')}>
         <span className="resumen-num">{resumen.tratamientos_pendientes}/{resumen.total_tratamientos}</span>
-        <span className="resumen-label">Tratamientos pendientes</span>
+        <span className="resumen-label">Por realizar</span>
       </div>
       <div className="resumen-card" onClick={() => onTab('pagos')}>
         <span className="resumen-num">S/ {(resumen.total_pendiente || 0).toFixed(0)}</span>

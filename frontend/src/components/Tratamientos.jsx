@@ -3,15 +3,13 @@ import { api } from '../services/api';
 import WhatsAppConfirm from './WhatsAppConfirm';
 
 const ESTADO_COLORS = {
-  pendiente: { bg: '#fef3c7', text: '#92400e', border: '#f59e0b' },
-  en_proceso: { bg: '#dbeafe', text: '#1e40af', border: '#3b82f6' },
-  completado: { bg: '#dcfce7', text: '#166534', border: '#22c55e' },
+  realizado: { bg: '#dcfce7', text: '#166534', border: '#22c55e' },
+  planificado: { bg: '#dbeafe', text: '#1e40af', border: '#3b82f6' },
 };
 
 const ESTADO_LABELS = {
-  pendiente: 'Pendiente',
-  en_proceso: 'En Proceso',
-  completado: 'Completado',
+  realizado: 'Realizado',
+  planificado: 'Planificado',
 };
 
 const FORM_DEFAULT = { procedimiento_realizado: '', costo_total: '', monto_a_cuenta: '', pieza_dental: '', fecha: new Date().toISOString().split('T')[0], notas: '', consulta_id: '' };
@@ -85,9 +83,8 @@ export default function Tratamientos({ pacienteId, consultas, paciente }) {
   const totalCosto = tratamientos.reduce((sum, t) => sum + (t.costo_total || 0), 0);
   const totalMonto = tratamientos.reduce((sum, t) => sum + (t.monto_a_cuenta || 0), 0);
   const totalSaldo = tratamientos.reduce((sum, t) => sum + (t.saldo_pendiente || 0), 0);
-  const pendientes = tratamientos.filter(t => t.estado === 'pendiente').length;
-  const enProceso = tratamientos.filter(t => t.estado === 'en_proceso').length;
-  const completados = tratamientos.filter(t => t.estado === 'completado').length;
+  const realizados = tratamientos.filter(t => t.estado === 'realizado').length;
+  const planificados = tratamientos.filter(t => t.estado === 'planificado').length;
 
   if (cargando) return <div className="loading">Cargando tratamientos...</div>;
 
@@ -95,12 +92,11 @@ export default function Tratamientos({ pacienteId, consultas, paciente }) {
     <div className="tratamientos-panel">
       <div className="tratamientos-header">
         <div className="tratamientos-stats">
-          <span className="stat-badge pendiente">{pendientes} pendientes</span>
-          <span className="stat-badge en_proceso">{enProceso} en proceso</span>
-          <span className="stat-badge completado">{completados} completados</span>
+          <span className="stat-badge realizado">{realizados} realizados</span>
+          <span className="stat-badge planificado">{planificados} planificados</span>
           <span className="stat-badge total">Total: ${totalCosto.toLocaleString()}</span>
           <span className="stat-badge pagado">Pagado: ${totalMonto.toLocaleString()}</span>
-          <span className="stat-badge pendiente">Saldo: ${totalSaldo.toLocaleString()}</span>
+          <span className="stat-badge planificado">Saldo: ${totalSaldo.toLocaleString()}</span>
         </div>
         <div style={{ display: 'flex', gap: '6px' }}>
           {paciente && <button className="btn btn-success btn-sm" onClick={() => setMostrarWhatsApp(true)}>WhatsApp</button>}
@@ -182,7 +178,7 @@ export default function Tratamientos({ pacienteId, consultas, paciente }) {
             </thead>
             <tbody>
               {tratamientos.map(t => {
-                const color = ESTADO_COLORS[t.estado] || ESTADO_COLORS.pendiente;
+                const color = ESTADO_COLORS[t.estado] || ESTADO_COLORS.planificado;
                 return (
                   <tr key={t.id}>
                     <td>{t.fecha ? new Date(t.fecha).toLocaleDateString() : '-'}</td>
@@ -202,13 +198,15 @@ export default function Tratamientos({ pacienteId, consultas, paciente }) {
                     </td>
                     <td>
                       <div className="actions">
-                        {t.estado !== 'completado' && (
-                          <button className="btn btn-sm btn-success" onClick={() => cambiarEstado(t.id, t.estado === 'pendiente' ? 'en_proceso' : 'completado')}>
-                            {t.estado === 'pendiente' ? 'Iniciar' : 'Completar'}
+                        {t.estado === 'planificado' && (
+                          <button className="btn btn-sm btn-success" onClick={() => cambiarEstado(t.id, 'realizado')}>
+                            Marcar Realizado
                           </button>
                         )}
-                        {t.estado === 'en_proceso' && (
-                          <button className="btn btn-sm btn-secondary" onClick={() => cambiarEstado(t.id, 'pendiente')}>Pausar</button>
+                        {t.estado === 'realizado' && (
+                          <button className="btn btn-sm btn-secondary" onClick={() => cambiarEstado(t.id, 'planificado')}>
+                            Revertir a Planificado
+                          </button>
                         )}
                         <button className="btn btn-sm btn-secondary" onClick={() => handleEditar(t)} title="Editar">
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>

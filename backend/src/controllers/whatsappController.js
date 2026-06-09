@@ -69,7 +69,7 @@ const PLANTILLAS = {
     const tratamientos = data?.tratamientos || db.prepare('SELECT * FROM tratamientos WHERE paciente_id = ? ORDER BY fecha DESC').all(p.id);
     if (tratamientos.length === 0) return null;
     const trats = tratamientos.map(t => {
-      const icon = t.estado === 'completado' ? '✅' : t.estado === 'en_proceso' ? '🔄' : '⏳';
+      const icon = t.estado === 'realizado' ? '✅' : '⏳';
       return `${icon} *${t.procedimiento_realizado}*\n   Pza: ${t.pieza_dental || 'N/A'} | Costo: S/ ${(t.costo_total || 0).toFixed(2)}`;
     }).join('\n\n');
     const total = tratamientos.reduce((s, t) => s + (t.costo_total || 0), 0);
@@ -196,7 +196,7 @@ exports.sugerencias = (req, res) => {
     }
 
     // 5. TRATAMIENTOS PENDIENTES (no iniciados)
-    const pendientes = db.prepare("SELECT COUNT(*) as count FROM tratamientos WHERE paciente_id = ? AND estado = 'pendiente'").get(pacienteId);
+    const pendientes = db.prepare("SELECT COUNT(*) as count FROM tratamientos WHERE paciente_id = ? AND estado = 'planificado'").get(pacienteId);
     if (pendientes.count > 0) {
       sugerencias.push({
         tipo: 'plan',

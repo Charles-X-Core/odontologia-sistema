@@ -77,7 +77,7 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
   const [recetas, setRecetas] = useState([{ medicamentos: [{ nombre: '', dosis: '', frecuencia: '', duracion: '' }], indicaciones: '', archivos: [] }]);
 
   // Paso 6: Tratamiento
-  const [tratamientos, setTratamientos] = useState([{ procedimiento_realizado: '', costo_total: '', monto_a_cuenta: '', pieza_dental: '', notas: '' }]);
+  const [tratamientos, setTratamientos] = useState([{ procedimiento_realizado: '', costo_total: '', monto_a_cuenta: '', pieza_dental: '', notas: '', realizado: false }]);
 
   // Antecedentes
   const [editandoAntecedentes, setEditandoAntecedentes] = useState(false);
@@ -206,7 +206,7 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
   };
 
   const agregarTratamiento = () => {
-    setTratamientos([...tratamientos, { procedimiento_realizado: '', costo_total: '', monto_a_cuenta: '', pieza_dental: '', notas: '' }]);
+    setTratamientos([...tratamientos, { procedimiento_realizado: '', costo_total: '', monto_a_cuenta: '', pieza_dental: '', notas: '', realizado: false }]);
   };
 
   const actualizarTratamiento = (index, campo, valor) => {
@@ -290,6 +290,7 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
           procedimiento_realizado: t.procedimiento_realizado,
           costo_total: costo,
           monto_a_cuenta: monto,
+          estado: t.realizado ? 'realizado' : 'planificado',
           notas: t.notas || '',
         });
       }
@@ -908,6 +909,10 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
             {tratamientos.map((t, i) => (
               <div key={i} className="sesion-tratamiento-row">
                 <div className="sesion-tratamiento-fields">
+                  <label className="sesion-tratamiento-check">
+                    <input type="checkbox" checked={t.realizado} onChange={e => actualizarTratamiento(i, 'realizado', e.target.checked)} />
+                    Se realizo
+                  </label>
                   <input type="text" placeholder="Procedimiento (ej: Corona ceramica pieza 16)" value={t.procedimiento_realizado} onChange={e => actualizarTratamiento(i, 'procedimiento_realizado', e.target.value)} />
                   <input type="text" placeholder="Pieza dental" value={t.pieza_dental} onChange={e => actualizarTratamiento(i, 'pieza_dental', e.target.value)} className="input-diente" />
                   <input type="number" placeholder="Costo $" value={t.costo_total} onChange={e => actualizarTratamiento(i, 'costo_total', e.target.value)} min="0" step="0.01" className="input-costo" />

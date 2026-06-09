@@ -410,7 +410,7 @@ exports.importarBDAnterior = (req, res) => {
               newPacienteId, newConsultaId, t.fecha || '', t.pieza_dental || '',
               t.procedimiento_realizado || '', t.costo_total || 0,
               t.monto_a_cuenta || 0, t.saldo_pendiente || 0,
-              t.estado || 'pendiente', t.notas || ''
+              t.estado || 'planificado', t.notas || ''
             );
             resultados.tratamientos.nuevos++;
           } catch (e) {

@@ -4,9 +4,8 @@ import WhatsAppConfirm from './WhatsAppConfirm';
 import WhatsAppSetup from './WhatsAppSetup';
 
 const ESTADO_COLORS = {
-  pendiente: { bg: '#fef3c7', text: '#92400e' },
-  en_proceso: { bg: '#dbeafe', text: '#1e40af' },
-  completado: { bg: '#dcfce7', text: '#166534' },
+  realizado: { bg: '#dcfce7', text: '#166534' },
+  planificado: { bg: '#dbeafe', text: '#1e40af' },
 };
 
 function nombreCompleto(p) {

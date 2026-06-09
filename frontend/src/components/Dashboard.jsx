@@ -99,11 +99,12 @@ export default function Dashboard({ onNavigate }) {
         pacientes: 0,
         consultas: 0,
         tratamientos: 0,
-        tratamientosPendientes: 0,
-        tratamientosEnProceso: 0,
+        tratamientosRealizados: 0,
+        tratamientosPlanificados: 0,
         recetas: 0,
         pagos: { total_general: 0, total_pagado: 0, total_pendiente: 0 },
-        ultimasConsultas: []
+        ultimasConsultas: [],
+        consultasPorDia: [],
       });
     }
     setCargando(false);
@@ -118,6 +119,12 @@ export default function Dashboard({ onNavigate }) {
   }, [stats]);
 
   const diasSemana = useMemo(() => {
+    if (stats?.consultasPorDia && stats.consultasPorDia.length > 0) {
+      const dias = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
+      const counts = new Array(7).fill(0);
+      stats.consultasPorDia.forEach(d => { counts[d.dia_num] = d.total; });
+      return { labels: dias, counts };
+    }
     return stats?.ultimasConsultas ? getDiasSemana(stats.ultimasConsultas) : { labels: [], counts: [] };
   }, [stats]);
 
@@ -184,17 +191,15 @@ export default function Dashboard({ onNavigate }) {
     }
   };
 
-  const pendiente = stats?.tratamientosPendientes || 0;
-  const enProceso = stats?.tratamientosEnProceso || 0;
-  const totalTratamientos = stats?.tratamientos || 0;
-  const completado = Math.max(totalTratamientos - pendiente - enProceso, 0);
-  const totalDP = pendiente + enProceso + completado;
+  const realizados = stats?.tratamientosRealizados || 0;
+  const planificados = stats?.tratamientosPlanificados || 0;
+  const totalDP = realizados + planificados;
 
   const doughnutData = {
-    labels: ['Pendiente', 'En Proceso', 'Completado'],
+    labels: ['Realizados', 'Planificados'],
     datasets: [{
-      data: [pendiente, enProceso, completado],
-      backgroundColor: ['#f59e0b', '#3b82f6', '#22c55e'],
+      data: [realizados, planificados],
+      backgroundColor: ['#22c55e', '#3b82f6'],
       borderWidth: 0,
       spacing: 4,
       borderRadius: 6,
@@ -355,8 +360,8 @@ export default function Dashboard({ onNavigate }) {
             </svg>
           </div>
           <div className="stat-info">
-            <span className="stat-value">{stats?.tratamientosPendientes || 0}</span>
-            <span className="stat-label">Pendientes</span>
+            <span className="stat-value">{stats?.tratamientosPlanificados || 0}</span>
+            <span className="stat-label">Planificados</span>
           </div>
         </div>
       </div>
@@ -375,6 +380,58 @@ export default function Dashboard({ onNavigate }) {
             ) : (
               <div className="chart-empty">
                 <p>No hay datos de consultas para mostrar</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="dashboard-chart-card dashboard-chart-small">
+          <div className="dashboard-chart-header">
+            <h3>Consultas por Dia</h3>
+            <span className="dashboard-chart-badge">
+              {diasSemana.counts.some(c => c > 0) ? `${diasSemana.counts.reduce((a, b) => a + b, 0)} total` : 'Sin datos'}
+            </span>
+          </div>
+          <div className="dashboard-chart-body">
+            {diasSemana.counts.some(c => c > 0) ? (
+              <Bar data={{
+                labels: diasSemana.labels,
+                datasets: [{
+                  label: 'Consultas',
+                  data: diasSemana.counts,
+                  backgroundColor: diasSemana.labels.map((_, i) => {
+                    const colors = [
+                      'rgba(239, 68, 68, 0.7)',
+                      'rgba(67, 97, 238, 0.7)',
+                      'rgba(34, 197, 94, 0.7)',
+                      'rgba(245, 158, 11, 0.7)',
+                      'rgba(139, 92, 246, 0.7)',
+                      'rgba(236, 72, 153, 0.7)',
+                      'rgba(20, 184, 166, 0.7)',
+                    ];
+                    return colors[i];
+                  }),
+                  borderRadius: 8,
+                  borderSkipped: false,
+                  barThickness: 28,
+                }]
+              }} options={{
+                ...barOptions,
+                plugins: {
+                  ...barOptions.plugins,
+                  legend: { display: false },
+                  tooltip: {
+                    ...barOptions.plugins.tooltip,
+                    callbacks: {
+                      title: (items) => items[0].label,
+                      label: (item) => `${item.raw} consulta${item.raw !== 1 ? 's' : ''}`,
+                    }
+                  }
+                }
+              }} />
+            ) : (
+              <div className="chart-empty">
+                <p>No hay datos de dias para mostrar</p>
               </div>
             )}
           </div>

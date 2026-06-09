@@ -41,12 +41,12 @@ try {
   console.log('  Odontogramas OK');
 
   const insertTratamiento = db.prepare(`INSERT INTO tratamientos (paciente_id, consulta_id, fecha, pieza_dental, procedimiento_realizado, costo_total, monto_a_cuenta, saldo_pendiente, estado, notas) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
-  insertTratamiento.run(1, 1, '2026-05-10', '16', 'Endodoncia molar 16', 80, 40, 40, 'completado', 'Primera sesion de endodoncia');
-  insertTratamiento.run(1, 2, '2026-05-20', '16', 'Corona ceramica molar 16', 150, 50, 100, 'pendiente', 'Esperar cicatrizacion post-endodoncia');
-  insertTratamiento.run(1, null, '2026-05-10', null, 'Limpieza dental profesional', 30, 30, 0, 'completado', '');
-  insertTratamiento.run(2, 3, '2026-05-15', '41', 'Restauracion con resina compuesta incisivo 41', 25, 0, 25, 'pendiente', '');
-  insertTratamiento.run(3, 4, '2026-05-18', '35', 'Extraccion premolar 35', 50, 25, 25, 'pendiente', 'Requiere control previo de glucemia');
-  insertTratamiento.run(3, 4, '2026-05-18', '34-36', 'Puente fijo 34-36 (reemplaza 35)', 450, 100, 350, 'pendiente', 'Requiere valoracion previa y extraccion');
+  insertTratamiento.run(1, 1, '2026-05-10', '16', 'Endodoncia molar 16', 80, 40, 40, 'realizado', 'Primera sesion de endodoncia');
+  insertTratamiento.run(1, 2, '2026-05-20', '16', 'Corona ceramica molar 16', 150, 50, 100, 'planificado', 'Esperar cicatrizacion post-endodoncia');
+  insertTratamiento.run(1, null, '2026-05-10', null, 'Limpieza dental profesional', 30, 30, 0, 'realizado', '');
+  insertTratamiento.run(2, 3, '2026-05-15', '41', 'Restauracion con resina compuesta incisivo 41', 25, 0, 25, 'planificado', '');
+  insertTratamiento.run(3, 4, '2026-05-18', '35', 'Extraccion premolar 35', 50, 25, 25, 'planificado', 'Requiere control previo de glucemia');
+  insertTratamiento.run(3, 4, '2026-05-18', '34-36', 'Puente fijo 34-36 (reemplaza 35)', 450, 100, 350, 'planificado', 'Requiere valoracion previa y extraccion');
   console.log('  Tratamientos OK');
 
   const insertReceta = db.prepare(`INSERT INTO recetas (consulta_id, paciente_id, medicamentos, indicaciones) VALUES (?, ?, ?, ?)`);

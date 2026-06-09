@@ -146,7 +146,7 @@ exports.obtenerHistorial = (req, res) => {
   const resumen = {};
   resumen.total_consultas = consultas.length;
   resumen.total_tratamientos = db.prepare('SELECT COUNT(*) as n FROM tratamientos WHERE paciente_id = ?').get(req.params.id).n;
-  resumen.tratamientos_pendientes = db.prepare("SELECT COUNT(*) as n FROM tratamientos WHERE paciente_id = ? AND estado != 'completado'").get(req.params.id).n;
+  resumen.tratamientos_pendientes = db.prepare("SELECT COUNT(*) as n FROM tratamientos WHERE paciente_id = ? AND estado != 'realizado'").get(req.params.id).n;
   resumen.total_recetas = db.prepare('SELECT COUNT(*) as n FROM recetas WHERE paciente_id = ?').get(req.params.id).n;
   const pagosRes = db.prepare('SELECT COALESCE(SUM(total),0) as total, COALESCE(SUM(a_cuenta),0) as pagado, COALESCE(SUM(saldo),0) as pendiente FROM pagos WHERE paciente_id = ?').get(req.params.id);
   resumen.total_pagado = pagosRes.pagado;
