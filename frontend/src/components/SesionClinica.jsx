@@ -3,15 +3,29 @@ import { api } from '../services/api';
 import Odontograma from './Odontograma';
 
 const PASOS = [
-  { id: 1, label: 'Paciente', icon: '\u{1F464}' },
-  { id: 2, label: 'Enfermedad', icon: '\u{1F4CB}' },
-  { id: 3, label: 'Diagnostico', icon: '\u{1F50D}' },
-  { id: 4, label: 'Odontograma', icon: '\u{1F9B7}' },
-  { id: 5, label: 'Evidencias', icon: '\u{1F4F7}' },
-  { id: 6, label: 'Recetas', icon: '\u{1F48A}' },
-  { id: 7, label: 'Tratamiento', icon: '\u{1F9B7}' },
-  { id: 8, label: 'Resumen', icon: '\u{1F4CB}' },
+  { id: 1, label: 'Paciente', icon: 'user' },
+  { id: 2, label: 'Enfermedad', icon: 'clipboard' },
+  { id: 3, label: 'Diagnostico', icon: 'search' },
+  { id: 4, label: 'Odontograma', icon: 'activity' },
+  { id: 5, label: 'Evidencias', icon: 'camera' },
+  { id: 6, label: 'Recetas', icon: 'pill' },
+  { id: 7, label: 'Tratamiento', icon: 'stethoscope' },
+  { id: 8, label: 'Resumen', icon: 'filetext' },
 ];
+
+function StepIcon({ name, size = 16 }) {
+  const icons = {
+    user: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
+    clipboard: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>,
+    search: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>,
+    activity: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>,
+    camera: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>,
+    pill: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/></svg>,
+    stethoscope: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 2v2"/><path d="M5 2v2"/><path d="M5 3H4a2 2 0 0 0-2 2v4a6 6 0 0 0 12 0V5a2 2 0 0 0-2-2h-1"/><path d="M8 15a6 6 0 0 0 12 0v-3"/><circle cx="20" cy="10" r="2"/></svg>,
+    filetext: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>,
+  };
+  return icons[name] || null;
+}
 
 const NECESIDADES_DEFAULT = {
   cariados: 0, curados: 0, por_extraer: 0, endodoncia: 0,
@@ -393,7 +407,13 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
       <div className="sesion-progress">
         {PASOS.map((p, i) => (
           <div key={p.id} className={`sesion-progress-step ${paso === p.id ? 'active' : ''} ${paso > p.id ? 'completed' : ''}`}>
-            <div className="step-circle">{paso > p.id ? '\u2713' : p.icon}</div>
+            <div className="step-circle">
+              {paso > p.id ? (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+              ) : (
+                <StepIcon name={p.icon} size={16} />
+              )}
+            </div>
             <span className="step-label">{p.label}</span>
             {i < PASOS.length - 1 && <div className={`step-line ${paso > p.id ? 'completed' : ''}`}></div>}
           </div>

@@ -3471,27 +3471,28 @@ body {
   justify-content: center;
   gap: 0;
   padding: 20px 0;
-  overflow-x: auto;
   min-width: 0;
+  flex-wrap: nowrap;
 }
 
 .sesion-progress-step {
   display: flex;
   align-items: center;
   gap: 0;
+  flex-shrink: 0;
 }
 
 .step-circle {
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
   background: var(--gray-100);
   color: var(--gray-400);
   transition: all 0.2s;
+  flex-shrink: 0;
 }
 
 .sesion-progress-step.active .step-circle {
@@ -3509,8 +3510,9 @@ body {
   font-size: 11px;
   font-weight: 600;
   color: var(--gray-400);
-  margin-left: 6px;
-  margin-right: 6px;
+  margin-left: 5px;
+  margin-right: 5px;
+  white-space: nowrap;
 }
 
 .sesion-progress-step.active .step-label {
@@ -3522,10 +3524,11 @@ body {
 }
 
 .step-line {
-  width: 24px;
+  width: 20px;
   height: 2px;
   background: var(--gray-200);
-  margin: 0 4px;
+  margin: 0 2px;
+  flex-shrink: 0;
 }
 
 .step-line.completed {
@@ -5864,7 +5867,7 @@ body {
   .sesion-header { flex-wrap: wrap; gap: 8px; }
   .sesion-paciente-info h2 { font-size: 17px; }
   .step-label { font-size: 10px; margin-left: 3px; margin-right: 3px; }
-  .step-line { width: 16px; }
+  .step-line { width: 14px; }
   .form-grid-3 { grid-template-columns: 1fr 1fr; }
   .form-grid-5 { grid-template-columns: repeat(3, 1fr); }
 }
@@ -5891,7 +5894,7 @@ body {
   .paso-motivo { grid-template-columns: 1fr; }
   .sesion-progress { flex-wrap: wrap; gap: 4px; padding: 12px 0; }
   .step-label { display: none; }
-  .step-line { width: 12px; }
+  .step-line { width: 10px; }
   .sesion-header { flex-direction: column; gap: 8px; align-items: flex-start; }
   .sesion-header-right { width: 100%; justify-content: space-between; }
   .sesion-footer { flex-direction: column; gap: 10px; }
