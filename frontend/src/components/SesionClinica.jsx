@@ -165,7 +165,14 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
     setGuardandoAntecedentes(false);
   };
 
-  const siguiente = () => { if (paso < PASOS.length) setPaso(paso + 1); };
+  const siguiente = () => {
+    if (paso === 2 && !motivo.trim()) {
+      setMensaje('El motivo de consulta es obligatorio');
+      return;
+    }
+    setMensaje('');
+    if (paso < PASOS.length) setPaso(paso + 1);
+  };
   const anterior = () => { if (paso > 1) setPaso(paso - 1); };
 
   const agregarDiagnostico = () => {
