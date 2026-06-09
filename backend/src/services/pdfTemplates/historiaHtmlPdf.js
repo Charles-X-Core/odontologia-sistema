@@ -391,7 +391,8 @@ function buildData(paciente, historia, consultas, pagos) {
     planData[`plan_tratamiento_${i}`] = plan[i - 1] || '';
   }
 
-  const odontoDatos = null;
+  const odontoRow = c.id ? db.prepare('SELECT * FROM odontogramas WHERE consulta_id = ?').get(c.id) : null;
+  const odontoDatos = odontoRow ? (typeof odontoRow.datos_json === 'string' ? JSON.parse(odontoRow.datos_json) : odontoRow.datos_json) : null;
   const necesidades = calcularNecesidades(odontoDatos);
 
   const peso = signos.peso || '';
@@ -476,7 +477,7 @@ function buildData(paciente, historia, consultas, pagos) {
     examen_general: signos.examen_general || '',
     ...diagData,
     ...planData,
-    odontograma_svg: '',
+    odontograma_svg: renderOdontogramaSvg(odontoDatos),
     nec_cariados: necesidades.cariados,
     nec_curados: necesidades.curados,
     nec_por_extraer: necesidades.por_extraer,

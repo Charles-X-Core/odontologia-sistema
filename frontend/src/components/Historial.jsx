@@ -5,6 +5,7 @@ import Recetas from './Recetas';
 import Galeria from './Galeria';
 import DiagnosticoPlan from './DiagnosticoPlan';
 import Pagos from './Pagos';
+import Odontograma from './Odontograma';
 
 function nombreCompleto(p) {
   return `${p.apellido_paterno || ''} ${p.apellido_materno || ''} ${p.nombres || ''}`.trim();
@@ -245,7 +246,8 @@ function ConsultaTimeline({ c, onRecargar }) {
 
             {c.odontograma && (
               <div className="timeline-section">
-                <p><strong>Odontograma:</strong> {Object.keys(typeof c.odontograma === 'string' ? JSON.parse(c.odontograma) : c.odontograma).length} piezas registradas</p>
+                <h5>Odontograma ({Object.keys(c.odontograma.dientes || c.odontograma).filter(k => k !== 'version').length} piezas registradas)</h5>
+                <Odontograma datos={c.odontograma} soloLectura={true} />
               </div>
             )}
 

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import WhatsAppConfirm from './WhatsAppConfirm';
 import WhatsAppSetup from './WhatsAppSetup';
+import Odontograma from './Odontograma';
 
 const ESTADO_COLORS = {
   realizado: { bg: '#dcfce7', text: '#166534' },
@@ -181,6 +182,15 @@ export default function Paciente360({ paciente, onVolver, onVerHistorial }) {
 
       {tab === 'clinico' && (
         <div className="paciente360-grid">
+          {consultas.length > 0 && (() => {
+            const ultimaConOdonto = consultas.find(c => c.odontograma);
+            return ultimaConOdonto ? (
+              <div className="paciente360-card full-width">
+                <h4>Odontograma Actual</h4>
+                <Odontograma datos={ultimaConOdonto.odontograma} soloLectura={true} />
+              </div>
+            ) : null;
+          })()}
           <div className="paciente360-card full-width">
             <h4>Ultimas Consultas ({consultas.length} total)</h4>
             {consultas.length === 0 ? (

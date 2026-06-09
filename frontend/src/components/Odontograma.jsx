@@ -98,7 +98,7 @@ function DientesRow({ dientes, estados, onClick, invertido, esTemporal, sinColor
   );
 }
 
-export default function Odontograma({ datos = {}, onGuardar, consultaId }) {
+export default function Odontograma({ datos = {}, onGuardar, consultaId, soloLectura = false }) {
   const datosInit = datos?.dientes || datos;
   const [estados, setEstados] = useState(datosInit);
   const [herramienta, setHerramienta] = useState('caries');
@@ -107,11 +107,12 @@ export default function Odontograma({ datos = {}, onGuardar, consultaId }) {
   const [guardado, setGuardado] = useState(false);
 
   const handleClick = (num) => {
+    if (soloLectura || !onGuardar) return;
     setEstados(prev => {
       const current = prev[num];
       const next = current === herramienta ? 'sano' : herramienta;
       const nuevos = { ...prev, [num]: next };
-      if (onGuardar) onGuardar(nuevos);
+      onGuardar(nuevos);
       setGuardado(true);
       setTimeout(() => setGuardado(false), 1500);
       return nuevos;
@@ -119,39 +120,42 @@ export default function Odontograma({ datos = {}, onGuardar, consultaId }) {
   };
 
   const handleGuardar = () => {
-    if (onGuardar) onGuardar(estados);
+    if (!onGuardar) return;
+    onGuardar(estados);
     setGuardado(true);
     setTimeout(() => setGuardado(false), 1500);
   };
 
   return (
     <div className="odontograma-container">
-      <div className="odontograma-toolbar">
-        <h3>Odontograma</h3>
-        <div className="odontograma-herramientas">
-          {Object.entries(ESTADOS).map(([key, val]) => {
-            const Icon = val.icon;
-            return (
-              <button
-                key={key}
-                className={`tool-btn ${herramienta === key ? 'active' : ''}`}
-                style={{
-                  borderColor: herramienta === key ? (sinColor ? '#000' : val.color) : 'transparent',
-                  backgroundColor: herramienta === key ? (sinColor ? '#0002' : val.color + '20') : undefined,
-                }}
-                onClick={() => setHerramienta(key)}
-              >
-                <Icon
-                  size={16}
-                  style={{ color: sinColor ? '#000' : val.color }}
-                  strokeWidth={2}
-                />
-                <span className="tool-label">{val.label}</span>
-              </button>
-            );
-          })}
+      {!soloLectura && (
+        <div className="odontograma-toolbar">
+          <h3>Odontograma</h3>
+          <div className="odontograma-herramientas">
+            {Object.entries(ESTADOS).map(([key, val]) => {
+              const Icon = val.icon;
+              return (
+                <button
+                  key={key}
+                  className={`tool-btn ${herramienta === key ? 'active' : ''}`}
+                  style={{
+                    borderColor: herramienta === key ? (sinColor ? '#000' : val.color) : 'transparent',
+                    backgroundColor: herramienta === key ? (sinColor ? '#0002' : val.color + '20') : undefined,
+                  }}
+                  onClick={() => setHerramienta(key)}
+                >
+                  <Icon
+                    size={16}
+                    style={{ color: sinColor ? '#000' : val.color }}
+                    strokeWidth={2}
+                  />
+                  <span className="tool-label">{val.label}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="odontograma-grid">
         <div className="odontograma-seccion">
@@ -163,7 +167,7 @@ export default function Odontograma({ datos = {}, onGuardar, consultaId }) {
           </div>
         </div>
 
-        {mostrarTemporales && (
+        {!soloLectura && mostrarTemporales && (
           <>
             <div className="odontograma-temporales">
               <div className="seccion-label">Denticion Temporal Superior</div>
@@ -194,20 +198,22 @@ export default function Odontograma({ datos = {}, onGuardar, consultaId }) {
         </div>
       </div>
 
-      <div className="odontograma-actions">
-        <button className="btn btn-secondary btn-sm" onClick={() => setMostrarTemporales(!mostrarTemporales)}>
-          {mostrarTemporales ? 'Ocultar Temporales' : 'Mostrar Temporales'}
-        </button>
-        <button
-          className={`btn btn-sm ${sinColor ? 'btn-secondary' : 'btn-outline'}`}
-          onClick={() => setSinColor(!sinColor)}
-        >
-          {sinColor ? 'Modo Color' : 'Sin Color'}
-        </button>
-        <button className="btn btn-primary" onClick={handleGuardar}>
-          {guardado ? 'Guardado' : 'Guardar Odontograma'}
-        </button>
-      </div>
+      {!soloLectura && (
+        <div className="odontograma-actions">
+          <button className="btn btn-secondary btn-sm" onClick={() => setMostrarTemporales(!mostrarTemporales)}>
+            {mostrarTemporales ? 'Ocultar Temporales' : 'Mostrar Temporales'}
+          </button>
+          <button
+            className={`btn btn-sm ${sinColor ? 'btn-secondary' : 'btn-outline'}`}
+            onClick={() => setSinColor(!sinColor)}
+          >
+            {sinColor ? 'Modo Color' : 'Sin Color'}
+          </button>
+          <button className="btn btn-primary" onClick={handleGuardar}>
+            {guardado ? 'Guardado' : 'Guardar Odontograma'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

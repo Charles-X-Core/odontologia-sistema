@@ -151,6 +151,17 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
       setHistoria(data.historia);
       setConsultas(data.consultas || []);
       setNecesidadesPrevias(data.necesidades || null);
+
+      if (data.consultas?.length > 0) {
+        const ultimaConOdonto = data.consultas.find(c => c.odontograma);
+        if (ultimaConOdonto) {
+          const datos = ultimaConOdonto.odontograma;
+          const dientes = datos?.dientes || datos;
+          if (dientes && Object.keys(dientes).length > 0) {
+            setOdontograma(dientes);
+          }
+        }
+      }
       if (data.historia) {
         setAntecedentesForm({
           alergia_medicamentos: data.historia.alergia_medicamentos || '',
