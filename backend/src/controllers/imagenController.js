@@ -4,9 +4,22 @@ const fs = require('fs');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const QRCode = require('qrcode');
+const os = require('os');
 
 const BASE_DIR = process.env.UPLOAD_DIR || path.join(__dirname, '..', '..', 'uploads');
 const JWT_SECRET = process.env.JWT_SECRET || 'clinica-odontologica-secret-2026';
+
+function getLocalIP() {
+  const interfaces = os.networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name]) {
+      if (iface.family === 'IPv4' && !iface.internal) {
+        return iface.address;
+      }
+    }
+  }
+  return 'localhost';
+}
 
 if (!fs.existsSync(BASE_DIR)) {
   fs.mkdirSync(BASE_DIR, { recursive: true });
@@ -110,9 +123,8 @@ exports.generarQR = async (req, res) => {
       { expiresIn: '15m' }
     );
 
-    const host = req.headers.host || 'localhost:18234';
-    const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
-    const uploadUrl = `${protocol}://${host}/upload?token=${token}`;
+    const localIP = getLocalIP();
+    const uploadUrl = `http://${localIP}:18234/upload?token=${token}`;
 
     const qrDataUrl = await QRCode.toDataURL(uploadUrl, {
       width: 300,
