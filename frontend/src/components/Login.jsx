@@ -19,30 +19,37 @@ export default function Login() {
 
   return (
     <div className="login-page">
+      <div className="login-bg-pattern"></div>
       <div className="login-container">
         <div className="login-branding">
           <div className="login-branding-content">
-            <img src="/logo2.png" alt="Logo" className="login-branding-logo" />
+            <div className="login-logo-circle">
+              <img src="/logo2.png" alt="Logo" className="login-branding-logo" />
+            </div>
             <h1>Vita Mirabilis</h1>
-            <p>Sistema de Gestion Odontologica</p>
+            <p className="login-branding-subtitle">Sistema de Gestion Odontologica</p>
+            <div className="login-divider"></div>
             <div className="login-features">
               <div className="login-feature">
-                <span className="login-feature-icon">&#10003;</span>
+                <div className="login-feature-dot"></div>
                 <span>Historias clinicas digitales</span>
               </div>
               <div className="login-feature">
-                <span className="login-feature-icon">&#10003;</span>
+                <div className="login-feature-dot"></div>
                 <span>Odontograma interactivo</span>
               </div>
               <div className="login-feature">
-                <span className="login-feature-icon">&#10003;</span>
+                <div className="login-feature-dot"></div>
                 <span>Envio por WhatsApp</span>
               </div>
               <div className="login-feature">
-                <span className="login-feature-icon">&#10003;</span>
+                <div className="login-feature-dot"></div>
                 <span>100% portable</span>
               </div>
             </div>
+          </div>
+          <div className="login-branding-footer">
+            <p>Vita Mirabilis v1.0</p>
           </div>
         </div>
 
@@ -50,7 +57,7 @@ export default function Login() {
           <div className="login-form-card">
             <div className="login-form-header">
               <h2>Bienvenido</h2>
-              <p>Ingresa tus credenciales para acceder</p>
+              <p>Ingresa tus credenciales para acceder al sistema</p>
             </div>
 
             {error && <div className="login-error">{error}</div>}
@@ -59,13 +66,12 @@ export default function Login() {
               <div className="login-field">
                 <label htmlFor="usuario">Usuario</label>
                 <div className="login-input-wrapper">
-                  <span className="login-input-icon">&#128100;</span>
                   <input
                     id="usuario"
                     type="text"
                     value={usuario}
                     onChange={(e) => setUsuario(e.target.value)}
-                    placeholder="Tu nombre de usuario"
+                    placeholder="Nombre de usuario"
                     required
                     autoComplete="username"
                     autoFocus
@@ -76,7 +82,6 @@ export default function Login() {
               <div className="login-field">
                 <label htmlFor="password">Contrasena</label>
                 <div className="login-input-wrapper">
-                  <span className="login-input-icon">&#128274;</span>
                   <input
                     id="password"
                     type="password"
@@ -104,10 +109,6 @@ export default function Login() {
                 )}
               </button>
             </form>
-
-            <div className="login-footer">
-              <p>Vita Mirabilis v1.0</p>
-            </div>
           </div>
         </div>
       </div>

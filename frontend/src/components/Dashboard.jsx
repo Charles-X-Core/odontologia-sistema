@@ -1,5 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { api } from '../services/api';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  ArcElement,
+  Tooltip,
+  Filler,
+} from 'chart.js';
+import { Bar, Doughnut } from 'react-chartjs-2';
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Filler);
 
 const FILTROS_FECHA = [
   { value: 'hoy', label: 'Hoy' },
@@ -8,6 +20,8 @@ const FILTROS_FECHA = [
   { value: 'trimestre', label: 'Trimestre' },
   { value: 'todo', label: 'Todo' },
 ];
+
+const MONTHS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
 function filtrarPorFecha(items, filtro) {
   if (filtro === 'todo') return items;
@@ -33,45 +47,13 @@ function filtrarPorFecha(items, filtro) {
   return items.filter(c => new Date(c.fecha) >= inicio);
 }
 
-function MiniChart({ data, color }) {
-  if (!data || data.length === 0) return null;
-  const max = Math.max(...data, 1);
-  const width = 120;
-  const height = 40;
-  const padding = 2;
-  const graphWidth = width - padding * 2;
-  const graphHeight = height - padding * 2;
-
-  const points = data.map((val, i) => {
-    const x = padding + (i / (data.length - 1 || 1)) * graphWidth;
-    const y = padding + graphHeight - (val / max) * graphHeight;
-    return `${x},${y}`;
-  }).join(' ');
-
-  const areaPoints = `${padding},${height - padding} ${points} ${padding + graphWidth},${height - padding}`;
-
-  return (
-    <svg width={width} height={height} className="mini-chart">
-      <defs>
-        <linearGradient id={`gradient-${color.replace('#', '')}`} x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stopColor={color} stopOpacity="0.3" />
-          <stop offset="100%" stopColor={color} stopOpacity="0.05" />
-        </linearGradient>
-      </defs>
-      <polygon
-        points={areaPoints}
-        fill={`url(#gradient-${color.replace('#', '')})`}
-      />
-      <polyline
-        points={points}
-        fill="none"
-        stroke={color}
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
+function contarPorMes(consultas) {
+  const counts = new Array(12).fill(0);
+  consultas.forEach(c => {
+    const month = new Date(c.fecha).getMonth();
+    counts[month]++;
+  });
+  return counts;
 }
 
 export default function Dashboard({ onNavigate }) {
@@ -110,6 +92,89 @@ export default function Dashboard({ onNavigate }) {
     ? filtrarPorFecha(stats.ultimasConsultas, 'mes')
     : [];
 
+  const consultasPorMes = useMemo(() => {
+    return stats?.ultimasConsultas ? contarPorMes(stats.ultimasConsultas) : new Array(12).fill(0);
+  }, [stats]);
+
+  const barData = {
+    labels: MONTHS,
+    datasets: [{
+      label: 'Consultas',
+      data: consultasPorMes,
+      backgroundColor: 'rgba(67, 97, 238, 0.8)',
+      borderRadius: 6,
+      borderSkipped: false,
+    }]
+  };
+
+  const barOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#1f2937',
+        titleColor: '#fff',
+        bodyColor: '#fff',
+        padding: 12,
+        cornerRadius: 8,
+        displayColors: false,
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        ticks: { stepSize: 1, color: '#9ca3af', font: { size: 11 } },
+        grid: { color: 'rgba(0,0,0,0.04)' },
+        border: { display: false },
+      },
+      x: {
+        ticks: { color: '#9ca3af', font: { size: 11 } },
+        grid: { display: false },
+        border: { display: false },
+      }
+    }
+  };
+
+  const pendiente = stats?.tratamientosPendientes || 0;
+  const enProceso = stats?.tratamientosEnProceso || 0;
+  const completado = Math.max((stats?.tratamientos || 0) - pendiente - enProceso, 0);
+
+  const doughnutData = {
+    labels: ['Pendiente', 'En Proceso', 'Completado'],
+    datasets: [{
+      data: [pendiente, enProceso, completado],
+      backgroundColor: ['#f59e0b', '#3b82f6', '#22c55e'],
+      borderWidth: 0,
+      spacing: 3,
+      borderRadius: 4,
+    }]
+  };
+
+  const doughnutOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    cutout: '70%',
+    plugins: {
+      legend: {
+        position: 'bottom',
+        labels: {
+          usePointStyle: true,
+          pointStyle: 'circle',
+          padding: 16,
+          font: { size: 12 },
+        }
+      },
+      tooltip: {
+        backgroundColor: '#1f2937',
+        titleColor: '#fff',
+        bodyColor: '#fff',
+        padding: 12,
+        cornerRadius: 8,
+      }
+    }
+  };
+
   if (cargando) {
     return (
       <div className="dashboard">
@@ -119,6 +184,10 @@ export default function Dashboard({ onNavigate }) {
             {[1, 2, 3, 4, 5].map(i => (
               <div key={i} className="skeleton-stat-card"></div>
             ))}
+          </div>
+          <div className="skeleton-charts">
+            <div className="skeleton-chart"></div>
+            <div className="skeleton-chart"></div>
           </div>
           <div className="skeleton-card"></div>
         </div>
@@ -139,7 +208,10 @@ export default function Dashboard({ onNavigate }) {
             Nueva Consulta
           </button>
           <button className="quick-action-btn" onClick={() => onNavigate('pacientes')}>
-            <span className="quick-action-icon">&#128269;</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="11" cy="11" r="8"/>
+              <path d="M21 21l-4.35-4.35"/>
+            </svg>
             Buscar Paciente
           </button>
         </div>
@@ -159,7 +231,6 @@ export default function Dashboard({ onNavigate }) {
             <span className="stat-value">{stats?.pacientes || 0}</span>
             <span className="stat-label">Pacientes</span>
           </div>
-          <MiniChart data={[3, 5, 4, 7, 6, 8, stats?.pacientes || 0]} color="#4361ee" />
         </div>
 
         <div className="stat-card">
@@ -174,7 +245,6 @@ export default function Dashboard({ onNavigate }) {
             <span className="stat-value">{stats?.consultas || 0}</span>
             <span className="stat-label">Consultas</span>
           </div>
-          <MiniChart data={[2, 4, 3, 5, 6, 4, consultasMes.length]} color="#22c55e" />
         </div>
 
         <div className="stat-card">
@@ -215,9 +285,30 @@ export default function Dashboard({ onNavigate }) {
         </div>
       </div>
 
+      <div className="dashboard-charts">
+        <div className="dashboard-chart-card">
+          <div className="dashboard-chart-header">
+            <h3>Consultas por Mes</h3>
+            <span className="dashboard-chart-badge">2026</span>
+          </div>
+          <div className="dashboard-chart-body">
+            <Bar data={barData} options={barOptions} />
+          </div>
+        </div>
+
+        <div className="dashboard-chart-card dashboard-chart-small">
+          <div className="dashboard-chart-header">
+            <h3>Estado Tratamientos</h3>
+          </div>
+          <div className="dashboard-chart-body">
+            <Doughnut data={doughnutData} options={doughnutOptions} />
+          </div>
+        </div>
+      </div>
+
       <div className="dashboard-content">
-        <div className="card">
-          <div className="card-header">
+        <div className="dashboard-table-card">
+          <div className="dashboard-table-header">
             <h3>Ultimas Consultas</h3>
             <div className="dashboard-filtros">
               {FILTROS_FECHA.map(f => (
@@ -233,7 +324,12 @@ export default function Dashboard({ onNavigate }) {
           </div>
           {consultasFiltradas.length === 0 ? (
             <div className="empty-state">
-              <div className="empty-state-icon">&#128203;</div>
+              <div className="empty-state-icon">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{color: '#d1d5db'}}>
+                  <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
+                  <rect x="9" y="3" width="6" height="4" rx="1"/>
+                </svg>
+              </div>
               <p>No hay consultas en este periodo</p>
               <button className="empty-state-btn" onClick={() => onNavigate('sesion')}>
                 Crear primera consulta
