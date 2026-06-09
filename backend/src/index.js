@@ -119,7 +119,16 @@ console.log('[INDEX] Frontend path:', frontendPath);
 console.log('[INDEX] Frontend exists:', require('fs').existsSync(frontendPath));
 
 const uploadsPath = path.join(__dirname, '..', 'uploads');
-app.use('/uploads', express.static(uploadsPath));
+app.get('/uploads/:filename', (req, res) => {
+  const { auth } = require('./middleware/auth');
+  auth(req, res, () => {
+    const filename = req.params.filename;
+    const filePath = path.join(uploadsPath, filename);
+    const fs = require('fs');
+    if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Imagen no encontrada' });
+    res.sendFile(filePath);
+  });
+});
 
 app.use(express.static(frontendPath));
 app.get('*', (req, res) => {

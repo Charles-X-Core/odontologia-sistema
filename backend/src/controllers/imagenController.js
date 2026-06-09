@@ -1,11 +1,27 @@
 const db = require('../database');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 
-const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, '..', '..', 'uploads');
+const BASE_DIR = process.env.UPLOAD_DIR || path.join(__dirname, '..', '..', 'uploads');
 
-if (!fs.existsSync(UPLOAD_DIR)) {
-  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+if (!fs.existsSync(BASE_DIR)) {
+  fs.mkdirSync(BASE_DIR, { recursive: true });
+}
+
+function computeHash(filePath) {
+  try {
+    const data = fs.readFileSync(filePath);
+    return crypto.createHash('sha256').update(data).digest('hex');
+  } catch {
+    return '';
+  }
+}
+
+function buildImagePath(pacienteId, consultaId, filename) {
+  const parts = ['evidencias', String(pacienteId)];
+  if (consultaId) parts.push(String(consultaId));
+  return path.join(BASE_DIR, ...parts, filename);
 }
 
 exports.subir = (req, res) => {
@@ -17,11 +33,29 @@ exports.subir = (req, res) => {
     return res.status(400).json({ error: 'paciente_id es obligatorio' });
   }
   try {
+    const tmpPath = req.file.path;
+    const now = new Date();
+    const dateStr = now.toISOString().slice(0, 10);
+    const timeStr = now.toTimeString().slice(0, 5).replace(':', '-');
+    const tipoStr = tipo || 'foto';
+    const ext = path.extname(req.file.originalname);
+    const readableName = `${dateStr}_${timeStr}_${tipoStr}${ext}`;
+
+    const finalDir = path.dirname(tmpPath);
+    if (!fs.existsSync(finalDir)) fs.mkdirSync(finalDir, { recursive: true });
+    const finalPath = path.join(finalDir, readableName);
+
+    fs.renameSync(tmpPath, finalPath);
+
+    const hash = computeHash(finalPath);
+    const archivoNombre = path.relative(BASE_DIR, finalPath).replace(/\\/g, '/');
+
     const result = db.prepare(`
-      INSERT INTO imagenes (paciente_id, consulta_id, archivo_nombre, archivo_original, tipo, descripcion)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).run(paciente_id, consulta_id || null, req.file.filename, req.file.originalname, tipo || 'foto', descripcion || '');
-    res.status(201).json({ id: result.lastInsertRowid, archivo: req.file.filename });
+      INSERT INTO imagenes (paciente_id, consulta_id, archivo_nombre, archivo_original, tipo, descripcion, hash_sha256)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(paciente_id, consulta_id || null, archivoNombre, req.file.originalname, tipoStr, descripcion || '', hash);
+
+    res.status(201).json({ id: result.lastInsertRowid, archivo: archivoNombre });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -41,11 +75,18 @@ exports.eliminar = (req, res) => {
   const img = db.prepare('SELECT * FROM imagenes WHERE id = ?').get(req.params.id);
   if (!img) return res.status(404).json({ error: 'Imagen no encontrada' });
   try {
-    const filePath = path.join(UPLOAD_DIR, img.archivo_nombre);
+    const filePath = path.join(BASE_DIR, img.archivo_nombre);
     if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
     db.prepare('DELETE FROM imagenes WHERE id = ?').run(req.params.id);
     res.json({ message: 'Imagen eliminada' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+};
+
+exports.servir = (req, res) => {
+  const filename = req.params.filename;
+  const filePath = path.join(BASE_DIR, filename);
+  if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Imagen no encontrada' });
+  res.sendFile(filePath);
 };

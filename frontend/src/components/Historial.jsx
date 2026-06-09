@@ -118,6 +118,11 @@ function ConsultaTimeline({ c, onRecargar }) {
   const isElectron = window.location.protocol === 'file:' || window.electronAPI?.isElectron;
   const IMG_BASE = isElectron ? 'http://localhost:18234' : (import.meta.env.VITE_API_URL || window.location.origin);
 
+  const getImageUrl = (filename) => {
+    const token = localStorage.getItem('token');
+    return `${IMG_BASE}/api/imagenes/file/${filename}?token=${token}`;
+  };
+
   return (
     <div className="timeline-item">
       <div className="timeline-dot"></div>
@@ -251,7 +256,7 @@ function ConsultaTimeline({ c, onRecargar }) {
                   {imagenes.map((img, i) => (
                     <div key={img.id} className="timeline-evidencia-thumb" onClick={() => setViewerIndex(i)}>
                       <img
-                        src={`${IMG_BASE}/uploads/${img.archivo_nombre}`}
+                        src={getImageUrl(img.archivo_nombre)}
                         alt={img.descripcion || img.archivo_original}
                         loading="lazy"
                         onError={(e) => { e.target.style.display = 'none'; }}
@@ -331,7 +336,7 @@ function ConsultaTimeline({ c, onRecargar }) {
             </div>
             <div className="image-viewer-canvas">
               <img
-                src={`${IMG_BASE}/uploads/${imagenes[viewerIndex]?.archivo_nombre}`}
+                src={getImageUrl(imagenes[viewerIndex]?.archivo_nombre)}
                 alt={imagenes[viewerIndex]?.descripcion || ''}
                 style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain' }}
               />

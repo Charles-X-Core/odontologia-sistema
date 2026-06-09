@@ -4,11 +4,19 @@ const multer = require('multer');
 const path = require('path');
 const ctrl = require('../controllers/imagenController');
 
+const BASE_DIR = process.env.UPLOAD_DIR || path.join(__dirname, '..', '..', 'uploads');
+
 const storage = multer.diskStorage({
-  destination: process.env.UPLOAD_DIR || path.join(__dirname, '..', '..', 'uploads'),
+  destination: (req, file, cb) => {
+    const pacienteId = req.body.paciente_id || 'unknown';
+    const consultaId = req.body.consulta_id || 'unknown';
+    const dir = path.join(BASE_DIR, 'evidencias', String(pacienteId), String(consultaId));
+    const fs = require('fs');
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
+  },
   filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, `${Date.now()}-${Math.random().toString(36).slice(2, 8)}${ext}`);
+    cb(null, file.originalname);
   }
 });
 
@@ -26,6 +34,7 @@ const upload = multer({
 router.post('/upload', upload.single('archivo'), ctrl.subir);
 router.get('/paciente/:pacienteId', ctrl.porPaciente);
 router.get('/consulta/:consultaId', ctrl.porConsulta);
+router.get('/file/:filename(*)', ctrl.servir);
 router.delete('/:id', ctrl.eliminar);
 
 module.exports = router;

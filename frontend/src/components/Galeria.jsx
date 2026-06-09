@@ -6,6 +6,11 @@ const API_BASE = isElectron
   ? `http://localhost:18234`
   : (import.meta.env.VITE_API_URL || window.location.origin);
 
+function getImageUrl(filename) {
+  const token = localStorage.getItem('token');
+  return `${API_BASE}/api/imagenes/file/${filename}?token=${token}`;
+}
+
 const TIPO_COLORS = {
   radiografia: { bg: '#dbeafe', text: '#1e40af', label: 'Radiografia' },
   foto: { bg: '#dcfce7', text: '#166534', label: 'Foto' },
@@ -24,7 +29,7 @@ function ImageViewer({ imagenes, index, onClose, onNavigate }) {
   const containerRef = useRef(null);
 
   const img = imagenes[index];
-  const imageUrl = img ? `${API_BASE}/uploads/${img.archivo_nombre}` : '';
+  const imageUrl = img ? getImageUrl(img.archivo_nombre) : '';
 
   useEffect(() => {
     setZoom(1);
@@ -331,7 +336,7 @@ export default function Galeria({ pacienteId }) {
                 <div className="galeria-thumb" onClick={() => setViewerIndex(idx)}>
                   {img.archivo_nombre ? (
                     <img
-                      src={`${API_BASE}/uploads/${img.archivo_nombre}`}
+                      src={getImageUrl(img.archivo_nombre)}
                       alt={img.descripcion || img.archivo_original}
                       loading="lazy"
                       onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}

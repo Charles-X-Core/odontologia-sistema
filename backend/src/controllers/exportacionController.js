@@ -93,6 +93,13 @@ exports.completo = (req, res) => {
       ORDER BY r.id
     `);
 
+    const imagenes = queryAll(`
+      SELECT i.*, p.dni, p.nombres, p.apellido_paterno
+      FROM imagenes i
+      JOIN pacientes p ON i.paciente_id = p.id
+      ORDER BY i.id
+    `);
+
     if (formato === 'csv') {
       const ws = XLSX.utils.json_to_sheet(pacientes);
       const csv = XLSX.utils.sheet_to_csv(ws);
@@ -109,6 +116,7 @@ exports.completo = (req, res) => {
       'Tratamientos': tratamientos,
       'Pagos': pagos,
       'Recetas': recetas,
+      'Evidencias': imagenes,
     });
 
     sendExcel(res, wb, 'estacion_datos_completo');
@@ -236,11 +244,25 @@ exports.exportarBD = (req, res) => {
     if (!fs.existsSync(dbPath)) {
       return res.status(404).json({ error: 'Base de datos no encontrada' });
     }
+    const uploadsDir = path.join(__dirname, '..', '..', 'uploads');
+    const evidenciasDir = path.join(uploadsDir, 'evidencias');
     const fecha = new Date().toISOString().slice(0, 10);
-    const nombreArchivo = `clinica_backup_${fecha}.db`;
-    res.setHeader('Content-Type', 'application/x-sqlite3');
+    const nombreArchivo = `clinica_backup_${fecha}.zip`;
+
+    const archiver = require('archiver');
+    const archive = archiver('zip', { zlib: { level: 5 } });
+
+    res.setHeader('Content-Type', 'application/zip');
     res.setHeader('Content-Disposition', `attachment; filename="${nombreArchivo}"`);
-    res.sendFile(dbPath);
+    archive.pipe(res);
+
+    archive.file(dbPath, { name: 'clinica.db' });
+
+    if (fs.existsSync(evidenciasDir)) {
+      archive.directory(evidenciasDir, 'evidencias');
+    }
+
+    archive.finalize();
   } catch (err) {
     res.status(500).json({ error: 'Error al exportar BD: ' + err.message });
   }
