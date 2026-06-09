@@ -64,7 +64,7 @@ function LayoutAuth() {
         )}
         {view === 'pacientes' && <Pacientes onVerHistorial={verHistorial} onVer360={verPaciente360} />}
         {view === 'historial' && pacienteSeleccionado && (
-          <Historial paciente={pacienteSeleccionado} onVolver={volverPacientes} />
+          <Historial paciente={pacienteSeleccionado} onVolver={volverPacientes} onNuevaConsulta={() => iniciarSesion(pacienteSeleccionado)} />
         )}
         {view === 'paciente360' && pacienteSeleccionado && (
           <Paciente360 paciente={pacienteSeleccionado} onVolver={volverPacientes} onVerHistorial={verHistorial} />

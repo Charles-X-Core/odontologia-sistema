@@ -7,9 +7,10 @@ const PASOS = [
   { id: 2, label: 'Enfermedad', icon: '\u{1F4CB}' },
   { id: 3, label: 'Diagnostico', icon: '\u{1F50D}' },
   { id: 4, label: 'Odontograma', icon: '\u{1F9B7}' },
-  { id: 5, label: 'Recetas', icon: '\u{1F48A}' },
-  { id: 6, label: 'Tratamiento', icon: '\u{1F9B7}' },
-  { id: 7, label: 'Resumen', icon: '\u{1F4CB}' },
+  { id: 5, label: 'Evidencias', icon: '\u{1F4F7}' },
+  { id: 6, label: 'Recetas', icon: '\u{1F48A}' },
+  { id: 7, label: 'Tratamiento', icon: '\u{1F9B7}' },
+  { id: 8, label: 'Resumen', icon: '\u{1F4CB}' },
 ];
 
 const NECESIDADES_DEFAULT = {
@@ -73,7 +74,45 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
     calcularNecesidades(dientes);
   };
 
-  // Paso 5: Recetas
+  // Evidencias handlers
+  const agregarEvidencias = (archivos) => {
+    const nuevas = Array.from(archivos).map(file => ({
+      file,
+      tipo: file.type.startsWith('image/') ? 'foto' : 'documento',
+      descripcion: '',
+      preview: URL.createObjectURL(file),
+    }));
+    setEvidencias(prev => [...prev, ...nuevas]);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setDragOver(false);
+    if (e.dataTransfer.files.length > 0) agregarEvidencias(e.dataTransfer.files);
+  };
+
+  const eliminarEvidencia = (index) => {
+    setEvidencias(prev => {
+      const nueva = [...prev];
+      URL.revokeObjectURL(nueva[index].preview);
+      nueva.splice(index, 1);
+      return nueva;
+    });
+  };
+
+  const actualizarEvidencia = (index, campo, valor) => {
+    setEvidencias(prev => {
+      const nueva = [...prev];
+      nueva[index] = { ...nueva[index], [campo]: valor };
+      return nueva;
+    });
+  };
+
+  // Paso 5: Evidencias
+  const [evidencias, setEvidencias] = useState([]);
+  const [dragOver, setDragOver] = useState(false);
+
+  // Paso 6: Recetas (opcional)
   const [recetas, setRecetas] = useState([{ medicamentos: [{ nombre: '', dosis: '', frecuencia: '', duracion: '' }], indicaciones: '', archivos: [] }]);
 
   // Paso 6: Tratamiento
@@ -276,6 +315,16 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
             indicaciones: r.indicaciones || '',
           });
         }
+      }
+
+      for (const ev of evidencias) {
+        const formData = new FormData();
+        formData.append('archivo', ev.file);
+        formData.append('paciente_id', paciente.id);
+        formData.append('consulta_id', res.id);
+        formData.append('tipo', ev.tipo);
+        formData.append('descripcion', ev.descripcion || '');
+        await api.imagenes.subir(formData);
       }
 
       const TratsValidos = tratamientos.filter(t => t.procedimiento_realizado.trim());
@@ -844,8 +893,66 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
 
         {paso === 5 && (
           <div className="sesion-card">
-            <h3>Recetas Medicas</h3>
-            <p className="sesion-hint">Registra las recetas medicas para esta consulta</p>
+            <h3>Evidencias Clinicas</h3>
+            <p className="sesion-hint">Fotos, radiografias u otros documentos de la consulta</p>
+            <div
+              className={`evidencias-dropzone ${dragOver ? 'drag-over' : ''}`}
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={handleDrop}
+              onClick={() => document.getElementById('evidencia-file-input').click()}
+            >
+              <input
+                id="evidencia-file-input"
+                type="file"
+                accept="image/*"
+                multiple
+                style={{ display: 'none' }}
+                onChange={(e) => { if (e.target.files.length > 0) agregarEvidencias(e.target.files); e.target.value = ''; }}
+              />
+              <div className="evidencias-dropzone-icon">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                  <circle cx="8.5" cy="8.5" r="1.5"/>
+                  <polyline points="21 15 16 10 5 21"/>
+                </svg>
+              </div>
+              <p className="evidencias-dropzone-text">Arrastra imagenes aqui o haz clic para seleccionar</p>
+              <p className="evidencias-dropzone-hint">Fotos, radiografias, panoramicas, intraorales</p>
+            </div>
+            {evidencias.length > 0 && (
+              <div className="evidencias-grid">
+                {evidencias.map((ev, i) => (
+                  <div key={i} className="evidencia-card">
+                    <div className="evidencia-preview">
+                      <img src={ev.preview} alt={`Evidencia ${i + 1}`} />
+                      <button type="button" className="evidencia-remove" onClick={() => eliminarEvidencia(i)}>×</button>
+                    </div>
+                    <div className="evidencia-fields">
+                      <select value={ev.tipo} onChange={e => actualizarEvidencia(i, 'tipo', e.target.value)}>
+                        <option value="foto">Foto</option>
+                        <option value="radiografia">Radiografia</option>
+                        <option value="panoramica">Panoramica</option>
+                        <option value="intraoral">Intraoral</option>
+                      </select>
+                      <input
+                        type="text"
+                        placeholder="Descripcion (opcional)"
+                        value={ev.descripcion}
+                        onChange={e => actualizarEvidencia(i, 'descripcion', e.target.value)}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {paso === 6 && (
+          <div className="sesion-card">
+            <h3>Recetas Medicas <span style={{ fontSize: '14px', fontWeight: 400, color: 'var(--gray-400)' }}>(opcional)</span></h3>
+            <p className="sesion-hint">Si no necesitas receta, puedes saltar este paso</p>
             {recetas.map((r, ri) => (
               <div key={ri} className="sesion-receta-card" style={{ border: '1px solid var(--gray-200)', borderRadius: '10px', padding: '16px', marginBottom: '12px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
@@ -902,7 +1009,7 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
           </div>
         )}
 
-        {paso === 6 && (
+        {paso === 7 && (
           <div className="sesion-card">
             <h3>Registro de Tratamientos</h3>
             <p className="sesion-hint">Define los procedimientos a realizar con sus costos</p>
@@ -929,7 +1036,7 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
           </div>
         )}
 
-        {paso === 7 && (
+        {paso === 8 && (
           <div className="sesion-card">
             <h3>Resumen de la Sesion</h3>
             <div className="resumen-section">
@@ -968,6 +1075,19 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
                 <div className="resumen-necesidades">
                   {Object.entries(necesidades).filter(([_, v]) => v > 0).map(([k, v]) => (
                     <span key={k} className="resumen-badge">{k.replace(/_/g, ' ')}: {v}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {evidencias.length > 0 && (
+              <div className="resumen-section">
+                <h4>Evidencias ({evidencias.length})</h4>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  {evidencias.map((ev, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--gray-100)', padding: '4px 10px', borderRadius: '8px', fontSize: '13px' }}>
+                      <span>{ev.tipo === 'foto' ? 'Foto' : ev.tipo === 'radiografia' ? 'Radiografia' : ev.tipo === 'panoramica' ? 'Panoramica' : 'Intraoral'}</span>
+                      {ev.descripcion && <span style={{ color: 'var(--gray-500)' }}>- {ev.descripcion}</span>}
+                    </div>
                   ))}
                 </div>
               </div>

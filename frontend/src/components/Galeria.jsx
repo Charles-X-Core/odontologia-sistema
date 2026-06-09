@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 
+const API_BASE = import.meta.env.VITE_API_URL || window.location.origin;
+
 const TIPO_COLORS = {
   radiografia: { bg: '#dbeafe', text: '#1e40af', icon: 'X-RAY' },
   foto: { bg: '#dcfce7', text: '#166534', icon: 'FOTO' },
@@ -119,7 +121,7 @@ export default function Galeria({ pacienteId }) {
                 <div className="galeria-placeholder" style={{ background: tipoInfo.bg }} onClick={() => setImagenAmpliada(img)}>
                   {img.archivo_nombre ? (
                     <img
-                      src={`http://localhost:3001/uploads/${img.archivo_nombre}`}
+                      src={`${API_BASE}/uploads/${img.archivo_nombre}`}
                       alt={img.descripcion}
                       style={{ width: '100%', height: '120px', objectFit: 'cover', borderRadius: '8px 8px 0 0' }}
                       onError={(e) => { e.target.style.display = 'none'; }}
@@ -153,7 +155,7 @@ export default function Galeria({ pacienteId }) {
             <div className="galeria-ampliada">
               {imagenAmpliada.archivo_nombre ? (
                 <img
-                  src={`http://localhost:3001/uploads/${imagenAmpliada.archivo_nombre}`}
+                  src={`${API_BASE}/uploads/${imagenAmpliada.archivo_nombre}`}
                   alt={imagenAmpliada.descripcion}
                   style={{ width: '100%', maxHeight: '400px', objectFit: 'contain', borderRadius: '8px' }}
                 />

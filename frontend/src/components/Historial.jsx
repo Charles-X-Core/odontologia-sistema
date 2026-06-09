@@ -1,14 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
 import { api } from '../services/api';
-import Odontograma from './Odontograma';
 import Tratamientos from './Tratamientos';
 import Recetas from './Recetas';
 import Galeria from './Galeria';
 import DiagnosticoPlan from './DiagnosticoPlan';
 import Pagos from './Pagos';
-
-const NECESIDADES_DEFAULT = { cariados: 0, curados: 0, por_extraer: 0, endodoncia: 0, ortodoncia: 0, protesis: 0, extraidos: 0, destartraje: 0 };
-const SIGNOS_VITALES_DEFAULT = { presion_arterial: '', pulso: '', temperatura: '', frecuencia_cardiaca: '', frecuencia_respiratoria: '', peso: '', altura: '' };
 
 function nombreCompleto(p) {
   return `${p.apellido_paterno || ''} ${p.apellido_materno || ''} ${p.nombres || ''}`.trim();
@@ -41,293 +37,6 @@ function ResumenCards({ resumen, onTab }) {
       <div className="resumen-card" onClick={() => onTab('recetas')}>
         <span className="resumen-num">{resumen.total_recetas}</span>
         <span className="resumen-label">Recetas</span>
-      </div>
-    </div>
-  );
-}
-
-// ============================================
-// WIZARD NUEVA CONSULTA (4 pasos)
-// ============================================
-function WizardConsulta({ historia, consultas, onCerrar, onGuardado }) {
-  const [paso, setPaso] = useState(1);
-  const [error, setError] = useState('');
-  const [guardando, setGuardando] = useState(false);
-
-  // Paso 1: Motivo y signos
-  const [motivo, setMotivo] = useState('');
-  const [tiempoEnfermedad, setTiempoEnfermedad] = useState('');
-  const [signosSintomas, setSignosSintomas] = useState('');
-  const [relatoCronologico, setRelatoCronologico] = useState('');
-  const [funcionesBiologicas, setFuncionesBiologicas] = useState('');
-  const [signosVitales, setSignosVitales] = useState({ ...SIGNOS_VITALES_DEFAULT });
-  const [examenClinico, setExamenClinico] = useState('');
-  const [evaluacionOdonto, setEvaluacionOdonto] = useState('');
-
-  // Paso 2: Diagnostico + Odontograma + Necesidades
-  const [diagnosticos, setDiagnosticos] = useState([{ texto: '', tipo: 'clinico' }]);
-  const [odontogramaForm, setOdontogramaForm] = useState({});
-  const [necesidades, setNecesidades] = useState({ ...NECESIDADES_DEFAULT });
-  const [necesidadesAuto, setNecesidadesAuto] = useState(false);
-
-  const calcularNecesidades = (dientes) => {
-    const nec = { cariados: 0, curados: 0, por_extraer: 0, endodoncia: 0, ortodoncia: 0, protesis: 0, extraidos: 0, destartraje: 0 };
-    Object.values(dientes).forEach(estado => {
-      if (estado === 'caries') nec.cariados++;
-      else if (estado === 'obturado') nec.curados++;
-      else if (estado === 'extraccion') nec.por_extraer++;
-      else if (estado === 'endodoncia') nec.endodoncia++;
-      else if (estado === 'ausente') nec.extraidos++;
-      else if (['corona', 'implante', 'puente', 'provisional'].includes(estado)) nec.protesis++;
-    });
-    setNecesidades(nec);
-    setNecesidadesAuto(true);
-  };
-
-  const handleOdontogramaChange = (dientes) => {
-    setOdontogramaForm(dientes);
-    calcularNecesidades(dientes);
-  };
-
-  // Paso 3: Tratamientos
-  const [tratamientos, setTratamientos] = useState([{ procedimiento_realizado: '', pieza_dental: '', costo_total: '', monto_a_cuenta: '', notas: '' }]);
-
-  // Paso 4: Recetas
-  const [recetas, setRecetas] = useState([{ medicamentos: [{ nombre: '', dosis: '', frecuencia: '', duracion: '' }], indicaciones: '' }]);
-
-  const PASOS = [
-    { num: 1, label: 'Consulta', icon: '📋' },
-    { num: 2, label: 'Diagnostico', icon: '🔍' },
-    { num: 3, label: 'Tratamientos', icon: '🦷' },
-    { num: 4, label: 'Recetas', icon: '💊' },
-  ];
-
-  const agregarDiagnostico = () => setDiagnosticos([...diagnosticos, { texto: '', tipo: 'clinico' }]);
-  const eliminarDiagnostico = (i) => { if (diagnosticos.length > 1) setDiagnosticos(diagnosticos.filter((_, idx) => idx !== i)); };
-
-  const agregarTratamiento = () => setTratamientos([...tratamientos, { procedimiento_realizado: '', pieza_dental: '', costo_total: '', monto_a_cuenta: '', notas: '' }]);
-  const eliminarTratamiento = (i) => { if (tratamientos.length > 1) setTratamientos(tratamientos.filter((_, idx) => idx !== i)); };
-  const actualizarTratamiento = (i, campo, valor) => {
-    const n = [...tratamientos];
-    n[i][campo] = valor;
-    setTratamientos(n);
-  };
-
-  const agregarReceta = () => setRecetas([...recetas, { medicamentos: [{ nombre: '', dosis: '', frecuencia: '', duracion: '' }], indicaciones: '' }]);
-  const eliminarReceta = (i) => { if (recetas.length > 1) setRecetas(recetas.filter((_, idx) => idx !== i)); };
-  const agregarMedicamento = (ri) => {
-    const n = [...recetas];
-    n[ri].medicamentos = [...n[ri].medicamentos, { nombre: '', dosis: '', frecuencia: '', duracion: '' }];
-    setRecetas(n);
-  };
-  const actualizarMedicamento = (ri, mi, campo, valor) => {
-    const n = [...recetas];
-    n[ri].medicamentos[mi][campo] = valor;
-    setRecetas(n);
-  };
-
-  const guardar = async () => {
-    if (!motivo.trim()) { setError('El motivo es obligatorio'); setPaso(1); return; }
-    setGuardando(true);
-    setError('');
-    try {
-      const now = new Date();
-      const res = await api.consultas.crear({
-        historia_id: historia.id,
-        fecha: now.toISOString(),
-        hora: now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
-        motivo, tiempo_enfermedad: tiempoEnfermedad, signos_sintomas: signosSintomas,
-        relato_cronologico: relatoCronologico, funciones_biologicas: funcionesBiologicas,
-        signos_vitales: signosVitales, examen_clinico_general: examenClinico,
-        evaluacion_odontoestomatologica: evaluacionOdonto,
-        diagnostico_lista: diagnosticos.filter(d => d.texto.trim()),
-        plan_tratamiento: { descripcion: '', procedimientos: '', secuencia: '' },
-        notas: '',
-      });
-      if (res.error) { setError(res.error); setGuardando(false); return; }
-      const consultaId = res.id;
-
-      // Odontograma
-      if (Object.keys(odontogramaForm).length > 0) {
-        await api.odontogramas.crear({ consulta_id: consultaId, datos_json: { version: consultas.length + 1, dientes: odontogramaForm } });
-      }
-
-      // Necesidades
-      if (Object.values(necesidades).some(v => v > 0)) {
-        await api.necesidades.crear({ consulta_id: consultaId, ...necesidades });
-      }
-
-      // Tratamientos
-      for (const t of tratamientos) {
-        if (!t.procedimiento_realizado.trim()) continue;
-        await api.tratamientos.crear({
-          paciente_id: historia.paciente_id,
-          consulta_id: consultaId,
-          fecha: now.toISOString().split('T')[0],
-          pieza_dental: t.pieza_dental,
-          procedimiento_realizado: t.procedimiento_realizado,
-          costo_total: parseFloat(t.costo_total) || 0,
-          monto_a_cuenta: parseFloat(t.monto_a_cuenta) || 0,
-          notas: t.notas,
-        });
-      }
-
-      // Recetas
-      for (const r of recetas) {
-        const meds = r.medicamentos.filter(m => m.nombre.trim());
-        if (meds.length === 0) continue;
-        await api.recetas.crear({
-          consulta_id: consultaId,
-          paciente_id: historia.paciente_id,
-          medicamentos: meds,
-          indicaciones: r.indicaciones,
-        });
-      }
-
-      onGuardado?.();
-    } catch (err) {
-      setError('Error: ' + err.message);
-    }
-    setGuardando(false);
-  };
-
-  return (
-    <div className="modal-overlay" onClick={onCerrar}>
-      <div className="modal modal-lg" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3>Nueva Consulta</h3>
-          <button className="btn-close" onClick={onCerrar}>&times;</button>
-        </div>
-
-        <div className="wizard-steps">
-          {PASOS.map(p => (
-            <div key={p.num} className={`wizard-step ${paso === p.num ? 'active' : paso > p.num ? 'completed' : ''}`} onClick={() => { if (paso > p.num) setPaso(p.num); }}>
-              <span className="wizard-step-icon">{paso > p.num ? '✓' : p.icon}</span>
-              <span className="wizard-step-label">{p.label}</span>
-            </div>
-          ))}
-        </div>
-
-        {error && <div className="alert alert-error">{error}</div>}
-
-        {/* PASO 1: Consulta */}
-        {paso === 1 && (
-          <div className="wizard-body">
-            <div className="field"><label>Motivo de consulta *</label><textarea value={motivo} onChange={e => setMotivo(e.target.value)} required rows={2} placeholder="Motivo de la consulta..." /></div>
-            <div className="field"><label>Tiempo de Enfermedad</label><input type="text" value={tiempoEnfermedad} onChange={e => setTiempoEnfermedad(e.target.value)} placeholder="Ej: 3 dias" /></div>
-            <div className="field"><label>Signos y Sintomas</label><textarea value={signosSintomas} onChange={e => setSignosSintomas(e.target.value)} rows={2} /></div>
-            <div className="field"><label>Relato Cronologico</label><textarea value={relatoCronologico} onChange={e => setRelatoCronologico(e.target.value)} rows={2} /></div>
-            <div className="field"><label>Funciones Biologicas</label><textarea value={funcionesBiologicas} onChange={e => setFuncionesBiologicas(e.target.value)} rows={2} /></div>
-            <h4>Signos Vitales</h4>
-            <div className="form-grid-5">
-              <div className="field"><label>PA</label><input type="text" value={signosVitales.presion_arterial} onChange={e => setSignosVitales({...signosVitales, presion_arterial: e.target.value})} placeholder="120/80" /></div>
-              <div className="field"><label>Pulso</label><input type="text" value={signosVitales.pulso} onChange={e => setSignosVitales({...signosVitales, pulso: e.target.value})} placeholder="78" /></div>
-              <div className="field"><label>Temp</label><input type="text" value={signosVitales.temperatura} onChange={e => setSignosVitales({...signosVitales, temperatura: e.target.value})} placeholder="36.5" /></div>
-              <div className="field"><label>FC</label><input type="text" value={signosVitales.frecuencia_cardiaca} onChange={e => setSignosVitales({...signosVitales, frecuencia_cardiaca: e.target.value})} placeholder="72" /></div>
-              <div className="field"><label>FR</label><input type="text" value={signosVitales.frecuencia_respiratoria} onChange={e => setSignosVitales({...signosVitales, frecuencia_respiratoria: e.target.value})} placeholder="16" /></div>
-            </div>
-            <div className="form-grid-3" style={{ marginTop: '12px' }}>
-              <div className="field"><label>Peso (kg)</label><input type="text" value={signosVitales.peso || ''} onChange={e => setSignosVitales({...signosVitales, peso: e.target.value})} placeholder="70" /></div>
-              <div className="field"><label>Altura (cm)</label><input type="text" value={signosVitales.altura || ''} onChange={e => setSignosVitales({...signosVitales, altura: e.target.value})} placeholder="170" /></div>
-              {signosVitales.peso && signosVitales.altura && (
-                <div className="field"><label>IMC</label><input type="text" readOnly className="field-readonly" value={(parseFloat(signosVitales.peso) / Math.pow(parseFloat(signosVitales.altura) / 100, 2)).toFixed(1)} /></div>
-              )}
-            </div>
-            <div className="field"><label>Examen Clinico General</label><textarea value={examenClinico} onChange={e => setExamenClinico(e.target.value)} rows={2} /></div>
-            <div className="field"><label>Evaluacion Odontoestomatologica</label><textarea value={evaluacionOdonto} onChange={e => setEvaluacionOdonto(e.target.value)} rows={2} /></div>
-          </div>
-        )}
-
-        {/* PASO 2: Diagnostico + Odontograma */}
-        {paso === 2 && (
-          <div className="wizard-body">
-            <h4>Diagnosticos</h4>
-            {diagnosticos.map((d, i) => (
-              <div key={i} className="sesion-tratamiento-row">
-                <textarea className="diagnostico-input" placeholder="Diagnostico" value={d.texto} onChange={e => { const n = [...diagnosticos]; n[i].texto = e.target.value; setDiagnosticos(n); }} rows={3} />
-                {diagnosticos.length > 1 && <button type="button" className="btn-remove-sesion" onClick={() => eliminarDiagnostico(i)}>&times;</button>}
-              </div>
-            ))}
-            <button type="button" className="btn btn-sm btn-secondary" onClick={agregarDiagnostico}>+ Diagnostico</button>
-
-            <div className="necesidades-inline" style={{ marginTop: '16px' }}>
-              <label className="necesidades-inline-label">Necesidades Odontologicas {necesidadesAuto && <span style={{ fontSize: '11px', color: 'var(--success)', fontWeight: 400 }}>(calculado del odontograma)</span>}</label>
-              <div className="necesidades-inline-grid">
-                {Object.entries({ cariados: 'Cariados', curados: 'Curados', por_extraer: 'Por Extraer', endodoncia: 'Endodoncia', ortodoncia: 'Orto', protesis: 'Protesis', extraidos: 'Extraidos', destartraje: 'Destartraje' }).map(([key, label]) => (
-                  <div key={key} className="necesidad-inline-item">
-                    <label>{label}</label>
-                    <input type="number" min="0" max="99" value={necesidades[key]} onChange={e => { setNecesidades({ ...necesidades, [key]: parseInt(e.target.value) || 0 }); setNecesidadesAuto(false); }} />
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <Odontograma datos={odontogramaForm} onGuardar={handleOdontogramaChange} titulo="Odontograma de la consulta (opcional)" />
-          </div>
-        )}
-
-        {/* PASO 3: Tratamientos */}
-        {paso === 3 && (
-          <div className="wizard-body">
-            <p className="text-muted">Agrega los tratamientos realizados en esta consulta. Todos deben estar vinculados.</p>
-            {tratamientos.map((t, i) => (
-              <div key={i} className="wizard-tratamiento-card">
-                <div className="wizard-tratamiento-header">
-                  <span>Tratamiento {i + 1}</span>
-                  {tratamientos.length > 1 && <button type="button" className="btn btn-sm btn-danger" onClick={() => eliminarTratamiento(i)}>X</button>}
-                </div>
-                <div className="form-grid-3">
-                  <div className="field"><label>Procedimiento *</label><input type="text" value={t.procedimiento_realizado} onChange={e => actualizarTratamiento(i, 'procedimiento_realizado', e.target.value)} placeholder="Ej: Corona ceramica" /></div>
-                  <div className="field"><label>Pieza Dental</label><input type="text" value={t.pieza_dental} onChange={e => actualizarTratamiento(i, 'pieza_dental', e.target.value)} placeholder="Ej: 16" /></div>
-                  <div className="field"><label>Costo (S/)</label><input type="number" value={t.costo_total} onChange={e => actualizarTratamiento(i, 'costo_total', e.target.value)} min="0" step="0.01" /></div>
-                </div>
-                <div className="form-grid-2">
-                  <div className="field"><label>A Cuenta (S/)</label><input type="number" value={t.monto_a_cuenta} onChange={e => actualizarTratamiento(i, 'monto_a_cuenta', e.target.value)} min="0" step="0.01" /></div>
-                  <div className="field"><label>Notas</label><input type="text" value={t.notas} onChange={e => actualizarTratamiento(i, 'notas', e.target.value)} placeholder="Observaciones..." /></div>
-                </div>
-              </div>
-            ))}
-            <button type="button" className="btn btn-sm btn-secondary" onClick={agregarTratamiento}>+ Agregar Tratamiento</button>
-          </div>
-        )}
-
-        {/* PASO 4: Recetas */}
-        {paso === 4 && (
-          <div className="wizard-body">
-            <p className="text-muted">Agrega las recetas medicas para esta consulta.</p>
-            {recetas.map((r, ri) => (
-              <div key={ri} className="wizard-receta-card">
-                <div className="wizard-tratamiento-header">
-                  <span>Receta {ri + 1}</span>
-                  {recetas.length > 1 && <button type="button" className="btn btn-sm btn-danger" onClick={() => eliminarReceta(ri)}>X</button>}
-                </div>
-                {r.medicamentos.map((m, mi) => (
-                  <div key={mi} className="medicamento-row">
-                    <input type="text" placeholder="Nombre" value={m.nombre} onChange={e => actualizarMedicamento(ri, mi, 'nombre', e.target.value)} />
-                    <input type="text" placeholder="Dosis" value={m.dosis} onChange={e => actualizarMedicamento(ri, mi, 'dosis', e.target.value)} />
-                    <input type="text" placeholder="Frecuencia" value={m.frecuencia} onChange={e => actualizarMedicamento(ri, mi, 'frecuencia', e.target.value)} />
-                    <input type="text" placeholder="Duracion" value={m.duracion} onChange={e => actualizarMedicamento(ri, mi, 'duracion', e.target.value)} />
-                    {r.medicamentos.length > 1 && <button type="button" className="btn-remove" onClick={() => { const n = [...recetas]; n[ri].medicamentos = n[ri].medicamentos.filter((_, idx) => idx !== mi); setRecetas(n); }}>X</button>}
-                  </div>
-                ))}
-                <button type="button" className="btn btn-sm btn-secondary" onClick={() => agregarMedicamento(ri)}>+ Medicamento</button>
-                <div className="field" style={{ marginTop: '8px' }}><label>Indicaciones</label><textarea value={r.indicaciones} onChange={e => { const n = [...recetas]; n[ri].indicaciones = e.target.value; setRecetas(n); }} rows={2} placeholder="Instrucciones para el paciente..." /></div>
-              </div>
-            ))}
-            <button type="button" className="btn btn-sm btn-secondary" onClick={agregarReceta}>+ Agregar Receta</button>
-          </div>
-        )}
-
-        <div className="wizard-footer">
-          {paso > 1 && <button className="btn btn-secondary" onClick={() => setPaso(paso - 1)}>Anterior</button>}
-          <div style={{ flex: 1 }} />
-          <button className="btn btn-secondary" onClick={onCerrar}>Cancelar</button>
-          {paso < 4 ? (
-            <button className="btn btn-primary" onClick={() => setPaso(paso + 1)}>Siguiente</button>
-          ) : (
-            <button className="btn btn-success" onClick={guardar} disabled={guardando}>{guardando ? 'Guardando...' : 'Guardar Consulta'}</button>
-          )}
-        </div>
       </div>
     </div>
   );
@@ -389,7 +98,6 @@ function ConsultaTimeline({ c, onRecargar }) {
   const trats = c.tratamientos || [];
   const recetasArr = c.recetas || [];
   const pagosArr = c.pagos || [];
-  const totalTrat = trats.reduce((s, t) => s + (t.costo_total || 0), 0);
   const totalPagado = pagosArr.reduce((s, p) => s + (p.a_cuenta || 0), 0);
   const signos = typeof c.signos_vitales === 'string' ? parseJson(c.signos_vitales) : (c.signos_vitales || {});
   const plan = typeof c.plan_tratamiento === 'string' ? parseJson(c.plan_tratamiento) : (c.plan_tratamiento || {});
@@ -405,7 +113,6 @@ function ConsultaTimeline({ c, onRecargar }) {
 
         <h4 onClick={() => setExpandido(!expandido)} style={{ cursor: 'pointer' }}>{c.motivo}</h4>
 
-        {/* Badges de resumen */}
         <div className="timeline-badges">
           {trats.length > 0 && <span className="badge badge-tratamientos" onClick={() => setExpandido(true)}>🦷 {trats.length} tratamiento(s)</span>}
           {recetasArr.length > 0 && <span className="badge badge-recetas" onClick={() => setExpandido(true)}>💊 {recetasArr.length} receta(s)</span>}
@@ -413,7 +120,6 @@ function ConsultaTimeline({ c, onRecargar }) {
           {c.odontograma && <span className="badge badge-odontograma" onClick={() => setExpandido(true)}>🩺 Odontograma</span>}
         </div>
 
-        {/* Detalle rapido (siempre visible) */}
         <div className="timeline-details">
           {c.tiempo_enfermedad && <div><strong>Tiempo:</strong> {c.tiempo_enfermedad}</div>}
           {c.signos_sintomas && <div><strong>Sintomas:</strong> {c.signos_sintomas}</div>}
@@ -421,10 +127,8 @@ function ConsultaTimeline({ c, onRecargar }) {
           {c.notas && <div className="notas"><em>{c.notas}</em></div>}
         </div>
 
-        {/* Detalle expandido */}
         {expandido && !editando && (
           <div className="timeline-expanded">
-            {/* Signos vitales */}
             {Object.values(signos).some(v => v) && (
               <div className="timeline-section">
                 <h5>Signos Vitales</h5>
@@ -438,7 +142,6 @@ function ConsultaTimeline({ c, onRecargar }) {
               </div>
             )}
 
-            {/* Diagnostico completo */}
             {parseJson(c.diagnostico_lista).length > 0 && (
               <div className="timeline-section">
                 <h5>Diagnosticos</h5>
@@ -446,7 +149,6 @@ function ConsultaTimeline({ c, onRecargar }) {
               </div>
             )}
 
-            {/* Plan de tratamiento */}
             {(plan.descripcion || plan.procedimientos || plan.secuencia) && (
               <div className="timeline-section">
                 <h5>Plan de Tratamiento</h5>
@@ -456,7 +158,6 @@ function ConsultaTimeline({ c, onRecargar }) {
               </div>
             )}
 
-            {/* Tratamientos vinculados */}
             {trats.length > 0 && (
               <div className="timeline-section">
                 <h5>Tratamientos ({trats.length})</h5>
@@ -474,7 +175,6 @@ function ConsultaTimeline({ c, onRecargar }) {
               </div>
             )}
 
-            {/* Recetas vinculadas */}
             {recetasArr.length > 0 && (
               <div className="timeline-section">
                 <h5>Recetas ({recetasArr.length})</h5>
@@ -487,7 +187,6 @@ function ConsultaTimeline({ c, onRecargar }) {
               </div>
             )}
 
-            {/* Pagos vinculados */}
             {pagosArr.length > 0 && (
               <div className="timeline-section">
                 <h5>Pagos ({pagosArr.length})</h5>
@@ -506,7 +205,6 @@ function ConsultaTimeline({ c, onRecargar }) {
               </div>
             )}
 
-            {/* Necesidades */}
             {c.necesidades && Object.values(c.necesidades).some((v, i) => i > 0 && v > 0) && (
               <div className="timeline-section">
                 <h5>Necesidades Odontologicas</h5>
@@ -523,14 +221,12 @@ function ConsultaTimeline({ c, onRecargar }) {
               </div>
             )}
 
-            {/* Odontograma */}
             {c.odontograma && (
               <div className="timeline-section">
-                <Odontograma datos={typeof c.odontograma === 'string' ? JSON.parse(c.odontograma) : c.odontograma} titulo="Odontograma" />
+                <p><strong>Odontograma:</strong> {Object.keys(typeof c.odontograma === 'string' ? JSON.parse(c.odontograma) : c.odontograma).length} piezas registradas</p>
               </div>
             )}
 
-            {/* Acciones */}
             <div className="timeline-actions">
               <button className="btn btn-sm btn-secondary" onClick={iniciarEdicion}>Editar</button>
               <button className="btn btn-sm btn-danger" onClick={eliminarConsulta}>Eliminar</button>
@@ -538,7 +234,6 @@ function ConsultaTimeline({ c, onRecargar }) {
           </div>
         )}
 
-        {/* Modo edicion inline */}
         {editando && (
           <div className="consulta-inline-edit">
             <div className="field"><label>Motivo</label><input type="text" value={editForm.motivo} onChange={e => setEditForm({...editForm, motivo: e.target.value})} /></div>
@@ -590,16 +285,14 @@ function ConsultaTimeline({ c, onRecargar }) {
 // ============================================
 // MAIN COMPONENT
 // ============================================
-export default function Historial({ paciente, onVolver }) {
+export default function Historial({ paciente, onVolver, onNuevaConsulta }) {
   const [historia, setHistoria] = useState(null);
   const [consultas, setConsultas] = useState([]);
   const [resumen, setResumen] = useState({});
   const [tab, setTab] = useState('consultas');
-  const [mostrarConsulta, setMostrarConsulta] = useState(false);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
 
-  // Busqueda y filtros
   const [busqueda, setBusqueda] = useState('');
   const [fechaDesde, setFechaDesde] = useState('');
   const [fechaHasta, setFechaHasta] = useState('');
@@ -619,7 +312,6 @@ export default function Historial({ paciente, onVolver }) {
     setCargando(false);
   };
 
-  // Filtrado de consultas
   const consultasFiltradas = useMemo(() => {
     let result = consultas;
     if (busqueda.trim()) {
@@ -654,7 +346,7 @@ export default function Historial({ paciente, onVolver }) {
           <p>DNI: {paciente.dni} {paciente.telefono ? `| Tel: ${paciente.telefono}` : ''}</p>
         </div>
         {historia && (
-          <button className="btn btn-primary" onClick={() => setMostrarConsulta(true)}>
+          <button className="btn btn-primary" onClick={() => onNuevaConsulta?.()}>
             + Nueva Consulta
           </button>
         )}
@@ -712,14 +404,12 @@ export default function Historial({ paciente, onVolver }) {
         <div className="tab-content">
           {tab === 'consultas' && (
             <div>
-              {/* Busqueda y filtros */}
               <div className="historial-filtros">
                 <input type="text" className="busqueda-input" placeholder="Buscar por motivo, diagnostico, sintomas..." value={busqueda} onChange={e => setBusqueda(e.target.value)} />
                 <input type="date" className="busqueda-fecha" value={fechaDesde} onChange={e => setFechaDesde(e.target.value)} title="Desde" />
                 <input type="date" className="busqueda-fecha" value={fechaHasta} onChange={e => setFechaHasta(e.target.value)} title="Hasta" />
                 <span className="busqueda-count">{consultasFiltradas.length} de {consultas.length}</span>
               </div>
-              {/* Timeline */}
               {consultasFiltradas.length === 0 ? (
                 <p className="empty">{consultas.length === 0 ? 'No hay consultas registradas' : 'No se encontraron consultas con esos filtros'}</p>
               ) : (
@@ -748,10 +438,6 @@ export default function Historial({ paciente, onVolver }) {
           )}
         </div>
       </div>
-
-      {mostrarConsulta && historia && (
-        <WizardConsulta historia={historia} consultas={consultas} onCerrar={() => setMostrarConsulta(false)} onGuardado={() => { setMostrarConsulta(false); cargarHistorial(); }} />
-      )}
     </div>
   );
 }
