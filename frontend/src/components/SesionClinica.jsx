@@ -33,8 +33,14 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
   const [necesidadesPrevias, setNecesidadesPrevias] = useState(null);
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState('');
+  const [toast, setToast] = useState(null);
   const [verHistorial, setVerHistorial] = useState(false);
   const [consultaExpandida, setConsultaExpandida] = useState(null);
+
+  const showToast = (msg, tipo = 'error') => {
+    setToast({ msg, tipo });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   // Paso 2: Enfermedad Actual
   const [motivo, setMotivo] = useState('');
@@ -167,10 +173,9 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
 
   const siguiente = () => {
     if (paso === 2 && !motivo.trim()) {
-      setMensaje('El motivo de consulta es obligatorio');
+      showToast('El motivo de consulta es obligatorio');
       return;
     }
-    setMensaje('');
     if (paso < PASOS.length) setPaso(paso + 1);
   };
   const anterior = () => { if (paso > 1) setPaso(paso - 1); };
@@ -1148,6 +1153,13 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
           )}
         </div>
       </div>
+
+      {toast && (
+        <div className={`sesion-toast sesion-toast-${toast.tipo}`}>
+          <span className="sesion-toast-icon">{toast.tipo === 'error' ? '\u26A0' : '\u2714'}</span>
+          {toast.msg}
+        </div>
+      )}
     </div>
   );
 }
