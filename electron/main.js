@@ -196,6 +196,14 @@ function registerIPC() {
     app.relaunch();
     app.exit(0);
   });
+  ipcMain.handle('window-minimize', () => { if (mainWindow) mainWindow.minimize(); });
+  ipcMain.handle('window-maximize', () => {
+    if (mainWindow) {
+      mainWindow.isMaximized() ? mainWindow.unmaximize() : mainWindow.maximize();
+    }
+  });
+  ipcMain.handle('window-close', () => { if (mainWindow) mainWindow.close(); });
+  ipcMain.handle('window-is-maximized', () => mainWindow ? mainWindow.isMaximized() : false);
 }
 
 function createWindow() {
@@ -203,6 +211,8 @@ function createWindow() {
     width: 1280, height: 800, minWidth: 900, minHeight: 600,
     title: 'Vita Mirabilis',
     icon: path.join(__dirname, 'logo.ico'),
+    frame: false,
+    titleBarStyle: 'hidden',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
@@ -215,6 +225,7 @@ function createWindow() {
 
   mainWindow.once('ready-to-show', () => {
     console.log('[MAIN] Window ready to show');
+    mainWindow.maximize();
     mainWindow.show();
     checkWhatsAppStatus();
   });

@@ -341,7 +341,102 @@ body {
 /* ========== LAYOUT ========== */
 .layout {
   display: flex;
-  min-height: 100vh;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.layout-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ========== TITLEBAR ========== */
+.titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 36px;
+  background: var(--gray-900);
+  color: white;
+  -webkit-app-region: drag;
+  user-select: none;
+  flex-shrink: 0;
+  z-index: 200;
+}
+
+.titlebar-drag {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  padding-left: 14px;
+  height: 100%;
+}
+
+.titlebar-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  color: rgba(255,255,255,0.9);
+}
+
+.titlebar-controls {
+  display: flex;
+  -webkit-app-region: no-drag;
+  height: 100%;
+}
+
+.titlebar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 100%;
+  border: none;
+  background: transparent;
+  color: rgba(255,255,255,0.7);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.titlebar-btn:hover {
+  background: rgba(255,255,255,0.1);
+  color: white;
+}
+
+.titlebar-close:hover {
+  background: #e81123;
+  color: white;
+}
+
+/* ========== CUSTOM SCROLLBAR ========== */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--gray-300);
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--gray-400);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 /* ========== SIDEBAR ========== */
@@ -351,10 +446,8 @@ body {
   color: white;
   display: flex;
   flex-direction: column;
-  position: fixed;
-  top: 0;
-  left: 0;
-  bottom: 0;
+  flex-shrink: 0;
+  overflow-y: auto;
   z-index: 100;
 }
 
@@ -467,11 +560,11 @@ body {
 /* ========== MAIN CONTENT ========== */
 .main-content {
   flex: 1;
-  margin-left: var(--sidebar-width);
   padding: 32px;
   max-width: 1200px;
   min-width: 0;
   overflow-x: hidden;
+  overflow-y: auto;
 }
 
 /* ========== PAGE HEADER ========== */
@@ -5878,7 +5971,7 @@ body {
   .sidebar-brand { justify-content: center; padding: 16px; }
   .sidebar-item { justify-content: center; padding: 10px; }
   .sidebar-footer { justify-content: center; }
-  .main-content { margin-left: 60px; padding: 16px; }
+  .main-content { padding: 16px; }
   .form-grid { grid-template-columns: 1fr; }
   .form-grid-3 { grid-template-columns: 1fr; }
   .form-grid-5 { grid-template-columns: repeat(2, 1fr); }

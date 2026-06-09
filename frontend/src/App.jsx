@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from './context/AuthContext';
 import Login from './components/Login';
+import TitleBar from './components/TitleBar';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import Pacientes from './components/Pacientes';
@@ -53,8 +54,10 @@ function LayoutAuth() {
 
   return (
     <div className="layout">
-      <Sidebar active={view} onNavigate={setView} />
-      <main className="main-content">
+      <TitleBar />
+      <div className="layout-body">
+        <Sidebar active={view} onNavigate={setView} />
+        <main className="main-content">
         {view === 'dashboard' && <Dashboard onNavigate={setView} />}
         {view === 'recepcion' && (
           <Recepcion onVolver={() => setView('dashboard')} onStartSesion={iniciarSesion} />
@@ -79,6 +82,7 @@ function LayoutAuth() {
           <WhatsAppPanel onVolver={() => setView('dashboard')} />
         )}
       </main>
+      </div>
     </div>
   );
 }
