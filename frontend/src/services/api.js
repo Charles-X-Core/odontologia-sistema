@@ -106,6 +106,7 @@ export const api = {
     porConsulta: (consultaId) => request(`/imagenes/consulta/${consultaId}`),
     eliminar: (id) => request(`/imagenes/${id}`, { method: 'DELETE' }),
     subir: (formData) => uploadFile('/imagenes/upload', formData),
+    generarQR: (pacienteId) => request('/imagenes/qr-upload', { method: 'POST', body: JSON.stringify({ paciente_id: pacienteId }) }),
   },
 
   necesidades: {

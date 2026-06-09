@@ -18,6 +18,8 @@ const upload = multer({
 });
 
 router.post('/upload', upload.single('archivo'), ctrl.subir);
+router.post('/qr-upload', ctrl.generarQR);
+router.post('/upload-movil', upload.single('archivo'), ctrl.subirMovil);
 router.get('/paciente/:pacienteId', ctrl.porPaciente);
 router.get('/consulta/:consultaId', ctrl.porConsulta);
 router.get('/file/:filename(*)', ctrl.servir);

@@ -220,8 +220,36 @@ export default function Galeria({ pacienteId }) {
   const [subiendo, setSubiendo] = useState(false);
   const [uploadForm, setUploadForm] = useState({ tipo: 'foto', descripcion: '' });
   const [archivoSeleccionado, setArchivoSeleccionado] = useState(null);
+  const [mostrarQR, setMostrarQR] = useState(false);
+  const [qrData, setQrData] = useState(null);
+  const [generandoQR, setGenerandoQR] = useState(false);
+  const [nuevasCount, setNuevasCount] = useState(0);
+  const imagenesRef = useRef(imagenes);
+
+  useEffect(() => { imagenesRef.current = imagenes; }, [imagenes]);
 
   useEffect(() => { cargar(); }, [pacienteId]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!pacienteId) return;
+      api.imagenes.porPaciente(pacienteId).then(data => {
+        const prev = imagenesRef.current;
+        if (data.length > prev.length) {
+          setNuevasCount(data.length - prev.length);
+        }
+        setImagenes(data);
+      }).catch(() => {});
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [pacienteId]);
+
+  useEffect(() => {
+    if (nuevasCount > 0) {
+      const timer = setTimeout(() => setNuevasCount(0), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [nuevasCount]);
 
   const cargar = async () => {
     try {
@@ -231,6 +259,18 @@ export default function Galeria({ pacienteId }) {
       setImagenes([]);
     }
     setCargando(false);
+  };
+
+  const handleGenerarQR = async () => {
+    setGenerandoQR(true);
+    try {
+      const data = await api.imagenes.generarQR(pacienteId);
+      setQrData(data);
+      setMostrarQR(true);
+    } catch {
+      alert('Error al generar QR');
+    }
+    setGenerandoQR(false);
   };
 
   const handleSubir = async (e) => {
@@ -274,15 +314,23 @@ export default function Galeria({ pacienteId }) {
     <div className="galeria-panel">
       <div className="tratamientos-header">
         <div className="galeria-filtros">
-          <button className={`filtro-btn ${filtro === 'todas' ? 'active' : ''}`} onClick={() => setFiltro('todas')}>Todas ({imagenes.length})</button>
+          <button className={`filtro-btn ${filtro === 'todas' ? 'active' : ''}`} onClick={() => setFiltro('todas')}>
+            Todas ({imagenes.length})
+            {nuevasCount > 0 && <span className="badge-nuevas">+{nuevasCount}</span>}
+          </button>
           <button className={`filtro-btn ${filtro === 'radiografia' ? 'active' : ''}`} onClick={() => setFiltro('radiografia')}>Radiografias</button>
           <button className={`filtro-btn ${filtro === 'foto' ? 'active' : ''}`} onClick={() => setFiltro('foto')}>Fotos</button>
           <button className={`filtro-btn ${filtro === 'panoramica' ? 'active' : ''}`} onClick={() => setFiltro('panoramica')}>Panoramicas</button>
           <button className={`filtro-btn ${filtro === 'intraoral' ? 'active' : ''}`} onClick={() => setFiltro('intraoral')}>Intraorales</button>
         </div>
-        <button className="btn btn-primary btn-sm" onClick={() => setMostrarUpload(true)}>
-          + Subir Imagen
-        </button>
+        <div style={{ display: 'flex', gap: '6px' }}>
+          <button className="btn btn-secondary btn-sm" onClick={handleGenerarQR} disabled={generandoQR}>
+            {generandoQR ? 'Generando...' : '📱 Subir desde Celular'}
+          </button>
+          <button className="btn btn-primary btn-sm" onClick={() => setMostrarUpload(true)}>
+            + Subir Imagen
+          </button>
+        </div>
       </div>
 
       {mostrarUpload && (
@@ -368,6 +416,37 @@ export default function Galeria({ pacienteId }) {
           onClose={() => setViewerIndex(null)}
           onNavigate={handleNavigate}
         />
+      )}
+
+      {mostrarQR && qrData && (
+        <div className="image-viewer-overlay" onClick={() => setMostrarQR(false)}>
+          <div style={{
+            background: 'white', borderRadius: '16px', padding: '32px', maxWidth: '380px',
+            width: '90%', textAlign: 'center', boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+            position: 'relative', top: '50%', transform: 'translateY(-50%)'
+          }} onClick={e => e.stopPropagation()}>
+            <h3 style={{ marginBottom: '4px', fontSize: '18px', color: '#1a1a2e' }}>Subir desde celular</h3>
+            <p style={{ fontSize: '13px', color: '#666', marginBottom: '16px' }}>
+              Escanea el codigo QR con la camara de tu celular
+            </p>
+            <p style={{ fontSize: '14px', fontWeight: '600', color: '#2563eb', marginBottom: '16px' }}>
+              {qrData.paciente}
+            </p>
+            <div style={{ padding: '12px', background: '#f8fafc', borderRadius: '12px', marginBottom: '16px' }}>
+              <img src={qrData.qr} alt="QR Upload" style={{ width: '220px', height: '220px' }} />
+            </div>
+            <p style={{ fontSize: '11px', color: '#999', marginBottom: '16px' }}>
+              Expira en {qrData.expira_en}
+            </p>
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+              <button className="btn btn-secondary btn-sm" onClick={() => setMostrarQR(false)}>Cerrar</button>
+              <button className="btn btn-primary btn-sm" onClick={() => {
+                navigator.clipboard.writeText(qrData.url);
+                alert('URL copiada al portapapeles');
+              }}>Copiar URL</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

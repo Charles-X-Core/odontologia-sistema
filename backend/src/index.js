@@ -130,6 +130,16 @@ app.get('/uploads/:filename', (req, res) => {
   });
 });
 
+const uploadMovilPath = path.join(__dirname, '..', 'uploadmovil.html');
+app.get('/upload', (req, res) => {
+  const fs = require('fs');
+  if (fs.existsSync(uploadMovilPath)) {
+    res.sendFile(uploadMovilPath);
+  } else {
+    res.status(404).send('Pagina de upload no encontrada');
+  }
+});
+
 app.use(express.static(frontendPath));
 app.get('*', (req, res) => {
   if (!req.path.startsWith('/api')) {
