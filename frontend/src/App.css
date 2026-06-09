@@ -356,13 +356,14 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 36px;
-  background: var(--gray-900);
+  height: 38px;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
   color: white;
   -webkit-app-region: drag;
   user-select: none;
   flex-shrink: 0;
   z-index: 200;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
 }
 
 .titlebar-drag {
@@ -376,11 +377,24 @@ body {
 .titlebar-logo {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+}
+
+.titlebar-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
+}
+
+.titlebar-text {
   font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.3px;
-  color: rgba(255,255,255,0.9);
+  letter-spacing: 0.5px;
+  background: linear-gradient(90deg, #e2e8f0, #94a3b8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .titlebar-controls {
@@ -397,19 +411,36 @@ body {
   height: 100%;
   border: none;
   background: transparent;
-  color: rgba(255,255,255,0.7);
+  color: rgba(255,255,255,0.5);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.2s ease;
 }
 
-.titlebar-btn:hover {
-  background: rgba(255,255,255,0.1);
-  color: white;
+.titlebar-minimize {
+  color: #4ade80;
+}
+.titlebar-minimize:hover {
+  background: #4ade80;
+  color: #052e16;
+  box-shadow: inset 0 -2px 0 #166534;
 }
 
+.titlebar-maximize {
+  color: #facc15;
+}
+.titlebar-maximize:hover {
+  background: #facc15;
+  color: #422006;
+  box-shadow: inset 0 -2px 0 #a16207;
+}
+
+.titlebar-close {
+  color: #f87171;
+}
 .titlebar-close:hover {
-  background: #e81123;
+  background: #ef4444;
   color: white;
+  box-shadow: inset 0 -2px 0 #991b1b;
 }
 
 /* ========== CUSTOM SCROLLBAR ========== */
