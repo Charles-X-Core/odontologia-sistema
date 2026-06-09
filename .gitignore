@@ -4,6 +4,7 @@ clinica.db-shm
 clinica.db-wal
 dist/
 dist-electron/
+uploads/
 .env
 *.log
 .wwebjs_cache/
