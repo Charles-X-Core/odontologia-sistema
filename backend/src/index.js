@@ -41,6 +41,25 @@ try {
 } catch(e) { console.error('[INDEX] /api/auth error:', e.message, e.stack); }
 
 try {
+  const multer = require('multer');
+  const storage = multer.memoryStorage();
+  const upload = multer({
+    storage,
+    limits: { fileSize: 10 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+      const allowed = /jpeg|jpg|png|gif|webp/;
+      const ext = allowed.test(path.extname(file.originalname).toLowerCase());
+      const mime = allowed.test(file.mimetype);
+      cb(null, ext && mime);
+    }
+  });
+  const imgCtrl = require('./controllers/imagenController');
+  app.post('/api/imagenes/verificar-token-movil', imgCtrl.verificarTokenMovil);
+  app.post('/api/imagenes/upload-movil', upload.single('archivo'), imgCtrl.subirMovil);
+  console.log('[INDEX] /api/imagenes/mobile OK (sin auth)');
+} catch(e) { console.error('[INDEX] imagenes mobile error:', e.message); }
+
+try {
   app.use('/api/pacientes', auth, require('./routes/pacientes'));
   console.log('[INDEX] /api/pacientes OK');
 } catch(e) { console.error('[INDEX] /api/pacientes error:', e.message); }

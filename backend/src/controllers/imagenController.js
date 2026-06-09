@@ -109,6 +109,35 @@ exports.servir = (req, res) => {
   res.sendFile(filePath);
 };
 
+exports.verificarTokenMovil = (req, res) => {
+  try {
+    const { token } = req.body;
+    if (!token) return res.status(400).json({ error: 'token es obligatorio' });
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (decoded.type !== 'upload_movil') {
+      return res.status(401).json({ error: 'Token invalido' });
+    }
+    if (decoded.used) {
+      return res.status(401).json({ error: 'Token ya utilizado. Solicite uno nuevo.' });
+    }
+
+    const paciente = db.prepare('SELECT id, nombres, apellido_paterno, apellido_materno FROM pacientes WHERE id = ?').get(decoded.paciente_id);
+    if (!paciente) return res.status(404).json({ error: 'Paciente no encontrado' });
+
+    const nombre = `${paciente.apellido_paterno || ''} ${paciente.apellido_materno || ''} ${paciente.nombres || ''}`.trim();
+    res.json({ ok: true, paciente: nombre });
+  } catch (err) {
+    if (err.name === 'TokenExpiredError') {
+      return res.status(401).json({ error: 'Token expirado. Solicite uno nuevo.' });
+    }
+    if (err.name === 'JsonWebTokenError') {
+      return res.status(401).json({ error: 'Token invalido' });
+    }
+    res.status(500).json({ error: err.message });
+  }
+};
+
 exports.generarQR = async (req, res) => {
   try {
     const { paciente_id } = req.body;

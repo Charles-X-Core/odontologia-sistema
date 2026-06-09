@@ -306,14 +306,15 @@
 
     async function verifyToken() {
       try {
-        const res = await fetch('/api/imagenes/upload-movil', {
+        const res = await fetch('/api/imagenes/verificar-token-movil', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token, paciente_id: 0 })
+          body: JSON.stringify({ token })
         });
 
-        if (res.status === 401) {
-          const data = await res.json();
+        const data = await res.json();
+
+        if (!res.ok) {
           showError('Token invalido', data.error || 'El token no es valido o ya expiro.');
           return;
         }
@@ -321,8 +322,8 @@
         document.getElementById('loadingState').style.display = 'none';
         document.getElementById('uploadForm').style.display = 'block';
 
-        document.getElementById('pacienteNombre').textContent = 'Paciente vinculado';
-        document.getElementById('avatar').textContent = 'P';
+        document.getElementById('pacienteNombre').textContent = data.paciente || 'Paciente vinculado';
+        document.getElementById('avatar').textContent = (data.paciente || 'P')[0].toUpperCase();
       } catch {
         document.getElementById('loadingState').style.display = 'none';
         document.getElementById('uploadForm').style.display = 'block';
