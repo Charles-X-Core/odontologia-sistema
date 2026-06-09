@@ -133,7 +133,7 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
   const [dragOver, setDragOver] = useState(false);
 
   // Paso 6: Recetas (opcional)
-  const [recetas, setRecetas] = useState([{ medicamentos: [{ nombre: '', dosis: '', frecuencia: '', duracion: '' }], indicaciones: '', archivos: [] }]);
+  const [recetas, setRecetas] = useState([{ medicamentos: [{ nombre: '', dosis: '', frecuencia: '', duracion: '' }], indicaciones: '' }]);
 
   // Paso 6: Tratamiento
   const [tratamientos, setTratamientos] = useState([{ procedimiento_realizado: '', costo_total: '', monto_a_cuenta: '', pieza_dental: '', notas: '', realizado: false }]);
@@ -209,7 +209,7 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
     setDiagnosticos(diagnosticos.filter((_, i) => i !== index));
   };
 
-  const agregarReceta = () => setRecetas([...recetas, { medicamentos: [{ nombre: '', dosis: '', frecuencia: '', duracion: '' }], indicaciones: '', archivos: [] }]);
+  const agregarReceta = () => setRecetas([...recetas, { medicamentos: [{ nombre: '', dosis: '', frecuencia: '', duracion: '' }], indicaciones: '' }]);
   const eliminarReceta = (i) => { if (recetas.length > 1) setRecetas(recetas.filter((_, idx) => idx !== i)); };
   const actualizarReceta = (i, campo, valor) => { const n = [...recetas]; n[i][campo] = valor; setRecetas(n); };
 
@@ -242,31 +242,6 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
     const n = [...recetas];
     if (n[ri].medicamentos.length <= 1) return;
     n[ri].medicamentos = n[ri].medicamentos.filter((_, idx) => idx !== mi);
-    setRecetas(n);
-  };
-
-  const handleSubirArchivoReceta = async (i, e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const formData = new FormData();
-    formData.append('archivo', file);
-    formData.append('paciente_id', paciente.id);
-    formData.append('tipo', 'foto');
-    formData.append('descripcion', 'Imagen de receta');
-    try {
-      const res = await api.imagenes.subir(formData);
-      if (res.id) {
-        const n = [...recetas];
-        n[i].archivos = [...(n[i].archivos || []), { id: res.id, nombre: res.archivo_nombre, original: res.archivo_original }];
-        setRecetas(n);
-      }
-    } catch {}
-    e.target.value = '';
-  };
-
-  const eliminarArchivoReceta = (ri, ai) => {
-    const n = [...recetas];
-    n[ri].archivos = n[ri].archivos.filter((_, idx) => idx !== ai);
     setRecetas(n);
   };
 
@@ -1019,22 +994,6 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
                   <label>Indicaciones</label>
                   <textarea className="sesion-textarea" value={r.indicaciones} onChange={e => actualizarReceta(ri, 'indicaciones', e.target.value)} placeholder="Instrucciones para el paciente..." rows={2} />
                 </div>
-
-                <div className="field">
-                  <label>Imagenes adjuntas</label>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
-                    <label className="btn btn-sm btn-secondary" style={{ cursor: 'pointer' }}>
-                      Adjuntar imagen
-                      <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => handleSubirArchivoReceta(ri, e)} />
-                    </label>
-                    {(r.archivos || []).map((a, ai) => (
-                      <span key={ai} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'var(--gray-100)', padding: '4px 8px', borderRadius: '6px', fontSize: '12px' }}>
-                        {a.original}
-                        <button type="button" onClick={() => eliminarArchivoReceta(ri, ai)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontWeight: 700 }}>×</button>
-                      </span>
-                    ))}
-                  </div>
-                </div>
               </div>
             ))}
             <button type="button" className="btn btn-sm btn-secondary btn-add-tratamiento" onClick={agregarReceta}>+ Agregar receta</button>
@@ -1136,7 +1095,6 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
                       </span>
                     ))}
                     {r.indicaciones && <div style={{ fontSize: '12px', color: 'var(--gray-500)', marginTop: '2px' }}>Indicaciones: {r.indicaciones.substring(0, 80)}{r.indicaciones.length > 80 ? '...' : ''}</div>}
-                    {r.archivos && r.archivos.length > 0 && <span style={{ fontSize: '12px', color: 'var(--gray-500)' }}>({r.archivos.length} imagen{r.archivos.length > 1 ? 'es' : ''})</span>}
                   </div>
                 ))}
               </div>

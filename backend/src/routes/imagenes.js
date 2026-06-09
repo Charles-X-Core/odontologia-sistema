@@ -4,21 +4,7 @@ const multer = require('multer');
 const path = require('path');
 const ctrl = require('../controllers/imagenController');
 
-const BASE_DIR = process.env.UPLOAD_DIR || path.join(__dirname, '..', '..', 'uploads');
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const pacienteId = req.body.paciente_id || 'unknown';
-    const consultaId = req.body.consulta_id || 'unknown';
-    const dir = path.join(BASE_DIR, 'evidencias', String(pacienteId), String(consultaId));
-    const fs = require('fs');
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    cb(null, dir);
-  },
-  filename: (req, file, cb) => {
-    cb(null, file.originalname);
-  }
-});
+const storage = multer.memoryStorage();
 
 const upload = multer({
   storage,

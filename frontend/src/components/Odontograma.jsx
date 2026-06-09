@@ -104,17 +104,24 @@ export default function Odontograma({ datos = {}, onGuardar, consultaId }) {
   const [herramienta, setHerramienta] = useState('caries');
   const [mostrarTemporales, setMostrarTemporales] = useState(true);
   const [sinColor, setSinColor] = useState(false);
+  const [guardado, setGuardado] = useState(false);
 
   const handleClick = (num) => {
     setEstados(prev => {
       const current = prev[num];
       const next = current === herramienta ? 'sano' : herramienta;
-      return { ...prev, [num]: next };
+      const nuevos = { ...prev, [num]: next };
+      if (onGuardar) onGuardar(nuevos);
+      setGuardado(true);
+      setTimeout(() => setGuardado(false), 1500);
+      return nuevos;
     });
   };
 
   const handleGuardar = () => {
     if (onGuardar) onGuardar(estados);
+    setGuardado(true);
+    setTimeout(() => setGuardado(false), 1500);
   };
 
   return (
@@ -197,7 +204,9 @@ export default function Odontograma({ datos = {}, onGuardar, consultaId }) {
         >
           {sinColor ? 'Modo Color' : 'Sin Color'}
         </button>
-        <button className="btn btn-primary" onClick={handleGuardar}>Guardar Odontograma</button>
+        <button className="btn btn-primary" onClick={handleGuardar}>
+          {guardado ? 'Guardado' : 'Guardar Odontograma'}
+        </button>
       </div>
     </div>
   );

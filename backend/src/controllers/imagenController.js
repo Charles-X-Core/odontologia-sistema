@@ -33,19 +33,21 @@ exports.subir = (req, res) => {
     return res.status(400).json({ error: 'paciente_id es obligatorio' });
   }
   try {
-    const tmpPath = req.file.path;
     const now = new Date();
     const dateStr = now.toISOString().slice(0, 10);
     const timeStr = now.toTimeString().slice(0, 5).replace(':', '-');
+    const secStr = String(now.getSeconds()).padStart(2, '0');
+    const msStr = String(now.getMilliseconds()).padStart(3, '0');
     const tipoStr = tipo || 'foto';
     const ext = path.extname(req.file.originalname);
-    const readableName = `${dateStr}_${timeStr}_${tipoStr}${ext}`;
+    const readableName = `${dateStr}_${timeStr}-${secStr}-${msStr}_${tipoStr}${ext}`;
 
-    const finalDir = path.dirname(tmpPath);
-    if (!fs.existsSync(finalDir)) fs.mkdirSync(finalDir, { recursive: true });
-    const finalPath = path.join(finalDir, readableName);
+    const pacienteDir = path.join(BASE_DIR, 'evidencias', String(paciente_id));
+    const consultaDir = path.join(pacienteDir, String(consulta_id || 'general'));
+    if (!fs.existsSync(consultaDir)) fs.mkdirSync(consultaDir, { recursive: true });
+    const finalPath = path.join(consultaDir, readableName);
 
-    fs.renameSync(tmpPath, finalPath);
+    fs.writeFileSync(finalPath, req.file.buffer);
 
     const hash = computeHash(finalPath);
     const archivoNombre = path.relative(BASE_DIR, finalPath).replace(/\\/g, '/');
