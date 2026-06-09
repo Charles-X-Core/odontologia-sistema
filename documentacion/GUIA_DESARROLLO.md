@@ -459,6 +459,106 @@ npm run pack
 
 ---
 
+## Trabajar con Evidencias (Sprint 3-4)
+
+### Subir imagen desde código frontend
+
+```javascript
+const formData = new FormData();
+formData.append('imagen', file); // File object del input o drag & drop
+formData.append('paciente_id', pacienteId);
+formData.append('consulta_id', consultaId);
+formData.append('tipo', 'radiografia'); // foto, radiografia, panorama, intraoral
+formData.append('descripcion', 'Radiografía panorámica del paciente');
+
+const response = await fetch('/api/imagenes/upload', {
+  method: 'POST',
+  headers: { 'Authorization': `Bearer ${token}` },
+  body: formData
+});
+
+const data = await response.json();
+// data.id → ID de la imagen guardada
+// data.path → ruta relativa en evidencias/
+```
+
+### Drag & Drop en componente
+
+```jsx
+const [dragging, setDragging] = useState(false);
+
+const handleDrop = (e) => {
+  e.preventDefault();
+  setDragging(false);
+  const files = Array.from(e.dataTransfer.files);
+  files.forEach(file => {
+    if (file.type.startsWith('image/')) {
+      subirImagen(file);
+    }
+  });
+};
+
+return (
+  <div
+    className={`upload-zone ${dragging ? 'dragging' : ''}`}
+    onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+    onDragLeave={() => setDragging(false)}
+    onDrop={handleDrop}
+  >
+    Arrastra imágenes aquí
+  </div>
+);
+```
+
+### QR Code para upload móvil
+
+```javascript
+// Generar QR
+const response = await fetch('/api/imagenes/qr-upload', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({ paciente_id: 5 })
+});
+
+const { qr, token: uploadToken, expires_at } = await response.json();
+// qr → imagen QR en base64
+// uploadToken → token temporal para upload
+// expires_at → timestamp de expiración (15 min)
+```
+
+### Obtener evidencias de un paciente
+
+```javascript
+const response = await fetch(`/api/imagenes/paciente/${pacienteId}`, {
+  headers: { 'Authorization': `Bearer ${token}` }
+});
+
+const imagenes = await response.json();
+// imagenes = [
+//   { id, filename, tipo, descripcion, hash_sha256, created_at, consulta_id },
+//   ...
+// ]
+```
+
+### Estructura de carpetas esperada
+
+```
+resources/data/evidencias/
+├── 5/                    ← paciente_id
+│   ├── 12/               ← consulta_id
+│   │   ├── 2026-06-08_14-30_foto-diente-16.jpg
+│   │   └── 2026-06-08_14-32_radiografia.png
+│   └── general/          ← evidencias sin consulta
+│       └── foto-perfil.jpg
+└── 6/
+    └── ...
+```
+
+---
+
 ## Recursos
 
 - **Repositorio**: https://github.com/Charles-X-Core/odontologia-sistema

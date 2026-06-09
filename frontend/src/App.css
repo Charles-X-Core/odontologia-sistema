@@ -41,47 +41,123 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  background: var(--gray-100);
   padding: 20px;
 }
 
-.login-card {
+.login-container {
+  display: flex;
+  width: 100%;
+  max-width: 900px;
+  min-height: 520px;
   background: white;
   border-radius: 16px;
-  padding: 40px;
-  width: 100%;
-  max-width: 400px;
   box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  animation: loginFadeIn 0.4s ease-out;
 }
 
-.login-header {
-  text-align: center;
-  margin-bottom: 32px;
+@keyframes loginFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-.login-logo {
-  margin-bottom: 16px;
+.login-branding {
+  flex: 1;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  padding: 48px 40px;
   display: flex;
+  align-items: center;
   justify-content: center;
 }
 
-.login-logo-img {
-  height: 200px;
+.login-branding-content {
+  text-align: center;
+  color: white;
+}
+
+.login-branding-logo {
+  height: 140px;
   width: auto;
   object-fit: contain;
-  filter: brightness(0);
+  margin-bottom: 24px;
+  filter: brightness(0) invert(1);
 }
 
-.login-header h1 {
-  font-size: 22px;
-  color: var(--gray-900);
+.login-branding h1 {
+  font-size: 28px;
   font-weight: 700;
+  margin-bottom: 8px;
 }
 
-.login-header p {
-  color: var(--gray-500);
+.login-branding > .login-branding-content > p {
   font-size: 14px;
-  margin-top: 4px;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 32px;
+}
+
+.login-features {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: left;
+}
+
+.login-feature {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.login-feature-icon {
+  width: 20px;
+  height: 20px;
+  background: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.login-form-section {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 40px;
+}
+
+.login-form-card {
+  width: 100%;
+  max-width: 320px;
+}
+
+.login-form-header {
+  margin-bottom: 32px;
+}
+
+.login-form-header h2 {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--gray-900);
+  margin-bottom: 4px;
+}
+
+.login-form-header p {
+  font-size: 14px;
+  color: var(--gray-500);
 }
 
 .login-error {
@@ -90,52 +166,142 @@ body {
   padding: 10px 14px;
   border-radius: var(--radius);
   font-size: 13px;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
   border: 1px solid #fecaca;
+  animation: loginShake 0.3s ease-out;
 }
 
-.login-form .field {
-  margin-bottom: 16px;
+@keyframes loginShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
 }
 
-.login-form label {
+.login-field {
+  margin-bottom: 20px;
+}
+
+.login-field label {
   display: block;
   font-size: 13px;
   font-weight: 600;
   color: var(--gray-700);
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 
-.login-form input {
+.login-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.login-input-icon {
+  position: absolute;
+  left: 12px;
+  font-size: 16px;
+  color: var(--gray-400);
+  pointer-events: none;
+}
+
+.login-input-wrapper input {
   width: 100%;
-  padding: 10px 12px;
+  padding: 12px 12px 12px 40px;
   border: 1px solid var(--gray-300);
   border-radius: var(--radius);
   font-size: 14px;
   transition: border-color 0.15s, box-shadow 0.15s;
+  background: var(--gray-50);
 }
 
-.login-form input:focus {
+.login-input-wrapper input:focus {
   outline: none;
   border-color: var(--primary);
   box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+  background: white;
+}
+
+.login-btn {
+  width: 100%;
+  padding: 12px 24px;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-top: 8px;
+}
+
+.login-btn:hover:not(:disabled) {
+  background: var(--primary-dark);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.login-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.login-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.login-btn-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.login-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: loginSpin 0.6s linear infinite;
+}
+
+@keyframes loginSpin {
+  to { transform: rotate(360deg); }
 }
 
 .login-footer {
-  margin-top: 24px;
+  margin-top: 32px;
   text-align: center;
   font-size: 12px;
-  color: var(--gray-500);
+  color: var(--gray-400);
 }
 
-.login-footer code {
-  display: block;
-  margin-top: 4px;
-  background: var(--gray-100);
-  padding: 6px 12px;
-  border-radius: 4px;
-  font-size: 12px;
-  color: var(--gray-700);
+@media (max-width: 768px) {
+  .login-container {
+    flex-direction: column;
+    max-width: 400px;
+    min-height: auto;
+  }
+
+  .login-branding {
+    padding: 32px 24px;
+  }
+
+  .login-branding-logo {
+    height: 100px;
+  }
+
+  .login-branding h1 {
+    font-size: 22px;
+  }
+
+  .login-features {
+    display: none;
+  }
+
+  .login-form-section {
+    padding: 32px 24px;
+  }
 }
 
 /* ========== LAYOUT ========== */
@@ -380,10 +546,74 @@ body {
   color: var(--gray-500);
 }
 
+/* ========== DASHBOARD ========== */
+.dashboard-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.dashboard-header h2 {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--gray-900);
+}
+
+.dashboard-subtitle {
+  font-size: 14px;
+  color: var(--gray-500);
+  margin-top: 2px;
+}
+
+.dashboard-quick-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.quick-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  background: white;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--gray-700);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.quick-action-btn:hover {
+  border-color: var(--gray-300);
+  background: var(--gray-50);
+}
+
+.quick-action-btn.primary {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+.quick-action-btn.primary:hover {
+  background: var(--primary-dark);
+}
+
+.quick-action-icon {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.dashboard-content {
+  margin-top: 8px;
+}
+
 /* ========== STATS ========== */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 16px;
   margin-bottom: 28px;
 }
@@ -394,38 +624,162 @@ body {
   border: 1px solid var(--gray-200);
   padding: 20px;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   cursor: pointer;
-  transition: box-shadow 0.15s;
+  transition: all 0.15s;
+  position: relative;
+  overflow: hidden;
 }
 
-.stat-card:hover { box-shadow: var(--shadow-md); }
+.stat-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
 
 .stat-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .stat-icon.blue { background: var(--primary-light); color: var(--primary); }
 .stat-icon.green { background: var(--success-light); color: var(--success); }
+.stat-icon.amber { background: #fef3c7; color: #92400e; }
+.stat-icon.pink { background: #fce7f3; color: #9d174d; }
+.stat-icon.red { background: #fee2e2; color: #991b1b; }
+
+.stat-info {
+  flex: 1;
+  min-width: 80px;
+}
 
 .stat-value {
   display: block;
-  font-size: 28px;
+  font-size: 24px;
   font-weight: 700;
   color: var(--gray-900);
   line-height: 1;
 }
 
 .stat-label {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--gray-500);
-  margin-top: 2px;
+  margin-top: 4px;
+}
+
+.mini-chart {
+  position: absolute;
+  bottom: 8px;
+  right: 12px;
+  opacity: 0.6;
+}
+
+/* ========== DASHBOARD SKELETON ========== */
+.dashboard-skeleton {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.skeleton-header {
+  width: 200px;
+  height: 28px;
+  background: var(--gray-200);
+  border-radius: 4px;
+  margin-bottom: 8px;
+  animation: shimmer 1.5s infinite;
+}
+
+.skeleton-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.skeleton-stat-card {
+  height: 100px;
+  background: var(--gray-200);
+  border-radius: var(--radius);
+  animation: shimmer 1.5s infinite;
+}
+
+.skeleton-card {
+  height: 300px;
+  background: var(--gray-200);
+  border-radius: var(--radius);
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ========== FILTER BUTTONS ========== */
+.filter-btn {
+  padding: 4px 10px;
+  border: 1px solid var(--gray-200);
+  border-radius: 4px;
+  background: white;
+  font-size: 11px;
+  color: var(--gray-600);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.filter-btn:hover {
+  background: var(--gray-50);
+}
+
+.filter-btn.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+/* ========== EMPTY STATE ========== */
+.empty-state {
+  text-align: center;
+  padding: 48px 24px;
+}
+
+.empty-state-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+  opacity: 0.5;
+}
+
+.empty-state p {
+  color: var(--gray-500);
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+
+.empty-state-btn {
+  padding: 8px 16px;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.empty-state-btn:hover {
+  background: var(--primary-dark);
 }
 
 /* ========== TABLE ========== */
@@ -3547,16 +3901,7 @@ body {
   font-weight: 600;
 }
 
-/* ========== DASHBOARD FILTROS ========== */
-.dashboard-filtros {
-  display: flex;
-  gap: 4px;
-}
-
-.dashboard-filtros .btn {
-  font-size: 11px;
-  padding: 4px 10px;
-}
+/* ========== DASHBOARD FILTROS (legacy - ver filter-btn arriba) ========== */
 
 /* ========== IMPORTAR DATOS ========== */
 .importar-container {

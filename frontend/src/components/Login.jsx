@@ -19,46 +19,96 @@ export default function Login() {
 
   return (
     <div className="login-page">
-      <div className="login-card">
-        <div className="login-header">
-          <div className="login-logo">
-            <img src="/logo2.png" alt="Logo" className="login-logo-img" />
+      <div className="login-container">
+        <div className="login-branding">
+          <div className="login-branding-content">
+            <img src="/logo2.png" alt="Logo" className="login-branding-logo" />
+            <h1>Vita Mirabilis</h1>
+            <p>Sistema de Gestion Odontologica</p>
+            <div className="login-features">
+              <div className="login-feature">
+                <span className="login-feature-icon">&#10003;</span>
+                <span>Historias clinicas digitales</span>
+              </div>
+              <div className="login-feature">
+                <span className="login-feature-icon">&#10003;</span>
+                <span>Odontograma interactivo</span>
+              </div>
+              <div className="login-feature">
+                <span className="login-feature-icon">&#10003;</span>
+                <span>Envio por WhatsApp</span>
+              </div>
+              <div className="login-feature">
+                <span className="login-feature-icon">&#10003;</span>
+                <span>100% portable</span>
+              </div>
+            </div>
           </div>
-          <h1>Vita Mirabilis</h1>
-          <p>Historias Clinicas Digitales</p>
         </div>
 
-        {error && <div className="login-error">{error}</div>}
+        <div className="login-form-section">
+          <div className="login-form-card">
+            <div className="login-form-header">
+              <h2>Bienvenido</h2>
+              <p>Ingresa tus credenciales para acceder</p>
+            </div>
 
-        <form onSubmit={handleSubmit} className="login-form">
-          <div className="field">
-            <label>Usuario</label>
-            <input
-              type="text"
-              value={usuario}
-              onChange={(e) => setUsuario(e.target.value)}
-              placeholder="admin"
-              required
-            />
-          </div>
-          <div className="field">
-            <label>Contrasena</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="admin"
-              required
-            />
-          </div>
-          <button type="submit" className="btn btn-primary btn-full" disabled={cargando}>
-            {cargando ? 'Ingresando...' : 'Iniciar Sesion'}
-          </button>
-        </form>
+            {error && <div className="login-error">{error}</div>}
 
-        <div className="login-footer">
-          <p>Credenciales de prueba:</p>
-          <code>admin / admin &nbsp;|&nbsp; doctor / doctor</code>
+            <form onSubmit={handleSubmit} className="login-form">
+              <div className="login-field">
+                <label htmlFor="usuario">Usuario</label>
+                <div className="login-input-wrapper">
+                  <span className="login-input-icon">&#128100;</span>
+                  <input
+                    id="usuario"
+                    type="text"
+                    value={usuario}
+                    onChange={(e) => setUsuario(e.target.value)}
+                    placeholder="Tu nombre de usuario"
+                    required
+                    autoComplete="username"
+                    autoFocus
+                  />
+                </div>
+              </div>
+
+              <div className="login-field">
+                <label htmlFor="password">Contrasena</label>
+                <div className="login-input-wrapper">
+                  <span className="login-input-icon">&#128274;</span>
+                  <input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Tu contrasena"
+                    required
+                    autoComplete="current-password"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="login-btn"
+                disabled={cargando || !usuario || !password}
+              >
+                {cargando ? (
+                  <span className="login-btn-loading">
+                    <span className="login-spinner"></span>
+                    Ingresando...
+                  </span>
+                ) : (
+                  'Iniciar Sesion'
+                )}
+              </button>
+            </form>
+
+            <div className="login-footer">
+              <p>Vita Mirabilis v1.0</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>

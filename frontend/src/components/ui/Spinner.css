@@ -1,0 +1,34 @@
+.ui-spinner {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ui-spinner-sm .ui-spinner-ring {
+  width: 16px;
+  height: 16px;
+  border-width: 2px;
+}
+
+.ui-spinner-md .ui-spinner-ring {
+  width: 24px;
+  height: 24px;
+  border-width: 3px;
+}
+
+.ui-spinner-lg .ui-spinner-ring {
+  width: 32px;
+  height: 32px;
+  border-width: 3px;
+}
+
+.ui-spinner-ring {
+  border: 3px solid var(--gray-200);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: ui-spinner-spin 0.7s linear infinite;
+}
+
+@keyframes ui-spinner-spin {
+  to { transform: rotate(360deg); }
+}

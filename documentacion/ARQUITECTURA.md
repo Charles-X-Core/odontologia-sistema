@@ -406,6 +406,50 @@ odontologia-sistema/
 
 ---
 
+## Almacenamiento de Evidencias
+
+### Estructura de Carpetas (Sprint 3)
+
+```
+resources/data/evidencias/
+├── {paciente_id}/
+│   ├── {consulta_id}/
+│   │   ├── 2026-06-08_14-30_foto-diente-16.jpg
+│   │   ├── 2026-06-08_14-32_radiografia-panoramica.png
+│   │   └── ...
+│   └── general/
+│       └── foto-general.jpg
+└── ...
+```
+
+### Métodos de Subida (Sprint 4)
+
+| Método | Uso | Seguridad |
+|---|---|---|
+| **Drag & Drop** | Desktop — arrastrar imagen al wizard/galería | JWT auth |
+| **QR Code** | Celular — escanea QR, sube desde página móvil | Token temporal (15min, single-use) |
+| **WhatsApp** | Celular — envía foto al chat de la clínica | Auto-ingest por número conocido |
+| **Web Upload** | Celular — login + upload vía navegador (WiFi local) | JWT auth |
+
+### Seguridad de Imágenes
+
+- **No express-static**: Las imágenes se sirven vía endpoint autenticado (Bearer JWT)
+- **Hash SHA256**: Cada imagen tiene hash en tabla `imagenes` para verificar integridad
+- **Backup incluido**: El backup completo incluye la carpeta `evidencias/`
+- **Referencia DB**: La tabla `imagenes` referencia `paciente_id` + `consulta_id`
+
+### Tabla `imagenes` (columnas nuevas en Sprint 3)
+
+```sql
+ALTER TABLE imagenes ADD COLUMN paciente_id INTEGER REFERENCES pacientes(id);
+ALTER TABLE imagenes ADD COLUMN consulta_id INTEGER REFERENCES consultas(id);
+ALTER TABLE imagenes ADD COLUMN hash_sha256 TEXT DEFAULT '';
+ALTER TABLE imagenes ADD COLUMN tipo TEXT DEFAULT 'foto'; -- foto, radiografia, panorama, intraoral
+ALTER TABLE imagenes ADD COLUMN descripcion TEXT DEFAULT '';
+```
+
+---
+
 ## Decisiones de Diseno Clave
 
 ### ¿Por que Express y no Fastify/Hapi?

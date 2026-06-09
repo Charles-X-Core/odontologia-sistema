@@ -46,6 +46,44 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [1.1.0] — 2026-06-08 — Plan de Mejoras UI/UX
+
+### Plan Aprobado — 6 Sprints
+- Sprint 1: UI + Componentes + Login (rediseño, componentes reutilizables)
+- Sprint 2: Wizard + Navegación (evidencias, recetas opcionales, eliminar modal)
+- Sprint 3: Evidencias — Almacenamiento + Seguridad (estructura carpetas, backup, hash)
+- Sprint 4: Evidencias desde Celular (QR, WhatsApp auto-ingest, web upload)
+- Sprint 5: Firma + Seguridad (firma doctor, rate limiting, roles, CORS)
+- Sprint 6: Paciente 360 + Código Muerto (tab evidencias, eliminar duplicados)
+
+### Decisión: Almacenamiento de Evidencias
+- Estructura: `evidencias/{paciente_id}/{consulta_id}/`
+- Métodos: Drag & Drop desktop + QR Code + WhatsApp auto-ingest + Web Upload
+- Seguridad: JWT auth, SHA256 hash, backup incluido
+
+---
+
+## [1.0.1] — 2026-06-08 — Fase 2.1: Limpieza de Archivos Muertos
+
+### Eliminado
+- `electron/diagnostico.js` (194 líneas)
+- `electron/diagnostico-node.js` (180 líneas)
+- `electron/dockerSetup.js` (61 líneas)
+- `electron/debug_docker.js` (21 líneas)
+- `electron/logo.ico.exe` (1.3MB)
+- `run-diagnostico.js` (14 líneas)
+- `save-qr.ps1` (42 líneas)
+- Root `openwaSetup.js` (101 líneas)
+
+### Corregido
+- `backend/src/utils/chromeFinder.js` restaurado (requerido por `htmlToPdf.js`)
+
+### Commits
+- `5e4de93`: Limpieza de archivos muertos (Fase 2.1)
+- `fd54751`: Restaurar backend/chromeFinder.js (requerido por htmlToPdf)
+
+---
+
 ## [0.9.0] — Pre-portable (no publicado)
 
 ### En desarrollo interno

@@ -551,6 +551,78 @@ Remove-Item "$env:APPDATA\Vita Mirabilis\runner.log"
 
 ---
 
+## 11. Problemas con Evidencias
+
+### Imágenes no aparecen en la galería
+
+**Diagnóstico**:
+```powershell
+# Verificar estructura de carpetas
+Get-ChildItem "resources\data\evidencias" -Recurse -ErrorAction SilentlyContinue
+
+# Verificar permisos
+icacls "resources\data\evidencias"
+```
+
+**Soluciones**:
+1. Verificar que la estructura es `evidencias/{paciente_id}/{consulta_id}/`
+2. Verificar permisos de escritura en la carpeta
+3. Verificar que el hash SHA256 en tabla `imagenes` coincide con el archivo
+4. Verificar que el endpoint retorna las imágenes (no express-static)
+
+### QR Code no funciona
+
+**Causas**:
+1. Token expiró (15 minutos)
+2. Token ya fue usado (single-use)
+3. No está en la misma red WiFi
+
+**Solución**:
+1. Generar nuevo QR desde el desktop
+2. Verificar conexión WiFi del celular
+3. Verificar que el URL del QR apunta a la IP correcta
+
+### WhatsApp no recibe fotos
+
+**Diagnóstico**:
+```powershell
+# Ver log del runner
+Get-Content "$env:APPDATA\Vita Mirabilis\runner.log" -Tail 50 | Select-String "message|image|media"
+```
+
+**Causas**:
+1. openwa-runner.js no está escuchando mensajes entrantes
+2. Número del doctor no está en la lista de contactos conocidos
+3. Formo de imagen no soportado (solo jpg/png/webp)
+
+**Solución**:
+1. Verificar que el runner tiene listener de `message` activo
+2. Verificar que el número del doctor está registrado en la DB
+3. Revisar logs para errores de descarga de media
+
+### Upload falla desde celular
+
+**Causas**:
+1. Celular no está en la misma red WiFi
+2. Puerto 18234 bloqueado por firewall
+3. Token JWT expiró
+
+**Solución**:
+1. Verificar que ambos dispositivos están en la misma red
+2. Verificar que el firewall permite tráfico en puerto 18234
+3. Hacer login nuevemente para obtener nuevo token
+
+### Backup no incluye evidencias
+
+**Causa**: Backup configurado solo para DB
+
+**Solución**:
+1. Verificar que `exportacionController.js` incluye `evidencias/`
+2. Verificar espacio en disco (imágenes pueden ser pesadas)
+3. Probar backup manual: comprimir `resources/data/` completo
+
+---
+
 ## Contacto y Soporte
 
 Si ninguna de estas soluciones funciono:

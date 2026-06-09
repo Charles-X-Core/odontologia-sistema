@@ -1,0 +1,50 @@
+.ui-card {
+  background: white;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.ui-card-hover {
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.ui-card-hover:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.ui-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--gray-100);
+}
+
+.ui-card-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--gray-900);
+  margin: 0;
+}
+
+.ui-card-subtitle {
+  font-size: 13px;
+  color: var(--gray-500);
+  margin: 2px 0 0;
+}
+
+.ui-card-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.ui-card-body {
+  padding: 20px;
+}
+
+.ui-card-padded .ui-card-body {
+  padding: 20px;
+}
