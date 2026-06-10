@@ -127,7 +127,7 @@ exports.obtenerHistorial = (req, res) => {
     if (c.odontograma) {
       try { c.odontograma = JSON.parse(c.odontograma); } catch {}
     }
-    c.tratamientos = db.prepare('SELECT * FROM tratamientos WHERE consulta_id = ? ORDER BY fecha DESC').all(c.id);
+    c.tratamientos = db.prepare('SELECT * FROM tratamientos WHERE consulta_id = ? ORDER BY created_at DESC').all(c.id);
     c.recetas = db.prepare('SELECT id, medicamentos, indicaciones, created_at FROM recetas WHERE consulta_id = ? ORDER BY created_at DESC').all(c.id);
     c.recetas.forEach(r => {
       try { r.medicamentos = JSON.parse(r.medicamentos); } catch {}

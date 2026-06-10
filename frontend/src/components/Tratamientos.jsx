@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { api } from '../services/api';
 import WhatsAppConfirm from './WhatsAppConfirm';
+import ConfirmarPassword from './ConfirmarPassword';
 
 const ESTADO_COLORS = {
   realizado: { bg: '#dcfce7', text: '#166534', border: '#22c55e' },
@@ -13,6 +14,7 @@ const ESTADO_LABELS = {
 };
 
 const FORM_DEFAULT = { procedimiento_realizado: '', costo_total: '', monto_a_cuenta: '', pieza_dental: '', fecha: new Date().toISOString().split('T')[0], notas: '', consulta_id: '' };
+const PAGE_SIZE = 10;
 
 export default function Tratamientos({ pacienteId, consultas, paciente }) {
   const [tratamientos, setTratamientos] = useState([]);
@@ -23,6 +25,22 @@ export default function Tratamientos({ pacienteId, consultas, paciente }) {
   const [guardando, setGuardando] = useState(false);
   const [cargando, setCargando] = useState(true);
   const [mostrarWhatsApp, setMostrarWhatsApp] = useState(false);
+  const [busqueda, setBusqueda] = useState('');
+  const [filtroEstado, setFiltroEstado] = useState('todos');
+  const [pagina, setPagina] = useState(1);
+  const [mostrarPassword, setMostrarPassword] = useState(false);
+  const [accionPendiente, setAccionPendiente] = useState(null);
+
+  const requerirPassword = (accion) => {
+    setAccionPendiente(() => accion);
+    setMostrarPassword(true);
+  };
+
+  const passwordConfirmado = () => {
+    setMostrarPassword(false);
+    if (accionPendiente) accionPendiente();
+    setAccionPendiente(null);
+  };
 
   useEffect(() => { cargar(); }, [pacienteId]);
 
@@ -96,18 +114,82 @@ export default function Tratamientos({ pacienteId, consultas, paciente }) {
   const totalSaldo = tratamientos.reduce((sum, t) => sum + (t.saldo_pendiente || 0), 0);
   const realizados = tratamientos.filter(t => t.estado === 'realizado').length;
   const planificados = tratamientos.filter(t => t.estado === 'planificado').length;
+  const pctRealizado = tratamientos.length > 0 ? Math.round((realizados / tratamientos.length) * 100) : 0;
+
+  const filtrados = useMemo(() => {
+    let result = [...tratamientos];
+    if (filtroEstado !== 'todos') {
+      result = result.filter(t => t.estado === filtroEstado);
+    }
+    if (busqueda.trim()) {
+      const q = busqueda.toLowerCase();
+      result = result.filter(t =>
+        (t.procedimiento_realizado || '').toLowerCase().includes(q) ||
+        (t.pieza_dental || '').toLowerCase().includes(q) ||
+        (t.notas || '').toLowerCase().includes(q)
+      );
+    }
+    return result;
+  }, [tratamientos, busqueda, filtroEstado]);
+
+  const grupos = useMemo(() => {
+    const map = {};
+    for (const t of filtrados) {
+      const key = t.consulta_id || '_sin_consulta_';
+      if (!map[key]) {
+        map[key] = {
+          consulta_id: t.consulta_id,
+          fecha: t.consulta_fecha || null,
+          motivo: t.consulta_motivo || null,
+          items: [],
+        };
+      }
+      map[key].items.push(t);
+    }
+    const entries = Object.values(map).filter(g => g.consulta_id);
+    const sinConsulta = map['_sin_consulta_'];
+    if (sinConsulta) entries.push(sinConsulta);
+    return entries;
+  }, [filtrados]);
+
+  const totalPaginas = Math.ceil(grupos.length / PAGE_SIZE);
+  const paginados = grupos.slice((pagina - 1) * PAGE_SIZE, pagina * PAGE_SIZE);
+
+  useEffect(() => { setPagina(1); }, [busqueda, filtroEstado]);
 
   if (cargando) return <div className="loading">Cargando tratamientos...</div>;
 
   return (
     <div className="tratamientos-panel">
+      <div className="tratamientos-stats">
+        <span className="stat-badge realizado">{realizados} realizados</span>
+        <span className="stat-badge planificado">{planificados} planificados</span>
+        <span className="stat-badge total">Total: ${totalCosto.toLocaleString()}</span>
+        <span className="stat-badge pagado">Pagado: ${totalMonto.toLocaleString()}</span>
+        <span className="stat-badge planificado">Saldo: ${totalSaldo.toLocaleString()}</span>
+      </div>
+
+      {tratamientos.length > 0 && (
+        <div className="trat-progress-bar">
+          <div className="trat-progress-fill" style={{ width: `${pctRealizado}%` }}></div>
+          <span className="trat-progress-label">{pctRealizado}% realizado</span>
+        </div>
+      )}
+
       <div className="tratamientos-header">
-        <div className="tratamientos-stats">
-          <span className="stat-badge realizado">{realizados} realizados</span>
-          <span className="stat-badge planificado">{planificados} planificados</span>
-          <span className="stat-badge total">Total: ${totalCosto.toLocaleString()}</span>
-          <span className="stat-badge pagado">Pagado: ${totalMonto.toLocaleString()}</span>
-          <span className="stat-badge planificado">Saldo: ${totalSaldo.toLocaleString()}</span>
+        <div className="trat-filtros">
+          <input
+            type="text"
+            className="trat-busqueda"
+            placeholder="Buscar por procedimiento, pieza..."
+            value={busqueda}
+            onChange={e => setBusqueda(e.target.value)}
+          />
+          <select className="trat-filtro-estado" value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)}>
+            <option value="todos">Todos</option>
+            <option value="realizado">Realizados</option>
+            <option value="planificado">Planificados</option>
+          </select>
         </div>
         <div style={{ display: 'flex', gap: '6px' }}>
           {paciente && <button className="btn btn-success btn-sm" onClick={() => setMostrarWhatsApp(true)}>WhatsApp</button>}
@@ -173,67 +255,95 @@ export default function Tratamientos({ pacienteId, consultas, paciente }) {
 
       {tratamientos.length === 0 ? (
         <p className="empty">No hay tratamientos registrados</p>
+      ) : grupos.length === 0 ? (
+        <p className="empty">No se encontraron tratamientos con esos filtros</p>
       ) : (
-        <div className="table-responsive">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Fecha</th>
-                <th>Pieza</th>
-                <th>Procedimiento</th>
-                <th>Costo</th>
-                <th>A Cuenta</th>
-                <th>Saldo</th>
-                <th>Estado</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tratamientos.map(t => {
-                const color = ESTADO_COLORS[t.estado] || ESTADO_COLORS.planificado;
-                return (
-                  <tr key={t.id}>
-                    <td>{t.fecha ? new Date(t.fecha).toLocaleDateString() : '-'}</td>
-                    <td>{t.pieza_dental || '-'}</td>
-                    <td><strong>{t.procedimiento_realizado}</strong></td>
-                    <td>${(t.costo_total || 0).toLocaleString()}</td>
-                    <td>${(t.monto_a_cuenta || 0).toLocaleString()}</td>
-                    <td>
-                      <span className={`saldo-badge ${(t.saldo_pendiente || 0) > 0 ? 'pendiente' : 'pagado'}`}>
-                        ${(t.saldo_pendiente || 0).toLocaleString()}
-                      </span>
-                    </td>
-                    <td>
-                      <span className="estado-badge" style={{ background: color.bg, color: color.text, borderColor: color.border }}>
-                        {ESTADO_LABELS[t.estado]}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="actions">
-                        {t.estado === 'planificado' && (
-                          <button className="btn btn-sm btn-success" onClick={() => cambiarEstado(t.id, 'realizado')}>
-                            Marcar Realizado
-                          </button>
-                        )}
-                        {t.estado === 'realizado' && (
-                          <button className="btn btn-sm btn-secondary" onClick={() => cambiarEstado(t.id, 'planificado')}>
-                            Revertir a Planificado
-                          </button>
-                        )}
-                        <button className="btn btn-sm btn-secondary" onClick={() => handleEditar(t)} title="Editar">
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                        </button>
-                        <button className="btn btn-sm btn-danger" onClick={() => eliminar(t.id)} title="Eliminar tratamiento">
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
-                        </button>
+        <>
+          <div className="trat-groups">
+            {paginados.map((grupo, gi) => (
+              <div key={grupo.consulta_id || `sin-${gi}`} className="trat-group">
+                <div className="trat-group-header">
+                  <div className="trat-group-header-left">
+                    {grupo.consulta_id ? (
+                      <>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                        <span className="trat-group-fecha">
+                          {grupo.fecha ? new Date(grupo.fecha).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) : ''}
+                        </span>
+                        {grupo.motivo && <span className="trat-group-motivo">{grupo.motivo}</span>}
+                      </>
+                    ) : (
+                      <span className="trat-group-motivo">Sin consulta vinculada</span>
+                    )}
+                  </div>
+                  <span className="trat-group-count">{grupo.items.length} tratamiento{grupo.items.length !== 1 ? 's' : ''}</span>
+                </div>
+                <div className="trat-group-items">
+                  {grupo.items.map(t => {
+                    const color = ESTADO_COLORS[t.estado] || ESTADO_COLORS.planificado;
+                    return (
+                      <div key={t.id} className="tratamiento-card" style={{ borderLeftColor: color.border }}>
+                        <div className="tratamiento-card-header">
+                          <div>
+                            <strong>{t.procedimiento_realizado}</strong>
+                            {t.pieza_dental && <span className="diente-badge">Pza {t.pieza_dental}</span>}
+                          </div>
+                          <span className="costo-badge">${(t.costo_total || 0).toLocaleString()}</span>
+                        </div>
+                        {t.notas && <div className="tratamiento-notas">{t.notas}</div>}
+                        <div className="tratamiento-card-footer">
+                          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                            <span className="estado-badge" style={{ background: color.bg, color: color.text, borderColor: color.border }}>
+                              {ESTADO_LABELS[t.estado]}
+                            </span>
+                            <span style={{ fontSize: '12px', color: 'var(--gray-500)' }}>
+                              {t.created_at ? new Date(t.created_at).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
+                            </span>
+                            {t.monto_a_cuenta > 0 && (
+                              <span style={{ fontSize: '12px', color: 'var(--gray-500)' }}>
+                                Pagado: ${t.monto_a_cuenta.toLocaleString()}
+                              </span>
+                            )}
+                            <span className={`saldo-badge ${(t.saldo_pendiente || 0) > 0 ? 'pendiente' : 'pagado'}`}>
+                              Saldo: ${(t.saldo_pendiente || 0).toLocaleString()}
+                            </span>
+                          </div>
+                          <div className="tratamiento-actions">
+                            {t.estado === 'planificado' && (
+                              <button className="btn btn-sm btn-success" onClick={() => cambiarEstado(t.id, 'realizado')}>Marcar Realizado</button>
+                            )}
+                            {t.estado === 'realizado' && (
+                              <button className="btn btn-sm btn-secondary" onClick={() => cambiarEstado(t.id, 'planificado')}>Revertir</button>
+                            )}
+                            <button className="btn btn-sm btn-secondary" onClick={() => requerirPassword(() => handleEditar(t))} title="Editar">
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                            </button>
+                            <button className="btn btn-sm btn-danger" onClick={() => requerirPassword(() => eliminar(t.id))} title="Eliminar">
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                            </button>
+                          </div>
+                        </div>
                       </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                    );
+                  })}
+                </div>
+                <div className="trat-group-subtotal">
+                  Subtotal: ${grupo.items.reduce((s, t) => s + (t.costo_total || 0), 0).toLocaleString()}
+                  {' | '}Pagado: ${grupo.items.reduce((s, t) => s + (t.monto_a_cuenta || 0), 0).toLocaleString()}
+                  {' | '}Saldo: ${grupo.items.reduce((s, t) => s + (t.saldo_pendiente || 0), 0).toLocaleString()}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {totalPaginas > 1 && (
+            <div className="trat-pagination">
+              <button className="btn btn-sm btn-secondary" disabled={pagina === 1} onClick={() => setPagina(p => p - 1)}>Anterior</button>
+              <span className="trat-pagination-info">{pagina} / {totalPaginas}</span>
+              <button className="btn btn-sm btn-secondary" disabled={pagina === totalPaginas} onClick={() => setPagina(p => p + 1)}>Siguiente</button>
+            </div>
+          )}
+        </>
       )}
 
       {mostrarWhatsApp && paciente && (
@@ -242,6 +352,13 @@ export default function Tratamientos({ pacienteId, consultas, paciente }) {
           tipo="plan"
           onEnviar={() => setMostrarWhatsApp(false)}
           onCancelar={() => setMostrarWhatsApp(false)}
+        />
+      )}
+      {mostrarPassword && (
+        <ConfirmarPassword
+          titulo="Confirmar accion"
+          onConfirm={passwordConfirmado}
+          onCancelar={() => { setMostrarPassword(false); setAccionPendiente(null); }}
         />
       )}
     </div>

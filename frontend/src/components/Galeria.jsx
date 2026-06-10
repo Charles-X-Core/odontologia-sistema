@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { api } from '../services/api';
+import ConfirmarPassword from './ConfirmarPassword';
 
 const isElectron = window.location.protocol === 'file:' || window.electronAPI?.isElectron;
 const API_BASE = isElectron
@@ -224,7 +225,20 @@ export default function Galeria({ pacienteId }) {
   const [qrData, setQrData] = useState(null);
   const [generandoQR, setGenerandoQR] = useState(false);
   const [nuevasCount, setNuevasCount] = useState(0);
+  const [mostrarPassword, setMostrarPassword] = useState(false);
+  const [accionPendiente, setAccionPendiente] = useState(null);
   const imagenesRef = useRef(imagenes);
+
+  const requerirPassword = (accion) => {
+    setAccionPendiente(() => accion);
+    setMostrarPassword(true);
+  };
+
+  const passwordConfirmado = () => {
+    setMostrarPassword(false);
+    if (accionPendiente) accionPendiente();
+    setAccionPendiente(null);
+  };
 
   useEffect(() => { imagenesRef.current = imagenes; }, [imagenes]);
 
@@ -402,7 +416,7 @@ export default function Galeria({ pacienteId }) {
                   <span className="galeria-item-desc">{img.descripcion || img.archivo_original}</span>
                   <span className="galeria-item-fecha">{new Date(img.created_at).toLocaleDateString()}</span>
                 </div>
-                <button className="btn btn-sm btn-danger" onClick={() => eliminar(img.id)} style={{ margin: '4px 8px 8px' }}>Eliminar</button>
+                <button className="btn btn-sm btn-danger" onClick={() => requerirPassword(() => eliminar(img.id))} style={{ margin: '4px 8px 8px' }}>Eliminar</button>
               </div>
             );
           })}
@@ -447,6 +461,13 @@ export default function Galeria({ pacienteId }) {
             </div>
           </div>
         </div>
+      )}
+      {mostrarPassword && (
+        <ConfirmarPassword
+          titulo="Confirmar eliminacion"
+          onConfirm={passwordConfirmado}
+          onCancelar={() => { setMostrarPassword(false); setAccionPendiente(null); }}
+        />
       )}
     </div>
   );

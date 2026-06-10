@@ -1633,7 +1633,143 @@ body {
 }
 
 /* ========== TRATAMIENTOS ========== */
-.tratamientos-panel { }
+.tratamientos-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.trat-progress-bar {
+  position: relative;
+  height: 8px;
+  background: var(--gray-200);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.trat-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #22c55e, #16a34a);
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+
+.trat-progress-label {
+  position: absolute;
+  right: 0;
+  top: -18px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--gray-600);
+}
+
+.trat-filtros {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.trat-busqueda {
+  padding: 7px 12px;
+  border: 1px solid var(--gray-300);
+  border-radius: 6px;
+  font-size: 13px;
+  min-width: 220px;
+}
+
+.trat-busqueda:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+.trat-filtro-estado {
+  padding: 7px 10px;
+  border: 1px solid var(--gray-300);
+  border-radius: 6px;
+  font-size: 13px;
+  background: white;
+}
+
+.trat-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  padding-top: 8px;
+}
+
+.trat-pagination-info {
+  font-size: 13px;
+  color: var(--gray-600);
+  font-weight: 500;
+}
+
+.trat-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.trat-group {
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.trat-group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  background: var(--gray-50);
+  border-bottom: 1px solid var(--gray-200);
+}
+
+.trat-group-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--gray-700);
+}
+
+.trat-group-fecha {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gray-700);
+}
+
+.trat-group-motivo {
+  font-size: 13px;
+  color: var(--gray-500);
+  padding-left: 8px;
+  border-left: 1px solid var(--gray-300);
+}
+
+.trat-group-count {
+  font-size: 12px;
+  color: var(--gray-500);
+  background: var(--gray-100);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.trat-group-items {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.trat-group-subtotal {
+  padding: 8px 16px;
+  background: var(--gray-50);
+  border-top: 1px solid var(--gray-200);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gray-600);
+  text-align: right;
+}
 
 .tratamientos-header {
   display: flex;
@@ -2801,6 +2937,67 @@ body {
   margin-bottom: 12px;
 }
 
+.diagnostico-consulta-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  margin-bottom: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.diagnostico-consulta-item:hover {
+  background: var(--gray-50);
+  border-color: var(--gray-300);
+}
+
+.diagnostico-consulta-item.selected {
+  background: #eff6ff;
+  border-color: #3b82f6;
+}
+
+.consulta-item-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.consulta-item-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.diag-check-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background: #dcfce7;
+  color: #166534;
+  border-radius: 50%;
+}
+
+.diag-count-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  background: var(--gray-100);
+  color: var(--gray-600);
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
 .diagnostico-busqueda {
   background: white;
   border-radius: 12px;
@@ -3049,8 +3246,15 @@ body {
 
 .pagos-resumen {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 12px;
+}
+
+.pagos-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
 }
 
 .pago-resumen-card {

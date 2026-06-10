@@ -57,6 +57,7 @@ export const api = {
     actualizarPerfil: (data) => request('/auth/perfil', { method: 'PUT', body: JSON.stringify(data) }),
     subirFirma: (firma_imagen) => request('/auth/firma', { method: 'PUT', body: JSON.stringify({ firma_imagen }) }),
     obtenerFirma: () => request('/auth/firma'),
+    verificarPassword: (password) => request('/auth/verificar-password', { method: 'POST', body: JSON.stringify({ password }) }),
   },
 
   pacientes: {

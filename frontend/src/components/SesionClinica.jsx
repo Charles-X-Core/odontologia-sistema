@@ -198,6 +198,13 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
       showToast('El motivo de consulta es obligatorio');
       return;
     }
+    if (paso === 7) {
+      const TratsValidos = tratamientos.filter(t => t.procedimiento_realizado.trim());
+      if (TratsValidos.length === 0) {
+        showToast('Agrega al menos un tratamiento con procedimiento');
+        return;
+      }
+    }
     if (paso < PASOS.length) setPaso(paso + 1);
   };
   const anterior = () => { if (paso > 1) setPaso(paso - 1); };
@@ -1024,6 +1031,7 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
                   <input type="number" placeholder="Costo $" value={t.costo_total} onChange={e => actualizarTratamiento(i, 'costo_total', e.target.value)} min="0" step="0.01" className="input-costo" />
                   <input type="number" placeholder="A cuenta $" value={t.monto_a_cuenta} onChange={e => actualizarTratamiento(i, 'monto_a_cuenta', e.target.value)} min="0" step="0.01" className="input-costo" />
                 </div>
+                <input type="text" placeholder="Notas del tratamiento..." value={t.notas} onChange={e => actualizarTratamiento(i, 'notas', e.target.value)} style={{ width: '100%', padding: '6px 10px', border: '1px solid var(--gray-200)', borderRadius: '6px', fontSize: '13px', marginTop: '6px' }} />
                 {tratamientos.length > 1 && (
                   <button type="button" className="btn-remove-sesion" onClick={() => eliminarTratamiento(i)}>×</button>
                 )}
@@ -1114,7 +1122,9 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
                   <div key={i} className="resumen-tratamiento">
                     <span>{t.procedimiento_realizado}</span>
                     {t.pieza_dental && <span className="diente-badge">Pza {t.pieza_dental}</span>}
+                    {t.realizado && <span className="diente-badge" style={{ background: '#dcfce7', color: '#166534' }}>Realizado</span>}
                     {t.costo_total && <span className="resumen-costo">${parseFloat(t.costo_total).toLocaleString()}</span>}
+                    {t.notas && <div style={{ fontSize: '12px', color: 'var(--gray-500)', marginTop: '2px' }}>{t.notas}</div>}
                   </div>
                 ))}
               </div>

@@ -39,7 +39,7 @@ exports.listarPorPaciente = (req, res) => {
     FROM tratamientos t
     LEFT JOIN consultas c ON c.id = t.consulta_id
     WHERE t.paciente_id = ?
-    ORDER BY t.fecha DESC
+    ORDER BY t.created_at DESC
   `).all(req.params.pacienteId);
   res.json(tratamientos);
 };

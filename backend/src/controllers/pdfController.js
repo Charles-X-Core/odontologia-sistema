@@ -187,7 +187,14 @@ exports.tratamientos = (req, res) => {
   try {
     const paciente = db.prepare('SELECT * FROM pacientes WHERE id = ?').get(req.params.id);
     if (!paciente) return res.status(404).json({ error: 'Paciente no encontrado' });
-    const tratamientos = db.prepare('SELECT * FROM tratamientos WHERE paciente_id = ? ORDER BY fecha DESC').all(paciente.id);
+
+    const tratamientos = db.prepare(`
+      SELECT t.*, c.fecha as consulta_fecha, c.motivo as consulta_motivo, c.hora as consulta_hora
+      FROM tratamientos t
+      LEFT JOIN consultas c ON c.id = t.consulta_id
+      WHERE t.paciente_id = ?
+      ORDER BY t.created_at DESC
+    `).all(paciente.id);
 
     const doc = new PDFDocument({ size: 'LETTER', margin: 50 });
     res.setHeader('Content-Type', 'application/pdf');
@@ -196,31 +203,107 @@ exports.tratamientos = (req, res) => {
 
     addHeader(doc);
     doc.fontSize(14).font('Helvetica-Bold').text('PLAN DE TRATAMIENTO', { align: 'center' });
-    doc.moveDown(1);
+    doc.moveDown(0.5);
 
     doc.fontSize(10).font('Helvetica-Bold').text('Paciente: ').font('Helvetica').text(nombreCompleto(paciente));
     doc.font('Helvetica-Bold').text('DNI: ').font('Helvetica').text(paciente.dni || '-');
-    doc.moveDown(1);
+    doc.moveDown(0.8);
 
-    const tableY = drawTable(doc,
-      ['Fecha', 'Pza', 'Procedimiento', 'Costo', 'Pagado', 'Saldo'],
-      tratamientos.map(t => [
-        t.fecha ? new Date(t.fecha).toLocaleDateString() : '-',
+    const colWidths = [60, 35, 185, 65, 65, 65];
+    let grandTotalCosto = 0;
+    let grandTotalPagado = 0;
+
+    const porConsulta = {};
+    const sinConsulta = [];
+    for (const t of tratamientos) {
+      if (t.consulta_id) {
+        if (!porConsulta[t.consulta_id]) {
+          porConsulta[t.consulta_id] = {
+            fecha: t.consulta_fecha,
+            hora: t.consulta_hora,
+            motivo: t.consulta_motivo,
+            items: []
+          };
+        }
+        porConsulta[t.consulta_id].items.push(t);
+      } else {
+        sinConsulta.push(t);
+      }
+    }
+
+    for (const [consId, grupo] of Object.entries(porConsulta)) {
+      if (doc.y > doc.page.height - 120) { doc.addPage(); doc.y = 50; }
+
+      const fechaStr = grupo.fecha ? new Date(grupo.fecha).toLocaleDateString('es-ES') : '-';
+      const horaStr = grupo.hora || '';
+      doc.fontSize(10).font('Helvetica-Bold')
+        .fillColor('#2563eb')
+        .text(`Consulta: ${fechaStr}${horaStr ? ' ' + horaStr : ''}`, 50);
+      if (grupo.motivo) {
+        doc.fontSize(9).font('Helvetica').fillColor('#555555')
+          .text(`Motivo: ${grupo.motivo}`, 50);
+      }
+      doc.moveDown(0.3);
+
+      const rows = grupo.items.map(t => [
+        t.fecha ? new Date(t.fecha).toLocaleDateString('es-ES') : '-',
         t.pieza_dental || '-',
         t.procedimiento_realizado || '-',
         `$${(t.costo_total || 0).toLocaleString()}`,
         `$${(t.monto_a_cuenta || 0).toLocaleString()}`,
         `$${(t.saldo_pendiente || 0).toLocaleString()}`
-      ]),
-      50, doc.y, [65, 40, 195, 70, 70, 75]
-    );
-    doc.y = tableY + 10;
+      ]);
 
-    const totalCosto = tratamientos.reduce((s, t) => s + (t.costo_total || 0), 0);
-    const totalPagado = tratamientos.reduce((s, t) => s + (t.monto_a_cuenta || 0), 0);
-    doc.font('Helvetica-Bold').text(`Total: $${totalCosto.toLocaleString()}  |  Pagado: $${totalPagado.toLocaleString()}  |  Saldo: $${(totalCosto - totalPagado).toLocaleString()}`);
+      const tableY = drawTable(doc, ['Fecha', 'Pza', 'Procedimiento', 'Costo', 'Pagado', 'Saldo'], rows, 50, doc.y, colWidths);
 
+      const subCosto = grupo.items.reduce((s, t) => s + (t.costo_total || 0), 0);
+      const subPagado = grupo.items.reduce((s, t) => s + (t.monto_a_cuenta || 0), 0);
+      grandTotalCosto += subCosto;
+      grandTotalPagado += subPagado;
+
+      doc.y = tableY + 4;
+      doc.fontSize(8).font('Helvetica-Bold').fillColor('#333333')
+        .text(`Subtotal: $${subCosto.toLocaleString()}  |  Pagado: $${subPagado.toLocaleString()}  |  Saldo: $${(subCosto - subPagado).toLocaleString()}`, 50);
+      doc.moveDown(1);
+      doc.fillColor('#000000');
+    }
+
+    if (sinConsulta.length > 0) {
+      if (doc.y > doc.page.height - 120) { doc.addPage(); doc.y = 50; }
+
+      doc.fontSize(10).font('Helvetica-Bold').fillColor('#2563eb')
+        .text('Sin consulta vinculada', 50);
+      doc.moveDown(0.3);
+
+      const rows = sinConsulta.map(t => [
+        t.fecha ? new Date(t.fecha).toLocaleDateString('es-ES') : '-',
+        t.pieza_dental || '-',
+        t.procedimiento_realizado || '-',
+        `$${(t.costo_total || 0).toLocaleString()}`,
+        `$${(t.monto_a_cuenta || 0).toLocaleString()}`,
+        `$${(t.saldo_pendiente || 0).toLocaleString()}`
+      ]);
+
+      const tableY = drawTable(doc, ['Fecha', 'Pza', 'Procedimiento', 'Costo', 'Pagado', 'Saldo'], rows, 50, doc.y, colWidths);
+
+      const subCosto = sinConsulta.reduce((s, t) => s + (t.costo_total || 0), 0);
+      const subPagado = sinConsulta.reduce((s, t) => s + (t.monto_a_cuenta || 0), 0);
+      grandTotalCosto += subCosto;
+      grandTotalPagado += subPagado;
+
+      doc.y = tableY + 4;
+      doc.fontSize(8).font('Helvetica-Bold').fillColor('#333333')
+        .text(`Subtotal: $${subCosto.toLocaleString()}  |  Pagado: $${subPagado.toLocaleString()}  |  Saldo: $${(subCosto - subPagado).toLocaleString()}`, 50);
+      doc.moveDown(1);
+      doc.fillColor('#000000');
+    }
+
+    doc.moveTo(50, doc.y).lineTo(565, doc.y).strokeColor('#cccccc').lineWidth(0.5).stroke();
+    doc.moveDown(0.5);
+    doc.fontSize(10).font('Helvetica-Bold')
+      .text(`TOTAL: $${grandTotalCosto.toLocaleString()}  |  PAGADO: $${grandTotalPagado.toLocaleString()}  |  SALDO: $${(grandTotalCosto - grandTotalPagado).toLocaleString()}`);
     doc.moveDown(2);
+
     doc.font('Helvetica').fontSize(10).text('________________________', { align: 'center' });
     doc.font('Helvetica').fontSize(8).text('Firma del Odontologo', { align: 'center' });
 

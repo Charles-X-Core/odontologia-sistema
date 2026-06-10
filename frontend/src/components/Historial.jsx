@@ -6,6 +6,7 @@ import Galeria from './Galeria';
 import DiagnosticoPlan from './DiagnosticoPlan';
 import Pagos from './Pagos';
 import Odontograma from './Odontograma';
+import ConfirmarPassword from './ConfirmarPassword';
 import { nombreCompleto } from '../utils/formatters';
 
 function parseJson(d) {
@@ -50,6 +51,19 @@ function ConsultaTimeline({ c, onRecargar }) {
   const [guardando, setGuardando] = useState(false);
   const [imagenes, setImagenes] = useState([]);
   const [viewerIndex, setViewerIndex] = useState(null);
+  const [mostrarPassword, setMostrarPassword] = useState(false);
+  const [accionPendiente, setAccionPendiente] = useState(null);
+
+  const requerirPassword = (accion) => {
+    setAccionPendiente(() => accion);
+    setMostrarPassword(true);
+  };
+
+  const passwordConfirmado = () => {
+    setMostrarPassword(false);
+    if (accionPendiente) accionPendiente();
+    setAccionPendiente(null);
+  };
 
   const iniciarEdicion = () => {
     setEditando(true);
@@ -270,8 +284,8 @@ function ConsultaTimeline({ c, onRecargar }) {
             )}
 
             <div className="timeline-actions">
-              <button className="btn btn-sm btn-secondary" onClick={iniciarEdicion}>Editar</button>
-              <button className="btn btn-sm btn-danger" onClick={eliminarConsulta}>Eliminar</button>
+              <button className="btn btn-sm btn-secondary" onClick={() => requerirPassword(iniciarEdicion)}>Editar</button>
+              <button className="btn btn-sm btn-danger" onClick={() => requerirPassword(eliminarConsulta)}>Eliminar</button>
             </div>
           </div>
         )}
@@ -352,6 +366,13 @@ function ConsultaTimeline({ c, onRecargar }) {
             )}
           </div>
         </div>
+      )}
+      {mostrarPassword && (
+        <ConfirmarPassword
+          titulo="Confirmar accion"
+          onConfirm={passwordConfirmado}
+          onCancelar={() => { setMostrarPassword(false); setAccionPendiente(null); }}
+        />
       )}
     </div>
   );

@@ -149,3 +149,14 @@ exports.obtenerFirma = (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+exports.verificarPassword = (req, res) => {
+  const { password } = req.body;
+  if (!password) {
+    return res.status(400).json({ error: 'Password es obligatorio' });
+  }
+  const usuario = db.prepare('SELECT * FROM usuarios WHERE id = ?').get(req.usuario.id);
+  if (!usuario) return res.status(404).json({ error: 'Usuario no encontrado' });
+  const valid = bcrypt.compareSync(password, usuario.password);
+  res.json({ valido: valid });
+};

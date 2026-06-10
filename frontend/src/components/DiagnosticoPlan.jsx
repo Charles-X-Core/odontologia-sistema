@@ -2,6 +2,11 @@ import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { nombreCompleto } from '../utils/formatters';
 
+function parseJson(d) {
+  if (!d) return [];
+  try { return typeof d === 'string' ? JSON.parse(d) : d; } catch { return []; }
+}
+
 export default function DiagnosticoPlan({ paciente, onVolver }) {
   const [consultas, setConsultas] = useState([]);
   const [diagnosticos, setDiagnosticos] = useState([]);
@@ -9,7 +14,13 @@ export default function DiagnosticoPlan({ paciente, onVolver }) {
   const [consultaSeleccionada, setConsultaSeleccionada] = useState(null);
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState('');
+  const [toast, setToast] = useState(null);
   const [cargando, setCargando] = useState(true);
+
+  const showToast = (msg, tipo = 'success') => {
+    setToast({ msg, tipo });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   useEffect(() => { cargar(); }, [paciente.id]);
 
@@ -23,8 +34,9 @@ export default function DiagnosticoPlan({ paciente, onVolver }) {
 
   const seleccionarConsulta = (c) => {
     setConsultaSeleccionada(c);
+    setMensaje('');
     try {
-      const diag = typeof c.diagnostico_lista === 'string' ? JSON.parse(c.diagnostico_lista) : (c.diagnostico_lista || []);
+      const diag = parseJson(c.diagnostico_lista);
       setDiagnosticos(diag.length > 0 ? diag : [{ texto: '', tipo: 'clinico' }]);
     } catch { setDiagnosticos([{ texto: '', tipo: 'clinico' }]); }
     try {
@@ -47,10 +59,25 @@ export default function DiagnosticoPlan({ paciente, onVolver }) {
         diagnostico_lista: diagnosticos.filter(d => d.texto.trim()),
         plan_tratamiento: planTratamiento,
       });
-      if (res.error) { setMensaje('Error: ' + res.error); }
-      else { setMensaje('Guardado correctamente'); cargar(); }
-    } catch (err) { setMensaje('Error: ' + err.message); }
+      if (res.error) {
+        showToast('Error: ' + res.error, 'error');
+      } else {
+        showToast('Guardado correctamente');
+        cargar();
+      }
+    } catch (err) { showToast('Error: ' + err.message, 'error'); }
     setGuardando(false);
+  };
+
+  const getDiagCount = (c) => {
+    return parseJson(c.diagnostico_lista).length;
+  };
+
+  const hasPlan = (c) => {
+    try {
+      const plan = typeof c.plan_tratamiento === 'string' ? JSON.parse(c.plan_tratamiento) : (c.plan_tratamiento || {});
+      return plan.descripcion || plan.procedimientos || plan.secuencia;
+    } catch { return false; }
   };
 
   if (cargando) return <div className="loading">Cargando...</div>;
@@ -68,12 +95,29 @@ export default function DiagnosticoPlan({ paciente, onVolver }) {
           {consultas.length === 0 ? (
             <p className="empty">No hay consultas</p>
           ) : (
-            consultas.map(c => (
-              <div key={c.id} className={`diagnostico-consulta-item ${consultaSeleccionada?.id === c.id ? 'selected' : ''}`} onClick={() => seleccionarConsulta(c)}>
-                <span className="consulta-fecha">{new Date(c.fecha).toLocaleDateString()}</span>
-                <span className="consulta-motivo">{c.motivo}</span>
-              </div>
-            ))
+            consultas.map(c => {
+              const diagCount = getDiagCount(c);
+              const hasPlanData = hasPlan(c);
+              const tieneDatos = diagCount > 0 || hasPlanData;
+              return (
+                <div key={c.id} className={`diagnostico-consulta-item ${consultaSeleccionada?.id === c.id ? 'selected' : ''}`} onClick={() => seleccionarConsulta(c)}>
+                  <div className="consulta-item-left">
+                    <span className="consulta-fecha">{new Date(c.fecha).toLocaleDateString()}</span>
+                    <span className="consulta-motivo">{c.motivo}</span>
+                  </div>
+                  <div className="consulta-item-right">
+                    {tieneDatos && (
+                      <span className="diag-check-badge">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                      </span>
+                    )}
+                    {diagCount > 0 && (
+                      <span className="diag-count-badge">{diagCount}</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })
           )}
         </div>
 
@@ -107,8 +151,6 @@ export default function DiagnosticoPlan({ paciente, onVolver }) {
                 <textarea value={planTratamiento.secuencia || ''} onChange={e => setPlanTratamiento({...planTratamiento, secuencia: e.target.value})} rows={3} placeholder="Orden de los procedimientos..." />
               </div>
 
-              {mensaje && <div className={`alert ${mensaje.includes('Error') ? 'alert-error' : 'alert-success'}`}>{mensaje}</div>}
-
               <div className="form-actions-inline">
                 <button className="btn btn-primary" onClick={guardar} disabled={guardando}>
                   {guardando ? 'Guardando...' : 'Guardar Cambios'}
@@ -122,6 +164,13 @@ export default function DiagnosticoPlan({ paciente, onVolver }) {
           )}
         </div>
       </div>
+
+      {toast && (
+        <div className={`sesion-toast sesion-toast-${toast.tipo}`}>
+          <span className="sesion-toast-icon">{toast.tipo === 'error' ? '\u26A0' : '\u2714'}</span>
+          {toast.msg}
+        </div>
+      )}
     </div>
   );
 }
