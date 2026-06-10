@@ -2,6 +2,7 @@
   "name": "vita-mirabilis",
   "version": "1.0.0",
   "description": "Vita Mirabilis - Sistema de Historial Clinico Odontologico",
+  "author": "Charles-X RedFlame Systems",
   "main": "electron/main.js",
   "scripts": {
     "start": "electron .",
@@ -9,6 +10,7 @@
     "dev:backend": "cd backend && node src/index.js",
     "build": "npm run build:frontend && electron-builder --win --x64 && npm run postbuild",
     "build:frontend": "cd frontend && npm run build",
+    "build:installer": "npm run build:frontend && electron-builder --win nsis --x64",
     "build:portable": "npm run build:frontend && electron-builder --win portable --x64 && node scripts/package-portable.js",
     "pack": "npm run build:frontend && electron-builder --dir && npm run postbuild",
     "postbuild": "node scripts/copy-portable.js",
@@ -17,7 +19,7 @@
     "install:all": "cd backend && npm install && cd ../frontend && npm install && cd .. && npm install"
   },
   "build": {
-    "appId": "com.vitamirabilis.odontologia",
+    "appId": "com.charlesx.vitamirabilis",
     "productName": "Vita Mirabilis",
     "directories": {
       "output": "dist-electron"
@@ -37,22 +39,45 @@
       "**/node_modules/**",
       "**/electron/**"
     ],
-    "extraResources": [],
+    "extraFiles": [
+      {
+        "from": "portable/Iniciar Vita Mirabilis.bat",
+        "to": "Iniciar Vita Mirabilis.bat"
+      },
+      {
+        "from": "portable/VERIFICAR.bat",
+        "to": "VERIFICAR.bat"
+      },
+      {
+        "from": "portable/README.txt",
+        "to": "LEEME.txt"
+      }
+    ],
     "win": {
       "target": [
-        { "target": "nsis", "arch": ["x64"] },
-        { "target": "portable", "arch": ["x64"] }
+        { "target": "nsis", "arch": ["x64"] }
       ],
       "icon": "electron/logo.ico"
     },
     "nsis": {
       "oneClick": false,
+      "perMachine": false,
+      "allowElevation": true,
       "allowToChangeInstallationDirectory": true,
+      "runAfterFinish": false,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
+      "menuCategory": "Charles-X RedFlame Systems",
       "shortcutName": "Vita Mirabilis",
       "installerIcon": "electron/logo.ico",
-      "uninstallerIcon": "electron/logo.ico"
+      "uninstallerIcon": "electron/logo.ico",
+      "installerHeader": "build/installerHeader.bmp",
+      "installerSidebar": "build/installerSidebar.bmp",
+      "uninstallerSidebar": "build/installerSidebar.bmp",
+      "include": "build/installer.nsh",
+      "unicode": true,
+      "deleteAppDataOnUninstall": false,
+      "artifactName": "Vita Mirabilis Setup ${version}.${ext}"
     }
   },
   "dependencies": {
