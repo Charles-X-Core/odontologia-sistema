@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { nombreCompleto, tipoDocLabel } from '../utils/formatters';
+import { nombreCompleto, tipoDocLabel, validarDocumento, validarFechaNacimiento } from '../utils/formatters';
 
 const FORM_NUEVO = {
   apellido_paterno: '', apellido_materno: '', nombres: '', dni: '', tipo_documento: 'dni', telefono: '',
@@ -47,6 +47,18 @@ export default function Recepcion({ onVolver, onStartSesion }) {
   const handleSubmitNuevo = async (e) => {
     e.preventDefault();
     setErrorNuevo('');
+
+    if (formNuevo.dni && !validarDocumento(formNuevo.tipo_documento || 'dni', formNuevo.dni)) {
+      setErrorNuevo(`Formato invalido para ${tipoDocLabel(formNuevo.tipo_documento || 'dni')}`);
+      setGuardandoNuevo(false);
+      return;
+    }
+
+    if (formNuevo.fecha_nacimiento) {
+      const valFecha = validarFechaNacimiento(formNuevo.fecha_nacimiento);
+      if (!valFecha.valido) { setErrorNuevo(valFecha.error); setGuardandoNuevo(false); return; }
+    }
+
     setGuardandoNuevo(true);
     try {
       const res = await api.pacientes.crear(formNuevo);

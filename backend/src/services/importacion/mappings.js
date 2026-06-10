@@ -13,24 +13,49 @@ function cleanDocument(val) {
   if (!val) return { tipo: null, numero: null };
   let str = String(val).trim();
   const upper = str.toUpperCase();
-  let tipo = 'dni';
-  let numero = str;
 
   if (upper.startsWith('CE') || upper.includes('CARNET')) {
-    tipo = 'ce';
-    numero = str.replace(/^(CE|CARNET\s*DE\s*EXTRANJERIA)\s*/i, '').trim();
-  } else if (upper.startsWith('PASAPORTE') || upper.startsWith('PPT')) {
-    tipo = 'pasaporte';
-    numero = str.replace(/^(PASAPORTE|PPT)\s*/i, '').trim();
-  } else if (upper.startsWith('DNI')) {
-    tipo = 'dni';
-    numero = str.replace(/^DNI\s*/i, '').trim();
+    const numero = str.replace(/^(CE|CARNET\s*DE\s*EXTRANJERIA)\s*/i, '').replace(/\D/g, '').trim();
+    return numero.length >= 4 ? { tipo: 'ce', numero } : { tipo: null, numero: null };
+  }
+  if (upper.startsWith('PASAPORTE') || upper.startsWith('PPT')) {
+    const numero = str.replace(/^(PASAPORTE|PPT)\s*/i, '').trim();
+    return numero.length >= 4 ? { tipo: 'pasaporte', numero } : { tipo: null, numero: null };
+  }
+  if (upper.startsWith('DNI') || upper.startsWith('L.E') || upper.startsWith('LE')) {
+    const numero = str.replace(/^(DNI|L\.?E\.?)\s*/i, '').replace(/\D/g, '').trim();
+    return numero.length >= 4 ? { tipo: 'dni', numero } : { tipo: null, numero: null };
   }
 
-  numero = numero.replace(/\D/g, '').trim();
-  if (numero.length < 4) return { tipo: null, numero: null };
+  const sinEspacios = str.replace(/\s/g, '');
 
-  return { tipo, numero };
+  if (/[A-Z]/i.test(sinEspacios) && /\d/.test(sinEspacios)) {
+    return sinEspacios.length >= 6 ? { tipo: 'pasaporte', numero: sinEspacios } : { tipo: null, numero: null };
+  }
+  if (/[A-Z]/i.test(sinEspacios)) {
+    return sinEspacios.length >= 6 ? { tipo: 'pasaporte', numero: sinEspacios } : { tipo: null, numero: null };
+  }
+
+  const soloDigitos = sinEspacios.replace(/\D/g, '');
+  if (soloDigitos.length === 0) return { tipo: null, numero: null };
+
+  if (soloDigitos.length === 8 && soloDigitos[0] !== '0') {
+    return { tipo: 'dni', numero: soloDigitos };
+  }
+
+  if (soloDigitos.length >= 8) {
+    return { tipo: 'ce', numero: soloDigitos };
+  }
+
+  if (soloDigitos.length >= 4 && soloDigitos[0] !== '0') {
+    return { tipo: 'dni', numero: soloDigitos };
+  }
+
+  if (soloDigitos.length >= 4) {
+    return { tipo: 'ce', numero: soloDigitos };
+  }
+
+  return { tipo: null, numero: null };
 }
 
 function cleanName(val) {

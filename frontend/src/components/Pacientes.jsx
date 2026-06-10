@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { nombreCompleto, tipoDocLabel, tipoDocPlaceholder, validarDocumento } from '../utils/formatters';
+import { nombreCompleto, tipoDocLabel, tipoDocPlaceholder, validarDocumento, validarFechaNacimiento } from '../utils/formatters';
 
 const FORM_DEFAULT = {
   apellido_paterno: '', apellido_materno: '', nombres: '', dni: '', tipo_documento: 'dni', telefono: '', email: '',
@@ -44,6 +44,11 @@ export default function Pacientes({ onVerHistorial, onVer360 }) {
     if (form.dni && !validarDocumento(form.tipo_documento, form.dni)) {
       setError(`Formato invalido para ${tipoDocLabel(form.tipo_documento)}`);
       return;
+    }
+
+    if (form.fecha_nacimiento) {
+      const valFecha = validarFechaNacimiento(form.fecha_nacimiento);
+      if (!valFecha.valido) { setError(valFecha.error); return; }
     }
 
     if (editando) {

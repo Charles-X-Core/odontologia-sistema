@@ -5,17 +5,17 @@ function validarDocumento(tipo, numero) {
   const t = numero.trim();
   switch (tipo) {
     case 'dni': return /^\d{8}$/.test(t);
-    case 'ce': return /^[A-Z]{1,2}\d{1,10}$/i.test(t) || /^\d{9,12}$/.test(t);
-    case 'pasaporte': return /^[A-Z0-9]{6,15}$/i.test(t);
+    case 'ce': return /^\d{8,12}$/.test(t);
+    case 'pasaporte': return /^[A-Z0-9]{6,12}$/i.test(t);
     default: return t.length >= 4;
   }
 }
 
 function mensajeValidacionDoc(tipo) {
   switch (tipo) {
-    case 'dni': return 'DNI debe tener exactamente 8 digitos';
-    case 'ce': return 'CE debe tener 1-2 letras seguidas de digitos (ej: A12345678), o 9-12 digitos';
-    case 'pasaporte': return 'Pasaporte debe tener 6-15 caracteres alfanumericos';
+    case 'dni': return 'DNI debe tener exactamente 8 digitos numericos';
+    case 'ce': return 'CE (Carnet de Extranjeria) debe tener 8-12 digitos numericos';
+    case 'pasaporte': return 'Pasaporte debe tener 6-12 caracteres alfanumericos';
     default: return 'Formato de documento invalido';
   }
 }

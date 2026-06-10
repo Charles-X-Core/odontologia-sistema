@@ -14,9 +14,9 @@ export function tipoDocLabel(tipo) {
 
 export function tipoDocPlaceholder(tipo) {
   switch (tipo) {
-    case 'dni': return '8 digitos';
-    case 'ce': return 'Ej: A12345678';
-    case 'pasaporte': return 'Ej: AB1234567';
+    case 'dni': return '8 digitos (ej: 12345678)';
+    case 'ce': return '8-12 digitos (ej: 00091766)';
+    case 'pasaporte': return '6-12 caracteres (ej: AB1234567)';
     case 'sin_doc': return 'Sin documento';
     default: return '';
   }
@@ -27,8 +27,8 @@ export function validarDocumento(tipo, numero) {
   const t = numero.trim();
   switch (tipo) {
     case 'dni': return /^\d{8}$/.test(t);
-    case 'ce': return /^[A-Z]{1,2}\d{1,10}$/i.test(t) || /^\d{9,12}$/.test(t);
-    case 'pasaporte': return /^[A-Z0-9]{6,15}$/i.test(t);
+    case 'ce': return /^\d{8,12}$/.test(t);
+    case 'pasaporte': return /^[A-Z0-9]{6,12}$/i.test(t);
     default: return t.length >= 4;
   }
 }
@@ -57,6 +57,24 @@ export function calcularEdad(fechaNac) {
   let e = h.getFullYear() - n.getFullYear();
   if (h.getMonth() < n.getMonth() || (h.getMonth() === n.getMonth() && h.getDate() < n.getDate())) e--;
   return e;
+}
+
+export function validarFechaNacimiento(fecha) {
+  if (!fecha) return { valido: true };
+  const d = new Date(fecha + 'T00:00:00');
+  if (isNaN(d.getTime())) return { valido: false, error: 'Fecha invalida' };
+
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+
+  if (d > hoy) return { valido: false, error: 'La fecha de nacimiento no puede ser futura' };
+
+  if (d.getFullYear() < 1920) return { valido: false, error: 'La fecha de nacimiento no puede ser anterior a 1920' };
+
+  const edad = calcularEdad(fecha);
+  if (edad !== null && edad > 120) return { valido: false, error: 'La edad no puede ser mayor a 120 anios' };
+
+  return { valido: true, edad };
 }
 
 export function formatMoney(monto) {
