@@ -9,9 +9,6 @@ exports.crear = (req, res) => {
   if (!paciente_id || !procedimiento_realizado) {
     return res.status(400).json({ error: 'paciente_id y procedimiento_realizado son obligatorios' });
   }
-  if (!consulta_id) {
-    return res.status(400).json({ error: 'consulta_id es obligatorio - todo tratamiento debe vincularse a una consulta' });
-  }
 
   const costoTotalNum = parseFloat(costo_total) || 0;
   const montoCuentaNum = parseFloat(monto_a_cuenta) || 0;

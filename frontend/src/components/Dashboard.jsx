@@ -284,7 +284,7 @@ export default function Dashboard({ onNavigate }) {
           <p className="dashboard-subtitle">Vista general del sistema</p>
         </div>
         <div className="dashboard-quick-actions">
-          <button className="quick-action-btn primary" onClick={() => onNavigate('sesion')}>
+          <button className="quick-action-btn primary" onClick={() => onNavigate('recepcion')}>
             <span className="quick-action-icon">+</span>
             Nueva Consulta
           </button>
@@ -479,7 +479,7 @@ export default function Dashboard({ onNavigate }) {
                 </svg>
               </div>
               <p>No hay consultas en este periodo</p>
-              <button className="empty-state-btn" onClick={() => onNavigate('sesion')}>
+              <button className="empty-state-btn" onClick={() => onNavigate('recepcion')}>
                 Crear primera consulta
               </button>
             </div>
