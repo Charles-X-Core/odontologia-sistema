@@ -230,7 +230,12 @@ function renderRecetas(recetas) {
 function fillTemplate(template, data) {
   let html = template;
   html = html.replace(/\{\{#if\s+(\w+)\}\}\s*([\s\S]*?)\{\{\/if\}\}/g, (match, key, content) => {
-    return data[key] ? content : '';
+    if (data[key]) {
+      return content.replace(/\{\{else\}\}[\s\S]*$/, '');
+    } else {
+      const elseMatch = content.match(/\{\{else\}\}([\s\S]*)$/);
+      return elseMatch ? elseMatch[1] : '';
+    }
   });
   for (const [key, value] of Object.entries(data)) {
     if (typeof value === 'string' || typeof value === 'number') {

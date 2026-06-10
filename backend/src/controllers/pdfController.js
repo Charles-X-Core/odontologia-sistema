@@ -104,7 +104,7 @@ exports.receta = (req, res) => {
         const imgBuffer = Buffer.from(imgData, 'base64');
         doc.image(imgBuffer, { width: 120, align: 'center' });
         doc.moveDown(0.5);
-      } catch {}
+      } catch (e) { console.error('[PDF] Error rendering firma in receta:', e.message); }
     }
     doc.font('Helvetica-Bold').text(receta.doctor_nombre || 'Doctor', { align: 'center' });
     doc.font('Helvetica').fontSize(8).text(receta.doctor_titulo || 'Odontologo', { align: 'center' });
@@ -196,7 +196,7 @@ exports.pago = (req, res) => {
         const imgBuffer = Buffer.from(imgData, 'base64');
         doc.image(imgBuffer, { width: 120, align: 'center' });
         doc.moveDown(0.5);
-      } catch {}
+      } catch (e) { console.error('[PDF] Error rendering firma in pago:', e.message); }
     }
     doc.font('Helvetica').fontSize(10).text('________________________', { align: 'center' });
     doc.font('Helvetica-Bold').text(doctor?.nombre || 'Doctor', { align: 'center' });
@@ -341,7 +341,7 @@ exports.tratamientos = (req, res) => {
         const imgBuffer = Buffer.from(imgData, 'base64');
         doc.image(imgBuffer, { width: 120, align: 'center' });
         doc.moveDown(0.5);
-      } catch {}
+      } catch (e) { console.error('[PDF] Error rendering firma in tratamientos:', e.message); }
     }
     doc.font('Helvetica').fontSize(10).text('________________________', { align: 'center' });
     doc.font('Helvetica-Bold').text(doctor?.nombre || 'Doctor', { align: 'center' });

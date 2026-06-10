@@ -43,9 +43,14 @@ function checkSystemHealth() {
   }
 
   // 3. Node.js o Electron (siempre presente en dist, solo warning en dev)
-  const hasNode = fs.existsSync('C:\\Program Files\\nodejs\\node.exe')
-    || fs.existsSync('C:\\Program Files (x86)\\nodejs\\node.exe')
-    || fs.existsSync(path.join(safeEnv('LOCALAPPDATA', ''), 'nodejs', 'node.exe'));
+  let hasNode = false;
+  if (process.platform === 'win32') {
+    hasNode = fs.existsSync('C:\\Program Files\\nodejs\\node.exe')
+      || fs.existsSync('C:\\Program Files (x86)\\nodejs\\node.exe')
+      || fs.existsSync(path.join(safeEnv('LOCALAPPDATA', ''), 'nodejs', 'node.exe'));
+  } else {
+    hasNode = fs.existsSync('/usr/bin/node') || fs.existsSync('/usr/local/bin/node');
+  }
   if (!hasNode) {
     result.warnings.push('Node.js no detectado (se usara el runtime de Electron, esto es normal)');
   }
@@ -53,24 +58,21 @@ function checkSystemHealth() {
   return result;
 }
 
-// Matar procesos que usan un puerto especifico (Windows)
+// Matar procesos que usan un puerto especifico
 function killPortProcess(port) {
   try {
-    const output = execSync(`netstat -ano | findstr :${port} | findstr LISTENING`,
-      { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
-    const lines = output.trim().split('\n').filter(l => l.trim());
-    for (const line of lines) {
-      const parts = line.trim().split(/\s+/);
-      const pid = parts[parts.length - 1];
-      if (pid && pid !== '0') {
-        try {
-          execSync(`taskkill /F /PID ${pid}`, { stdio: 'ignore' });
-          console.log(`[MAIN] Mato proceso PID ${pid} en puerto ${port}`);
-        } catch (e) {}
-      }
+    // Intentar con PowerShell (funciona tanto en Windows como Linux)
+    let cmd;
+    if (process.platform === 'win32') {
+      cmd = `powershell -Command "Get-NetTCPConnection -LocalPort ${port} -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess | ForEach-Object { taskkill /F /PID \\$_ } 2>$null"`;
+    } else {
+      cmd = `fuser -k ${port}/tcp 2>/dev/null`;
     }
+    execSync(cmd, { stdio: 'ignore', timeout: 5000 });
+    console.log(`[MAIN] Procesos en puerto ${port} eliminados`);
   } catch (e) {
-    // netstat no encontro nada o error — no hay problema
+    // Si no hay proceso en el puerto o no se pudo matar, continuar
+    console.log(`[MAIN] Puerto ${port} libre o no accesible`);
   }
 }
 
@@ -127,8 +129,30 @@ function startBackend() {
       const server = require(indexPath);
       console.log('[MAIN] index.js required successfully. Server:', typeof server);
 
-      serverStarted = true;
-      console.log('[MAIN] Backend is ready on port', PORT);
+      // Wait for server to actually listen before marking as started
+      await new Promise((res, rej) => {
+        const timeout = setTimeout(() => {
+          serverStarted = true;
+          console.log('[MAIN] Backend started (timeout)');
+          res();
+        }, 5000);
+        server.on('listening', () => {
+          clearTimeout(timeout);
+          serverStarted = true;
+          console.log('[MAIN] Backend is ready on port', PORT);
+          res();
+        });
+        server.on('error', (err) => {
+          clearTimeout(timeout);
+          if (err.code === 'EADDRINUSE') {
+            console.error(`[MAIN] Puerto ${PORT} en uso. La app puede estar abierta en otra instancia.`);
+          } else {
+            console.error('[MAIN] Server error:', err.message);
+          }
+          serverStarted = true;
+          res();
+        });
+      });
     } catch (err) {
       console.error('[MAIN] FATAL ERROR starting backend:', err.message);
       console.error('[MAIN] Stack:', err.stack);
@@ -210,7 +234,7 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1280, height: 800, minWidth: 900, minHeight: 600,
     title: 'Vita Mirabilis',
-    icon: path.join(__dirname, 'logo.ico'),
+    icon: path.join(__dirname, process.platform === 'win32' ? 'logo.ico' : '../frontend/public/logo.png'),
     frame: false,
     titleBarStyle: 'hidden',
     webPreferences: {
@@ -264,8 +288,8 @@ app.whenReady().then(async () => {
     console.error('[MAIN] Faltan dependencias:', health.missing);
     const msg = 'Faltan las siguientes dependencias:\n\n'
       + health.missing.map((m, i) => '  ' + (i + 1) + '. ' + m).join('\n')
-      + '\n\nSolucion: ejecuta "Iniciar Vita Mirabilis.bat" (incluido en esta carpeta)'
-        + '\n       para instalar las dependencias automaticamente.';
+      + '\n\nSolucion: ejecuta "Iniciar Vita Mirabilis.bat"'
+        + (process.platform === 'win32' ? '\n       (incluido en esta carpeta) para instalar dependencias automaticamente.' : '\n       para instalar las dependencias manualmente.');
     dialog.showErrorBox('Vita Mirabilis - Dependencias Faltantes', msg);
     app.quit();
     return;
@@ -284,7 +308,21 @@ app.whenReady().then(async () => {
     createWindow();
   } else {
     console.error('[MAIN] Server did not start in time');
-    createWindow();
+    const choice = dialog.showMessageBoxSync({
+      type: 'warning',
+      title: 'Vita Mirabilis',
+      message: 'El servidor no pudo iniciar.',
+      detail: `Puerto ${PORT} puede estar ocupado por otra instancia.\n\nCierra todas las instancias de Vita Mirabilis y vuelve a intentar.`,
+      buttons: ['Reintentar', 'Cerrar'],
+      defaultId: 0,
+      cancelId: 1,
+    });
+    if (choice === 0) {
+      app.relaunch();
+      app.exit(0);
+    } else {
+      app.quit();
+    }
   }
 
   app.on('activate', () => {

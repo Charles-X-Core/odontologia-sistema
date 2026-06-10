@@ -47,7 +47,7 @@ try {
 } catch(e) { console.error('[INDEX] CORS error:', e.message); }
 
 try {
-  app.use(express.json());
+  app.use(express.json({ limit: '10mb' }));
   console.log('[INDEX] express.json OK');
 } catch(e) { console.error('[INDEX] json error:', e.message); }
 
