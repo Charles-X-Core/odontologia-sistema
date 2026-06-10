@@ -78,14 +78,42 @@ exports.buscar = (req, res) => {
   if (!q || q.trim().length < 1) {
     return res.json([]);
   }
-  const term = `%${q.trim()}%`;
+
+  const palabras = q.trim().split(/\s+/).filter(w => w.length > 0);
+
+  if (palabras.length === 0) return res.json([]);
+
+  if (palabras.length === 1) {
+    const term = `%${palabras[0]}%`;
+    const pacientes = db.prepare(`
+      SELECT * FROM pacientes
+      WHERE nombres LIKE ? OR apellido_paterno LIKE ? OR apellido_materno LIKE ?
+         OR dni LIKE ? OR telefono LIKE ?
+      ORDER BY apellido_paterno ASC
+      LIMIT 20
+    `).all(term, term, term, term, term);
+    return res.json(pacientes);
+  }
+
+  const cols = ['nombres', 'apellido_paterno', 'apellido_materno', 'dni', 'telefono'];
+  const andBlocks = [];
+  const params = [];
+
+  for (const palabra of palabras) {
+    const likeBlocks = cols.map(col => `${col} LIKE ?`);
+    andBlocks.push(`(${likeBlocks.join(' OR ')})`);
+    const term = `%${palabra}%`;
+    for (let i = 0; i < cols.length; i++) params.push(term);
+  }
+
+  const where = andBlocks.join(' AND ');
   const pacientes = db.prepare(`
     SELECT * FROM pacientes
-    WHERE nombres LIKE ? OR apellido_paterno LIKE ? OR apellido_materno LIKE ?
-       OR dni LIKE ? OR telefono LIKE ?
+    WHERE ${where}
     ORDER BY apellido_paterno ASC
     LIMIT 20
-  `).all(term, term, term, term, term);
+  `).all(...params);
+
   res.json(pacientes);
 };
 
