@@ -142,6 +142,7 @@ function PerfilTab({ usuario }) {
 
   const guardarPerfil = async (e) => {
     e.preventDefault();
+    if (!perfil.nombre.trim()) { setError('El nombre es obligatorio'); return; }
     setGuardando(true); setError(''); setMensaje('');
     const res = await api.auth.actualizarPerfil(perfil);
     if (res.error) { setError(res.error); setGuardando(false); return; }
@@ -152,33 +153,39 @@ function PerfilTab({ usuario }) {
 
   return (
     <div className="card">
+      <h3 style={{ marginBottom: '4px' }}>Mi Perfil</h3>
+      <p style={{ fontSize: '12px', color: '#888', marginBottom: '16px' }}>Informacion que aparece en los PDFs y documentos</p>
       {mensaje && <div className="alert alert-success">{mensaje}</div>}
       {error && <div className="alert alert-error">{error}</div>}
       <form onSubmit={guardarPerfil} className="form">
         <div className="form-grid">
           <div className="field">
-            <label>Nombre *</label>
-            <input type="text" value={perfil.nombre} onChange={e => setPerfil({ ...perfil, nombre: e.target.value })} required />
+            <label>Nombre completo *</label>
+            <input type="text" value={perfil.nombre} onChange={e => setPerfil({ ...perfil, nombre: e.target.value })} placeholder="Dr. Juan Perez Lopez" />
           </div>
           <div className="field">
-            <label>Email</label>
-            <input type="email" value={perfil.email} onChange={e => setPerfil({ ...perfil, email: e.target.value })} />
+            <label>Titulo profesional</label>
+            <input type="text" value={perfil.titulo} onChange={e => setPerfil({ ...perfil, titulo: e.target.value })} placeholder="Ej: C.D Odontologia, Cirujano Dentista" />
           </div>
         </div>
-        <div className="field">
-          <label>Titulo Profesional</label>
-          <input type="text" value={perfil.titulo} onChange={e => setPerfil({ ...perfil, titulo: e.target.value })} placeholder="Ej: C.D Odontologia" />
-        </div>
-        <div className="field">
-          <label>C.M.P. (Colegio Medico del Peru)</label>
-          <input type="text" value={perfil.cmp} onChange={e => setPerfil({ ...perfil, cmp: e.target.value })} placeholder="Ej: 12345" />
+        <div className="form-grid">
+          <div className="field">
+            <label>C.M.P.</label>
+            <input type="text" value={perfil.cmp} onChange={e => setPerfil({ ...perfil, cmp: e.target.value })} placeholder="Ej: 12345" />
+          </div>
+          <div className="field">
+            <label>Email (opcional)</label>
+            <input type="text" value={perfil.email} onChange={e => setPerfil({ ...perfil, email: e.target.value })} placeholder="correo@ejemplo.com" />
+          </div>
         </div>
         <div className="field">
           <label>Rol</label>
-          <input type="text" value={usuario?.rol === 'admin' ? 'Administrador' : 'Odontologo'} readOnly className="field-readonly" />
+          <div style={{ padding: '8px 12px', background: '#f3f4f6', borderRadius: '6px', fontSize: '13px', color: '#555' }}>
+            {usuario?.rol === 'admin' ? 'Administrador' : 'Odontologo'}
+          </div>
         </div>
         <div className="form-actions">
-          <button type="submit" className="btn btn-primary" disabled={guardando}>{guardando ? 'Guardando...' : 'Guardar Perfil'}</button>
+          <button type="submit" className="btn btn-primary" disabled={guardando}>{guardando ? 'Guardando...' : 'Guardar Cambios'}</button>
         </div>
       </form>
     </div>
