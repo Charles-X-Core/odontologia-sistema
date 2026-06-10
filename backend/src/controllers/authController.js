@@ -11,6 +11,10 @@ exports.register = (req, res) => {
     return res.status(400).json({ error: 'Nombre, email y password son obligatorios' });
   }
 
+  if (password.length < 6) {
+    return res.status(400).json({ error: 'El password debe tener al menos 6 caracteres' });
+  }
+
   const existente = db.prepare('SELECT id FROM usuarios WHERE email = ?').get(email);
   if (existente) {
     return res.status(409).json({ error: 'Ya existe un usuario con ese email' });
@@ -91,8 +95,8 @@ exports.cambiarPassword = (req, res) => {
   if (!password_actual || !password_nuevo) {
     return res.status(400).json({ error: 'Password actual y nuevo son obligatorios' });
   }
-  if (password_nuevo.length < 4) {
-    return res.status(400).json({ error: 'El password nuevo debe tener al menos 4 caracteres' });
+  if (password_nuevo.length < 6) {
+    return res.status(400).json({ error: 'El password nuevo debe tener al menos 6 caracteres' });
   }
   const usuario = db.prepare('SELECT * FROM usuarios WHERE id = ?').get(req.usuario.id);
   if (!usuario) return res.status(404).json({ error: 'Usuario no encontrado' });
@@ -118,6 +122,29 @@ exports.actualizarPerfil = (req, res) => {
     db.prepare('UPDATE usuarios SET nombre = ?, email = ?, titulo = ? WHERE id = ?').run(nombre, email, titulo || 'C.D Odontologia', req.usuario.id);
     const usuarioActualizado = db.prepare('SELECT id, nombre, email, rol, titulo FROM usuarios WHERE id = ?').get(req.usuario.id);
     res.json({ message: 'Perfil actualizado', usuario: usuarioActualizado });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.subirFirma = (req, res) => {
+  const { firma_imagen } = req.body;
+  if (!firma_imagen) {
+    return res.status(400).json({ error: 'firma_imagen es obligatoria (base64)' });
+  }
+  try {
+    db.prepare('UPDATE usuarios SET firma_imagen = ? WHERE id = ?').run(firma_imagen, req.usuario.id);
+    res.json({ message: 'Firma guardada correctamente' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.obtenerFirma = (req, res) => {
+  try {
+    const usuario = db.prepare('SELECT id, firma_imagen FROM usuarios WHERE id = ?').get(req.usuario.id);
+    if (!usuario) return res.status(404).json({ error: 'Usuario no encontrado' });
+    res.json({ firma_imagen: usuario.firma_imagen || '' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

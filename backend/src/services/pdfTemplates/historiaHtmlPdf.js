@@ -349,6 +349,7 @@ function buildDataPorConsulta(paciente, historia, consulta, odontograma, tratami
     recetas_html: renderRecetas(recetas),
     doctor_nombre: doctor?.nombre || 'Doctor',
     doctor_titulo: doctor?.titulo || 'C.D Odontologia',
+    firma_imagen: doctor?.firma_imagen || '',
     ...tratData,
   };
 }
@@ -487,6 +488,7 @@ function buildData(paciente, historia, consultas, pagos) {
     recetas_html: '',
     doctor_nombre: '',
     doctor_titulo: 'C.D Odontologia',
+    firma_imagen: '',
     ...tratData,
   };
 }

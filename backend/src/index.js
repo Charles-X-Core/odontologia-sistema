@@ -12,6 +12,21 @@ console.log('[INDEX] PORT:', PORT);
 console.log('[INDEX] __dirname:', __dirname);
 
 try {
+  const os = require('os');
+  function getLocalIPs() {
+    const ips = ['localhost', '127.0.0.1'];
+    const interfaces = os.networkInterfaces();
+    for (const name of Object.keys(interfaces)) {
+      for (const iface of interfaces[name]) {
+        if (iface.family === 'IPv4' && !iface.internal) {
+          ips.push(iface.address);
+        }
+      }
+    }
+    return ips;
+  }
+  const localIPs = getLocalIPs();
+
   app.use(cors({
     origin: function (origin, callback) {
       if (!origin) return callback(null, true);
@@ -19,15 +34,16 @@ try {
         'http://localhost:5173',
         'http://localhost:3001',
         'http://localhost:18234',
+        ...localIPs.map(ip => `http://${ip}:18234`),
+        ...localIPs.map(ip => `http://${ip}:3001`),
         process.env.FRONTEND_URL,
       ].filter(Boolean);
       if (allowed.includes(origin)) return callback(null, true);
-      if (origin.includes('vercel.app')) return callback(null, true);
-      callback(null, true);
+      callback(null, false);
     },
     credentials: true,
   }));
-  console.log('[INDEX] CORS OK');
+  console.log('[INDEX] CORS OK (ips permitidas:', localIPs.join(', '), ')');
 } catch(e) { console.error('[INDEX] CORS error:', e.message); }
 
 try {

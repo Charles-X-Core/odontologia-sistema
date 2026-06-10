@@ -65,12 +65,14 @@ export default function Configuracion({ onVolver }) {
 
       <div className="configuracion-tabs">
         <button className={`tab-btn ${activeTab === 'perfil' ? 'active' : ''}`} onClick={() => setActiveTab('perfil')}>Mi Perfil</button>
+        <button className={`tab-btn ${activeTab === 'firma' ? 'active' : ''}`} onClick={() => setActiveTab('firma')}>Firma</button>
         <button className={`tab-btn ${activeTab === 'password' ? 'active' : ''}`} onClick={() => setActiveTab('password')}>Cambiar Password</button>
         <button className={`tab-btn ${activeTab === 'whatsapp' ? 'active' : ''}`} onClick={() => setActiveTab('whatsapp')}>WhatsApp</button>
         {devMode && <button className={`tab-btn tab-dev ${activeTab === 'dev' ? 'active' : ''}`} onClick={() => setActiveTab('dev')}>Dev</button>}
       </div>
 
       {activeTab === 'perfil' && <PerfilTab usuario={usuario} />}
+      {activeTab === 'firma' && <FirmaTab />}
       {activeTab === 'password' && <PasswordTab />}
       {activeTab === 'whatsapp' && <WhatsAppTab />}
       {activeTab === 'dev' && devMode && (
@@ -180,6 +182,151 @@ function PerfilTab({ usuario }) {
 }
 
 // ============================================
+// TAB: FIRMA DEL DOCTOR
+// ============================================
+function FirmaTab() {
+  const canvasRef = useRef(null);
+  const [dibujando, setDibujando] = useState(false);
+  const [firmaExistente, setFirmaExistente] = useState('');
+  const [mensaje, setMensaje] = useState('');
+  const [error, setError] = useState('');
+  const [guardando, setGuardando] = useState(false);
+  const [mostrarFirma, setMostrarFirma] = useState(false);
+
+  useEffect(() => { cargarFirma(); }, []);
+
+  useEffect(() => {
+    if (mostrarFirma && firmaExistente && canvasRef.current) {
+      const ctx = canvasRef.current.getContext('2d');
+      const img = new Image();
+      img.onload = () => {
+        canvasRef.current.width = 400;
+        canvasRef.current.height = 150;
+        ctx.clearRect(0, 0, 400, 150);
+        ctx.drawImage(img, 0, 0, 400, 150);
+      };
+      img.src = firmaExistente;
+    }
+  }, [mostrarFirma, firmaExistente]);
+
+  const cargarFirma = async () => {
+    const res = await api.auth.obtenerFirma();
+    if (res.firma_imagen) {
+      setFirmaExistente(res.firma_imagen);
+      setMostrarFirma(true);
+    }
+  };
+
+  const iniciarDibujo = (e) => {
+    setDibujando(true);
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const ctx = canvas.getContext('2d');
+    ctx.beginPath();
+    ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+  };
+
+  const dibujar = (e) => {
+    if (!dibujando) return;
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const ctx = canvas.getContext('2d');
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#000';
+    ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+    ctx.stroke();
+  };
+
+  const terminarDibujo = () => setDibujando(false);
+
+  const limpiarCanvas = () => {
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  };
+
+  const guardarFirma = async () => {
+    const canvas = canvasRef.current;
+    const dataUrl = canvas.toDataURL('image/png');
+    const ctx = canvas.getContext('2d');
+    const pixel = ctx.getImageData(0, 0, 1, 1).data;
+    if (pixel[3] === 0) {
+      setError('Dibuja tu firma antes de guardar');
+      return;
+    }
+    setGuardando(true); setError(''); setMensaje('');
+    const res = await api.auth.subirFirma(dataUrl);
+    if (res.error) { setError(res.error); setGuardando(false); return; }
+    setFirmaExistente(dataUrl);
+    setMensaje('Firma guardada correctamente');
+    setGuardando(false);
+  };
+
+  const eliminarFirma = async () => {
+    setGuardando(true);
+    await api.auth.subirFirma('');
+    setFirmaExistente('');
+    setMostrarFirma(false);
+    limpiarCanvas();
+    setMensaje('Firma eliminada');
+    setGuardando(false);
+  };
+
+  return (
+    <div className="card">
+      <h3 style={{ marginBottom: '12px' }}>Firma Digital del Doctor</h3>
+      <p style={{ fontSize: '13px', color: '#666', marginBottom: '16px' }}>
+        Dibuja tu firma para que aparezca en los PDFs de historia clinica y recetas.
+      </p>
+      {mensaje && <div className="alert alert-success">{mensaje}</div>}
+      {error && <div className="alert alert-error">{error}</div>}
+
+      <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+        <canvas
+          ref={canvasRef}
+          width={400}
+          height={150}
+          style={{
+            border: '2px solid #e5e7eb',
+            borderRadius: '8px',
+            cursor: 'crosshair',
+            maxWidth: '100%',
+            background: '#fff',
+          }}
+          onMouseDown={iniciarDibujo}
+          onMouseMove={dibujar}
+          onMouseUp={terminarDibujo}
+          onMouseLeave={terminarDibujo}
+        />
+      </div>
+
+      <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+        <button className="btn btn-secondary btn-sm" onClick={limpiarCanvas}>Limpiar</button>
+        <button className="btn btn-primary btn-sm" onClick={guardarFirma} disabled={guardando}>
+          {guardando ? 'Guardando...' : 'Guardar Firma'}
+        </button>
+        {firmaExistente && (
+          <button className="btn btn-danger btn-sm" onClick={eliminarFirma} disabled={guardando}>
+            Eliminar Firma
+          </button>
+        )}
+      </div>
+
+      {firmaExistente && (
+        <div style={{ marginTop: '16px', textAlign: 'center' }}>
+          <p style={{ fontSize: '12px', color: '#666', marginBottom: '8px' }}>Vista previa en PDF:</p>
+          <div style={{ display: 'inline-block', padding: '12px 24px', border: '1px solid #e5e7eb', borderRadius: '8px', background: '#fafafa' }}>
+            <img src={firmaExistente} alt="Firma" style={{ maxHeight: '60px' }} />
+            <p style={{ fontSize: '11px', color: '#666', marginTop: '4px' }}>Doctor</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================
 // TAB: CAMBIAR PASSWORD
 // ============================================
 function PasswordTab() {
@@ -214,11 +361,11 @@ function PasswordTab() {
         <div className="form-grid">
           <div className="field">
             <label>Password Nuevo *</label>
-            <input type="password" value={password.nuevo} onChange={e => setPassword({ ...password, nuevo: e.target.value })} required minLength={4} />
+            <input type="password" value={password.nuevo} onChange={e => setPassword({ ...password, nuevo: e.target.value })} required minLength={6} />
           </div>
           <div className="field">
             <label>Confirmar Password *</label>
-            <input type="password" value={password.confirmar} onChange={e => setPassword({ ...password, confirmar: e.target.value })} required minLength={4} />
+            <input type="password" value={password.confirmar} onChange={e => setPassword({ ...password, confirmar: e.target.value })} required minLength={6} />
           </div>
         </div>
         <div className="form-actions">

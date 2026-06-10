@@ -8,7 +8,7 @@ const db = new DatabaseSync(DB_PATH);
 db.exec('PRAGMA journal_mode = WAL');
 db.exec('PRAGMA foreign_keys = ON');
 
-db.exec("CREATE TABLE IF NOT EXISTS usuarios (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT NOT NULL, email TEXT UNIQUE NOT NULL, password TEXT NOT NULL, rol TEXT NOT NULL DEFAULT 'odontologo', created_at TEXT DEFAULT (datetime('now')))");
+db.exec("CREATE TABLE IF NOT EXISTS usuarios (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT NOT NULL, email TEXT UNIQUE NOT NULL, password TEXT NOT NULL, rol TEXT NOT NULL DEFAULT 'odontologo', titulo TEXT DEFAULT 'C.D Odontologia', firma_imagen TEXT DEFAULT '', created_at TEXT DEFAULT (datetime('now')))");
 
 db.exec("CREATE TABLE IF NOT EXISTS pacientes (id INTEGER PRIMARY KEY AUTOINCREMENT, apellido_paterno TEXT NOT NULL, apellido_materno TEXT DEFAULT '', nombres TEXT NOT NULL, dni TEXT UNIQUE NOT NULL, telefono TEXT, email TEXT, fecha_nacimiento TEXT, sexo TEXT, estado_civil TEXT DEFAULT '', direccion TEXT, lugar_nacimiento TEXT DEFAULT '', lugar_procedencia TEXT DEFAULT '', grado_instruccion TEXT DEFAULT '', ocupacion TEXT, nombre_acompanante TEXT DEFAULT '', contacto_emergencia TEXT, telefono_emergencia TEXT, estado TEXT DEFAULT 'activo', created_at TEXT DEFAULT (datetime('now')))");
 
