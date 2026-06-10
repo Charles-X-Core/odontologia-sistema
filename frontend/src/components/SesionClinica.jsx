@@ -1190,8 +1190,8 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
       )}
 
       {mostrarAlertaDni && (
-        <div className="modal-overlay" onClick={() => setMostrarAlertaDni(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '420px' }}>
+        <div className="modal-overlay">
+          <div className="modal" style={{ maxWidth: '420px' }}>
             <div className="modal-header">
               <h3>Documento no registrado</h3>
               <button className="btn-close" onClick={() => setMostrarAlertaDni(false)}>&times;</button>

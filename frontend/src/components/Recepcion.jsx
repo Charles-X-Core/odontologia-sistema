@@ -171,8 +171,8 @@ export default function Recepcion({ onVolver, onStartSesion }) {
       )}
 
       {mostrarFormNuevo && (
-        <div className="modal-overlay" onClick={() => setMostrarFormNuevo(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-overlay">
+          <div className="modal">
             <div className="modal-header">
               <h3>Nuevo Paciente</h3>
               <button className="btn-close" onClick={() => setMostrarFormNuevo(false)}>&times;</button>

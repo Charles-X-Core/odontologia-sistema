@@ -30,7 +30,7 @@ export default function ConfirmarPassword({ onConfirm, onCancelar, titulo = 'Con
   };
 
   return (
-    <div className="modal-overlay" onClick={onCancelar}>
+    <div className="modal-overlay">
       <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '380px' }}>
         <div className="modal-header">
           <h3 style={{ margin: 0, fontSize: '16px', color: 'var(--gray-800)' }}>{titulo}</h3>

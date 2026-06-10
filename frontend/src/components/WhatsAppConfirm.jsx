@@ -110,7 +110,7 @@ export default function WhatsAppConfirm({ paciente, tipo, recetaId, sugerenciaDa
   };
 
   return (
-    <div className="modal-overlay" onClick={onCancelar}>
+    <div className="modal-overlay">
       <div className="modal modal-lg" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3>Enviar por WhatsApp</h3>

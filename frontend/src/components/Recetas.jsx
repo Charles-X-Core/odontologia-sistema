@@ -192,8 +192,8 @@ export default function Recetas({ pacienteId, paciente, consultas }) {
       )}
 
       {recetaDetalle && (
-        <div className="modal-overlay" onClick={() => setRecetaDetalle(null)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-overlay">
+          <div className="modal">
             <div className="modal-header">
               <h3>Receta Medica</h3>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>

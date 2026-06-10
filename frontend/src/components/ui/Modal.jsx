@@ -28,7 +28,7 @@ export default function Modal({
   if (!open) return null;
 
   return (
-    <div className="ui-modal-overlay" onClick={onClose}>
+    <div className="ui-modal-overlay">
       <div
         className={`ui-modal ui-modal-${size} ${className}`}
         onClick={(e) => e.stopPropagation()}

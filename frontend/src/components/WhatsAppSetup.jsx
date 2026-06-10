@@ -93,7 +93,7 @@ export default function WhatsAppSetup({ onCompleto, onCancelar }) {
   };
 
   return (
-    <div className="modal-overlay" onClick={onCancelar}>
+    <div className="modal-overlay">
       <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
         <div className="modal-header">
           <h3>Configuracion de WhatsApp</h3>

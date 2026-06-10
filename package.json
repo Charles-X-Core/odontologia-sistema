@@ -28,6 +28,7 @@
       "backend/package.json",
       "backend/node_modules/**/*",
       "frontend/dist/**/*",
+      "frontend/public/**/*",
       "node_modules/**/*",
       "portable/**/*",
       "package.json"

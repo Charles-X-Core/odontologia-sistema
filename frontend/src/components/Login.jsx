@@ -20,6 +20,13 @@ export default function Login() {
   return (
     <div className="login-page">
       <div className="login-bg-pattern"></div>
+      <button
+        className="login-close-btn"
+        onClick={() => window.electronAPI?.windowClose()}
+        title="Cerrar aplicacion"
+      >
+        &times;
+      </button>
       <div className="login-container">
         <div className="login-branding">
           <div className="login-branding-content">

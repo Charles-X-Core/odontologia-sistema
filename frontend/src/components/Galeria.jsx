@@ -101,8 +101,8 @@ function ImageViewer({ imagenes, index, onClose, onNavigate }) {
   if (!img) return null;
 
   return (
-    <div className="image-viewer-overlay" onClick={onClose}>
-      <div className="image-viewer" onClick={e => e.stopPropagation()}>
+    <div className="image-viewer-overlay">
+      <div className="image-viewer">
         <div className="image-viewer-toolbar">
           <div className="image-viewer-toolbar-left">
             <span className="image-viewer-counter">{index + 1} / {imagenes.length}</span>
@@ -433,7 +433,7 @@ export default function Galeria({ pacienteId }) {
       )}
 
       {mostrarQR && qrData && (
-        <div className="image-viewer-overlay" onClick={() => setMostrarQR(false)}>
+        <div className="image-viewer-overlay">
           <div style={{
             background: 'white', borderRadius: '16px', padding: '32px', maxWidth: '380px',
             width: '90%', textAlign: 'center', boxShadow: '0 8px 32px rgba(0,0,0,0.2)',

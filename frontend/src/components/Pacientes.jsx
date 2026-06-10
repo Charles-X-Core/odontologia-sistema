@@ -122,8 +122,8 @@ export default function Pacientes({ onVerHistorial, onVer360 }) {
       </div>
 
       {mostrarForm && (
-        <div className="modal-overlay" onClick={() => setMostrarForm(false)}>
-          <div className="modal modal-lg" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-overlay">
+          <div className="modal modal-lg">
             <div className="modal-header">
               <h3>{editando ? 'Editar Paciente' : 'Nuevo Paciente'}</h3>
               <button className="btn-close" onClick={() => setMostrarForm(false)}>&times;</button>

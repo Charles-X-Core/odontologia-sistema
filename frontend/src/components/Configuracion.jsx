@@ -92,7 +92,7 @@ export default function Configuracion({ onVolver }) {
       )}
 
       {showResetModal && (
-        <div className="modal-overlay" onClick={() => !resetting && setShowResetModal(false)}>
+        <div className="modal-overlay">
           <div className="modal-content" onClick={e => e.stopPropagation()}>
             <h3>Confirmar Borrado Total</h3>
             <p>Esta accion es <strong>IRREVERSIBLE</strong>. Se eliminaran:</p>
