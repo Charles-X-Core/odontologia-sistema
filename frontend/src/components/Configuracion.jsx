@@ -72,7 +72,7 @@ export default function Configuracion({ onVolver }) {
       </div>
 
       {activeTab === 'perfil' && <PerfilTab usuario={usuario} />}
-      {activeTab === 'firma' && <FirmaTab />}
+      {activeTab === 'firma' && <FirmaTab usuario={usuario} />}
       {activeTab === 'password' && <PasswordTab />}
       {activeTab === 'whatsapp' && <WhatsAppTab />}
       {activeTab === 'dev' && devMode && (
@@ -135,7 +135,7 @@ export default function Configuracion({ onVolver }) {
 // TAB: MI PERFIL
 // ============================================
 function PerfilTab({ usuario }) {
-  const [perfil, setPerfil] = useState({ nombre: usuario?.nombre || '', email: usuario?.email || '', titulo: usuario?.titulo || 'C.D Odontologia' });
+  const [perfil, setPerfil] = useState({ nombre: usuario?.nombre || '', email: usuario?.email || '', titulo: usuario?.titulo || 'C.D Odontologia', cmp: usuario?.cmp || '' });
   const [mensaje, setMensaje] = useState('');
   const [error, setError] = useState('');
   const [guardando, setGuardando] = useState(false);
@@ -170,6 +170,10 @@ function PerfilTab({ usuario }) {
           <input type="text" value={perfil.titulo} onChange={e => setPerfil({ ...perfil, titulo: e.target.value })} placeholder="Ej: C.D Odontologia" />
         </div>
         <div className="field">
+          <label>C.M.P. (Colegio Medico del Peru)</label>
+          <input type="text" value={perfil.cmp} onChange={e => setPerfil({ ...perfil, cmp: e.target.value })} placeholder="Ej: 12345" />
+        </div>
+        <div className="field">
           <label>Rol</label>
           <input type="text" value={usuario?.rol === 'admin' ? 'Administrador' : 'Odontologo'} readOnly className="field-readonly" />
         </div>
@@ -184,7 +188,7 @@ function PerfilTab({ usuario }) {
 // ============================================
 // TAB: FIRMA DEL DOCTOR
 // ============================================
-function FirmaTab() {
+function FirmaTab({ usuario }) {
   const canvasRef = useRef(null);
   const [dibujando, setDibujando] = useState(false);
   const [firmaExistente, setFirmaExistente] = useState('');
@@ -318,7 +322,9 @@ function FirmaTab() {
           <p style={{ fontSize: '12px', color: '#666', marginBottom: '8px' }}>Vista previa en PDF:</p>
           <div style={{ display: 'inline-block', padding: '12px 24px', border: '1px solid #e5e7eb', borderRadius: '8px', background: '#fafafa' }}>
             <img src={firmaExistente} alt="Firma" style={{ maxHeight: '60px' }} />
-            <p style={{ fontSize: '11px', color: '#666', marginTop: '4px' }}>Doctor</p>
+            <p style={{ fontSize: '11px', color: '#333', marginTop: '4px', fontWeight: 'bold' }}>{usuario?.nombre || 'Doctor'}</p>
+            <p style={{ fontSize: '10px', color: '#666' }}>{usuario?.titulo || 'Odontologo'}</p>
+            {usuario?.cmp && <p style={{ fontSize: '10px', color: '#888' }}>C.M.P.: {usuario.cmp}</p>}
           </div>
         </div>
       )}

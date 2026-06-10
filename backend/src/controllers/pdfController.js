@@ -59,12 +59,12 @@ exports.receta = (req, res) => {
   try {
     const receta = db.prepare(`
       SELECT r.*, p.apellido_paterno, p.apellido_materno, p.nombres, p.dni, p.telefono,
-             u.nombre as doctor_nombre, u.titulo as doctor_titulo
+             u.nombre as doctor_nombre, u.titulo as doctor_titulo, u.cmp as doctor_cmp, u.firma_imagen as doctor_firma
       FROM recetas r
       JOIN pacientes p ON p.id = r.paciente_id
-      LEFT JOIN usuarios u ON 1=1
+      LEFT JOIN usuarios u ON u.id = ?
       WHERE r.id = ?
-    `).get(req.params.id);
+    `).get(req.usuario.id, req.params.id);
     if (!receta) return res.status(404).json({ error: 'Receta no encontrada' });
 
     const meds = typeof receta.medicamentos === 'string' ? JSON.parse(receta.medicamentos) : receta.medicamentos;
@@ -98,8 +98,19 @@ exports.receta = (req, res) => {
     doc.moveDown(2);
 
     doc.font('Helvetica').fontSize(10).text('________________________', { align: 'center' });
+    if (receta.doctor_firma) {
+      try {
+        const imgData = receta.doctor_firma.replace(/^data:image\/\w+;base64,/, '');
+        const imgBuffer = Buffer.from(imgData, 'base64');
+        doc.image(imgBuffer, { width: 120, align: 'center' });
+        doc.moveDown(0.5);
+      } catch {}
+    }
     doc.font('Helvetica-Bold').text(receta.doctor_nombre || 'Doctor', { align: 'center' });
-    doc.font('Helvetica').fontSize(8).text(receta.doctor_titulo || 'C.D Odontologia', { align: 'center' });
+    doc.font('Helvetica').fontSize(8).text(receta.doctor_titulo || 'Odontologo', { align: 'center' });
+    if (receta.doctor_cmp) {
+      doc.font('Helvetica').fontSize(8).text(`C.M.P.: ${receta.doctor_cmp}`, { align: 'center' });
+    }
 
     addFooter(doc);
     doc.end();
@@ -120,7 +131,7 @@ exports.historia = (req, res) => {
     const pagos = db.prepare('SELECT * FROM pagos WHERE paciente_id = ? ORDER BY fecha DESC').all(paciente.id);
 
     const { generateHistoriaHtml } = require('../services/pdfTemplates/historiaHtmlPdf');
-    const html = generateHistoriaHtml(paciente, historia, consultas, pagos);
+    const html = generateHistoriaHtml(paciente, historia, consultas, pagos, req.usuario.id);
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.send(html);
@@ -134,7 +145,7 @@ exports.historiaConsulta = (req, res) => {
   try {
     const { pacienteId, consultaId } = req.params;
     const { generateHistoriaConsultaHtml } = require('../services/pdfTemplates/historiaHtmlPdf');
-    const html = generateHistoriaConsultaHtml(parseInt(pacienteId), parseInt(consultaId));
+    const html = generateHistoriaConsultaHtml(parseInt(pacienteId), parseInt(consultaId), req.usuario.id);
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.send(html);
   } catch (err) {
@@ -142,13 +153,15 @@ exports.historiaConsulta = (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
-
 exports.pago = (req, res) => {
   try {
     const pago = db.prepare('SELECT * FROM pagos WHERE id = ?').get(req.params.id);
     if (!pago) return res.status(404).json({ error: 'Pago no encontrado' });
+
     const paciente = db.prepare('SELECT * FROM pacientes WHERE id = ?').get(pago.paciente_id);
     if (!paciente) return res.status(404).json({ error: 'Paciente no encontrado' });
+
+    const doctor = db.prepare('SELECT * FROM usuarios WHERE id = ?').get(req.usuario.id);
 
     const doc = new PDFDocument({ size: 'LETTER', margin: 50 });
     res.setHeader('Content-Type', 'application/pdf');
@@ -175,6 +188,22 @@ exports.pago = (req, res) => {
     doc.font('Helvetica-Bold').text('Total: ').font('Helvetica').text(`$${(pago.total || 0).toLocaleString()}`);
     doc.font('Helvetica-Bold').text('A Cuenta: ').font('Helvetica').text(`$${(pago.a_cuenta || 0).toLocaleString()}`);
     doc.font('Helvetica-Bold').text('Saldo Pendiente: ').font('Helvetica').text(`$${(pago.saldo || 0).toLocaleString()}`);
+    doc.moveDown(2);
+
+    if (doctor?.firma_imagen) {
+      try {
+        const imgData = doctor.firma_imagen.replace(/^data:image\/\w+;base64,/, '');
+        const imgBuffer = Buffer.from(imgData, 'base64');
+        doc.image(imgBuffer, { width: 120, align: 'center' });
+        doc.moveDown(0.5);
+      } catch {}
+    }
+    doc.font('Helvetica').fontSize(10).text('________________________', { align: 'center' });
+    doc.font('Helvetica-Bold').text(doctor?.nombre || 'Doctor', { align: 'center' });
+    doc.font('Helvetica').fontSize(8).text(doctor?.titulo || 'Odontologo', { align: 'center' });
+    if (doctor?.cmp) {
+      doc.font('Helvetica').fontSize(8).text(`C.M.P.: ${doctor.cmp}`, { align: 'center' });
+    }
 
     addFooter(doc);
     doc.end();
@@ -187,6 +216,8 @@ exports.tratamientos = (req, res) => {
   try {
     const paciente = db.prepare('SELECT * FROM pacientes WHERE id = ?').get(req.params.id);
     if (!paciente) return res.status(404).json({ error: 'Paciente no encontrado' });
+
+    const doctor = db.prepare('SELECT * FROM usuarios WHERE id = ?').get(req.usuario.id);
 
     const tratamientos = db.prepare(`
       SELECT t.*, c.fecha as consulta_fecha, c.motivo as consulta_motivo, c.hora as consulta_hora
@@ -304,8 +335,20 @@ exports.tratamientos = (req, res) => {
       .text(`TOTAL: $${grandTotalCosto.toLocaleString()}  |  PAGADO: $${grandTotalPagado.toLocaleString()}  |  SALDO: $${(grandTotalCosto - grandTotalPagado).toLocaleString()}`);
     doc.moveDown(2);
 
+    if (doctor?.firma_imagen) {
+      try {
+        const imgData = doctor.firma_imagen.replace(/^data:image\/\w+;base64,/, '');
+        const imgBuffer = Buffer.from(imgData, 'base64');
+        doc.image(imgBuffer, { width: 120, align: 'center' });
+        doc.moveDown(0.5);
+      } catch {}
+    }
     doc.font('Helvetica').fontSize(10).text('________________________', { align: 'center' });
-    doc.font('Helvetica').fontSize(8).text('Firma del Odontologo', { align: 'center' });
+    doc.font('Helvetica-Bold').text(doctor?.nombre || 'Doctor', { align: 'center' });
+    doc.font('Helvetica').fontSize(8).text(doctor?.titulo || 'Odontologo', { align: 'center' });
+    if (doctor?.cmp) {
+      doc.font('Helvetica').fontSize(8).text(`C.M.P.: ${doctor.cmp}`, { align: 'center' });
+    }
 
     addFooter(doc);
     doc.end();

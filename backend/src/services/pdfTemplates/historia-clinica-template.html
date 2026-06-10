@@ -329,7 +329,11 @@
   {{/if}}
   <div class="firma-line">Firma del Odontologo</div>
   <div style="font-size:9px;margin-top:3px">{{doctor_nombre}} - {{doctor_titulo}}</div>
+  {{#if doctor_cmp}}
+  <div style="font-size:8px;margin-top:2px;color:#888">C.M.P.: {{doctor_cmp}}</div>
+  {{else}}
   <div style="font-size:8px;margin-top:2px;color:#888">C.M.P.: _______________</div>
+  {{/if}}
 </div>
 
 <script>

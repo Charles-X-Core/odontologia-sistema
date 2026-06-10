@@ -63,9 +63,11 @@ function generateRecetaDoc(receta, paciente, doctor) {
         columns: [
           { width: '*', text: '' },
           { width: '*', stack: [
-            { text: '________________________', alignment: 'center', margin: [0, 30, 0, 3] },
-            { text: doctor?.nombre || 'Dr.', alignment: 'center', style: 'label' },
-            { text: 'Odontologo', alignment: 'center', style: 'small' },
+            ...(doctor?.firma_imagen ? [{ image: doctor.firma_imagen, width: 120, alignment: 'center', margin: [0, 10, 0, 5] }] : []),
+            { text: '________________________', alignment: 'center', margin: [0, 10, 0, 3] },
+            { text: doctor?.nombre || 'Doctor', alignment: 'center', style: 'label' },
+            { text: doctor?.titulo || 'Odontologo', alignment: 'center', style: 'small' },
+            ...(doctor?.cmp ? [{ text: `C.M.P.: ${doctor.cmp}`, alignment: 'center', style: 'small' }] : []),
           ]},
           { width: '*', text: '' },
         ],

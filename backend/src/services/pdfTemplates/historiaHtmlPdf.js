@@ -349,12 +349,13 @@ function buildDataPorConsulta(paciente, historia, consulta, odontograma, tratami
     recetas_html: renderRecetas(recetas),
     doctor_nombre: doctor?.nombre || 'Doctor',
     doctor_titulo: doctor?.titulo || 'C.D Odontologia',
+    doctor_cmp: doctor?.cmp || '',
     firma_imagen: doctor?.firma_imagen || '',
     ...tratData,
   };
 }
 
-function generateHistoriaConsultaHtml(pacienteId, consultaId) {
+function generateHistoriaConsultaHtml(pacienteId, consultaId, usuarioId) {
   const paciente = db.prepare('SELECT * FROM pacientes WHERE id = ?').get(pacienteId);
   if (!paciente) throw new Error('Paciente no encontrado');
 
@@ -365,7 +366,9 @@ function generateHistoriaConsultaHtml(pacienteId, consultaId) {
   const odontograma = db.prepare('SELECT * FROM odontogramas WHERE consulta_id = ?').get(consultaId);
   const tratamientos = db.prepare('SELECT * FROM tratamientos WHERE consulta_id = ?').all(consultaId);
   const recetas = db.prepare('SELECT * FROM recetas WHERE consulta_id = ?').all(consultaId);
-  const doctor = db.prepare('SELECT * FROM usuarios LIMIT 1').get();
+  const doctor = usuarioId
+    ? db.prepare('SELECT * FROM usuarios WHERE id = ?').get(usuarioId)
+    : db.prepare('SELECT * FROM usuarios LIMIT 1').get();
 
   const templatePath = path.join(__dirname, 'historia-clinica-template.html');
   const template = fs.readFileSync(templatePath, 'utf-8');
@@ -374,7 +377,7 @@ function generateHistoriaConsultaHtml(pacienteId, consultaId) {
 }
 
 // Legacy: buildData for all-consultas PDF (kept for backwards compatibility)
-function buildData(paciente, historia, consultas, pagos) {
+function buildData(paciente, historia, consultas, pagos, doctor) {
   const ed = calcularEdad(paciente.fecha_nacimiento);
   const h = historia || {};
   const c = consultas?.[0] || {};
@@ -486,17 +489,21 @@ function buildData(paciente, historia, consultas, pagos) {
     nec_protesis: necesidades.protesis,
     hay_recetas: false,
     recetas_html: '',
-    doctor_nombre: '',
-    doctor_titulo: 'C.D Odontologia',
-    firma_imagen: '',
+    doctor_nombre: doctor?.nombre || 'Doctor',
+    doctor_titulo: doctor?.titulo || 'C.D Odontologia',
+    doctor_cmp: doctor?.cmp || '',
+    firma_imagen: doctor?.firma_imagen || '',
     ...tratData,
   };
 }
 
-function generateHistoriaHtml(paciente, historia, consultas, pagos) {
+function generateHistoriaHtml(paciente, historia, consultas, pagos, usuarioId) {
+  const doctor = usuarioId
+    ? db.prepare('SELECT * FROM usuarios WHERE id = ?').get(usuarioId)
+    : db.prepare('SELECT * FROM usuarios LIMIT 1').get();
   const templatePath = path.join(__dirname, 'historia-clinica-template.html');
   const template = fs.readFileSync(templatePath, 'utf-8');
-  const data = buildData(paciente, historia, consultas, pagos);
+  const data = buildData(paciente, historia, consultas, pagos, doctor);
   return fillTemplate(template, data);
 }
 

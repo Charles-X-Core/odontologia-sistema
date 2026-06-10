@@ -67,9 +67,11 @@ function generateRecetaHtml(paciente, receta, doctor) {
   ${receta.indicaciones ? `<div class="indicaciones"><strong>Indicaciones:</strong> ${receta.indicaciones}</div>` : ''}
 
   <div class="firma">
+    ${doctor?.firma_imagen ? `<div style="margin-bottom:4px"><img src="${doctor.firma_imagen}" style="max-height:60px;max-width:200px;"></div>` : ''}
     <div class="firma-linea"></div>
     <p><strong>${doctor?.nombre || 'Doctor'}</strong></p>
-    <p>${doctor?.titulo || 'C.D Odontologia'}</p>
+    <p>${doctor?.titulo || 'Odontologo'}</p>
+    ${doctor?.cmp ? `<p style="font-size:11px;color:#666">C.M.P.: ${doctor.cmp}</p>` : ''}
   </div>
 
   <div class="footer">Vita Mirabilis - Clinica Odontologica | Receta generada electronicamente</div>
