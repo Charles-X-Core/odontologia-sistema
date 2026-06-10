@@ -130,28 +130,26 @@ function startBackend() {
       console.log('[MAIN] index.js required successfully. Server:', typeof server);
 
       // Wait for server to actually listen before marking as started
-      await new Promise((res, rej) => {
-        const timeout = setTimeout(() => {
-          serverStarted = true;
-          console.log('[MAIN] Backend started (timeout)');
-          res();
-        }, 5000);
-        server.on('listening', () => {
-          clearTimeout(timeout);
-          serverStarted = true;
-          console.log('[MAIN] Backend is ready on port', PORT);
-          res();
-        });
-        server.on('error', (err) => {
-          clearTimeout(timeout);
-          if (err.code === 'EADDRINUSE') {
-            console.error(`[MAIN] Puerto ${PORT} en uso. La app puede estar abierta en otra instancia.`);
-          } else {
-            console.error('[MAIN] Server error:', err.message);
-          }
-          serverStarted = true;
-          res();
-        });
+      const listenTimeout = setTimeout(() => {
+        serverStarted = true;
+        console.log('[MAIN] Backend started (timeout)');
+        resolve();
+      }, 5000);
+      server.on('listening', () => {
+        clearTimeout(listenTimeout);
+        serverStarted = true;
+        console.log('[MAIN] Backend is ready on port', PORT);
+        resolve();
+      });
+      server.on('error', (err) => {
+        clearTimeout(listenTimeout);
+        if (err.code === 'EADDRINUSE') {
+          console.error(`[MAIN] Puerto ${PORT} en uso. La app puede estar abierta en otra instancia.`);
+        } else {
+          console.error('[MAIN] Server error:', err.message);
+        }
+        serverStarted = true;
+        resolve();
       });
     } catch (err) {
       console.error('[MAIN] FATAL ERROR starting backend:', err.message);
