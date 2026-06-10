@@ -28,8 +28,13 @@ export default function Pacientes({ onVerHistorial, onVer360 }) {
 
   const filtrados = pacientes.filter(p => {
     const nombre = nombreCompleto(p).toLowerCase();
-    const q = busqueda.toLowerCase();
-    return nombre.includes(q) || (p.dni && p.dni.includes(q));
+    const palabras = busqueda.toLowerCase().trim().split(/\s+/).filter(w => w.length > 0);
+    if (palabras.length === 0) return true;
+    const dni = (p.dni || '').toLowerCase();
+    const telefono = (p.telefono || '').toLowerCase();
+    return palabras.every(palabra =>
+      nombre.includes(palabra) || dni.includes(palabra) || telefono.includes(palabra)
+    );
   });
 
   const handleSubmit = async (e) => {
