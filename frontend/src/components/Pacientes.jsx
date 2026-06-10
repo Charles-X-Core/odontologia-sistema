@@ -1,9 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
-
-function nombreCompleto(p) {
-  return `${p.apellido_paterno || ''} ${p.apellido_materno || ''} ${p.nombres || ''}`.trim();
-}
+import { nombreCompleto } from '../utils/formatters';
 
 const FORM_DEFAULT = {
   apellido_paterno: '', apellido_materno: '', nombres: '', dni: '', telefono: '', email: '',

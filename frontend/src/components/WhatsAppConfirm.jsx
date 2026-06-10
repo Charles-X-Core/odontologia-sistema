@@ -1,11 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
+import { nombreCompleto } from '../utils/formatters';
 
 const isElectron = window.electronAPI?.isElectron;
-
-function nombreCompleto(p) {
-  return `${p.apellido_paterno || ''} ${p.apellido_materno || ''} ${p.nombres || ''}`.trim();
-}
 
 const TIPOS_MENSAJE = [
   { id: 'receta', nombre: 'Receta Medica', icon: '💊' },

@@ -3,15 +3,13 @@ import { api } from '../services/api';
 import WhatsAppConfirm from './WhatsAppConfirm';
 import WhatsAppSetup from './WhatsAppSetup';
 import Odontograma from './Odontograma';
+import Galeria from './Galeria';
+import { nombreCompleto } from '../utils/formatters';
 
 const ESTADO_COLORS = {
   realizado: { bg: '#dcfce7', text: '#166534' },
   planificado: { bg: '#dbeafe', text: '#1e40af' },
 };
-
-function nombreCompleto(p) {
-  return `${p.apellido_paterno || ''} ${p.apellido_materno || ''} ${p.nombres || ''}`.trim();
-}
 
 export default function Paciente360({ paciente, onVolver, onVerHistorial }) {
   const [datos, setDatos] = useState(null);
@@ -108,6 +106,7 @@ export default function Paciente360({ paciente, onVolver, onVerHistorial }) {
       <div className="paciente360-tabs">
         <button className={`tab-btn ${tab === 'general' ? 'active' : ''}`} onClick={() => setTab('general')}>Informacion</button>
         <button className={`tab-btn ${tab === 'clinico' ? 'active' : ''}`} onClick={() => setTab('clinico')}>Clinico</button>
+        <button className={`tab-btn ${tab === 'evidencias' ? 'active' : ''}`} onClick={() => setTab('evidencias')}>Evidencias</button>
         <button className={`tab-btn ${tab === 'reciente' ? 'active' : ''}`} onClick={() => setTab('reciente')}>Actividad Reciente</button>
         <button className={`tab-btn ${tab === 'financiero' ? 'active' : ''}`} onClick={() => setTab('financiero')}>Financiero</button>
         <button className={`tab-btn ${tab === 'mensajes' ? 'active' : ''}`} onClick={() => setTab('mensajes')}>📱 Mensajes ({mensajesWhatsApp.length})</button>
@@ -216,6 +215,10 @@ export default function Paciente360({ paciente, onVolver, onVerHistorial }) {
             )}
           </div>
         </div>
+      )}
+
+      {tab === 'evidencias' && (
+        <Galeria pacienteId={paciente.id} />
       )}
 
       {tab === 'reciente' && (

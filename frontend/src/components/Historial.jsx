@@ -6,10 +6,7 @@ import Galeria from './Galeria';
 import DiagnosticoPlan from './DiagnosticoPlan';
 import Pagos from './Pagos';
 import Odontograma from './Odontograma';
-
-function nombreCompleto(p) {
-  return `${p.apellido_paterno || ''} ${p.apellido_materno || ''} ${p.nombres || ''}`.trim();
-}
+import { nombreCompleto } from '../utils/formatters';
 
 function parseJson(d) {
   if (!d) return [];

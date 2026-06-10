@@ -1,8 +1,5 @@
 import { api } from './api';
-
-function nombreCompleto(p) {
-  return `${p.apellido_paterno || ''} ${p.apellido_materno || ''} ${p.nombres || ''}`.trim();
-}
+import { nombreCompleto } from './utils/formatters';
 
 export const whatsapp = {
   enviar: async (pacienteId, tipo, customMensaje) => {

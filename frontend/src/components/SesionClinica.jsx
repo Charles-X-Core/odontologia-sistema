@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import Odontograma from './Odontograma';
+import { nombreCompleto } from '../utils/formatters';
 
 const PASOS = [
   { id: 1, label: 'Paciente', icon: 'user' },
@@ -35,10 +36,6 @@ const NECESIDADES_DEFAULT = {
 const SIGNOS_VITALES_DEFAULT = {
   presion_arterial: '', pulso: '', temperatura: '', frecuencia_cardiaca: '', frecuencia_respiratoria: '', peso: '', altura: '',
 };
-
-function nombreCompleto(p) {
-  return `${p.apellido_paterno || ''} ${p.apellido_materno || ''} ${p.nombres || ''}`.trim();
-}
 
 export default function SesionClinica({ paciente, onVolver, onCompletado }) {
   const [paso, setPaso] = useState(1);
