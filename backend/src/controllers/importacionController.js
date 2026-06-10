@@ -245,40 +245,109 @@ exports.importarCompleto = (req, res) => {
       else if (type === 'saldos') saldoSheet = data;
     }
 
-    const pacienteByDni = new Map();
     const pacienteByHclx = new Map();
     const pacienteById = new Map();
     const historiaByPacienteId = new Map();
     const ultimaConsultaByHistoriaId = new Map();
+    let autoDniCounter = 0;
 
-    const stmtPaciente = db.prepare('INSERT OR IGNORE INTO pacientes (apellido_paterno, apellido_materno, nombres, dni, tipo_documento, telefono, fecha_nacimiento) VALUES (?, ?, ?, ?, ?, ?, ?)');
     const stmtHistoria = db.prepare('INSERT INTO historias_clinicas (paciente_id, numero_historia, alergia_medicamentos, otras_enfermedades) VALUES (?, ?, ?, ?)');
     const stmtConsulta = db.prepare('INSERT INTO consultas (historia_id, fecha, motivo, notas) VALUES (?, ?, ?, ?)');
     const stmtNecesidades = db.prepare('INSERT INTO necesidades_odontologicas (consulta_id, cariados, curados, por_extraer, endodoncia, ortodoncia, protesis, extraidos, destartraje) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
     const stmtTratamiento = db.prepare('INSERT INTO tratamientos (paciente_id, consulta_id, fecha, procedimiento_realizado, notas, costo_total, monto_a_cuenta, saldo_pendiente) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
     const stmtPago = db.prepare('INSERT INTO pagos (paciente_id, consulta_id, fecha, procedimiento, total, a_cuenta, saldo, metodo_pago) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
-    const findPatient = db.prepare('SELECT id FROM pacientes WHERE dni = ?');
+
+    const findPatientByDni = db.prepare('SELECT id FROM pacientes WHERE dni = ?');
     const findPatientById = db.prepare('SELECT id, dni, tipo_documento FROM pacientes WHERE id = ?');
     const findHistoriaByPaciente = db.prepare('SELECT id FROM historias_clinicas WHERE paciente_id = ?');
     const findConsulta = db.prepare('SELECT id FROM consultas WHERE historia_id = ? ORDER BY id DESC LIMIT 1');
     const findHistoriaByHclx = db.prepare('SELECT id, paciente_id FROM historias_clinicas WHERE numero_historia = ?');
+    const findPatientByName = db.prepare('SELECT id, dni FROM pacientes WHERE LOWER(apellido_paterno) = LOWER(?) AND LOWER(nombres) = LOWER(?)');
+    const insertPaciente = db.prepare('INSERT OR IGNORE INTO pacientes (apellido_paterno, apellido_materno, nombres, dni, tipo_documento, telefono, fecha_nacimiento) VALUES (?, ?, ?, ?, ?, ?, ?)');
 
-    function getOrCreatePacienteByNombre(nombre, sheetOrigin) {
-      if (!nombre) return null;
-      const clean = cleanName(nombre);
-      if (!clean) return null;
-      const parts = clean.split(/\s+/);
-      const apellido = parts[0] || '';
-      const nombres = parts.slice(1).join(' ');
+    function resolveHclx(row) {
+      const keys = ['N°HCLX', 'nhclx', 'n°hclx', 'n hclx', 'hclx', 'HCLX', 'N. HCLX', 'N° HCLX', 'No. HCLX', 'No HCLX'];
+      for (const k of keys) {
+        if (row[k] !== undefined && row[k] !== '') return String(row[k]).trim();
+      }
+      return '';
+    }
 
-      const existing = db.prepare('SELECT id FROM pacientes WHERE apellido_paterno = ? AND nombres = ?').get(apellido, nombres);
-      if (existing) return { id: existing.id };
+    function findOrCreatePaciente(apellidoP, nombres, dni, tipoDoc, telefono, fechaNac, sheetOrigin) {
+      let paciente = null;
 
-      const r = stmtPaciente.run(apellido, '', nombres || apellido, null, 'sin_doc', null, null);
-      const newId = Number(r.lastInsertRowid);
-      resultados.pacientes.exitosos++;
-      resultados.pacientesCreadosAutomaticamente.push({ id: newId, nombre: clean, origen: sheetOrigin });
-      return { id: newId };
+      if (dni) {
+        paciente = findPatientByDni.get(dni);
+        if (paciente) return { id: paciente.id, existing: true };
+      }
+
+      if (apellidoP && nombres) {
+        paciente = findPatientByName.get(apellidoP, nombres);
+        if (paciente) {
+          if (dni && paciente.dni !== dni && (!paciente.dni || paciente.dni.startsWith('AUTO_'))) {
+            try { db.prepare('UPDATE pacientes SET dni = ?, tipo_documento = ? WHERE id = ?').run(dni, tipoDoc || 'dni', paciente.id); } catch (e) {}
+          }
+          return { id: paciente.id, existing: true };
+        }
+      }
+
+      if (!dni && apellidoP) {
+        autoDniCounter++;
+        const autoDni = `AUTO_${Date.now()}_${autoDniCounter}`;
+        const r = insertPaciente.run(apellidoP, '', nombres || apellidoP, autoDni, 'sin_doc', telefono || null, fechaNac || null);
+        if (r.changes > 0) {
+          const newId = Number(r.lastInsertRowid);
+          resultados.pacientes.exitosos++;
+          resultados.pacientesCreadosAutomaticamente.push({ id: newId, nombre: `${apellidoP} ${nombres || ''}`.trim(), origen: sheetOrigin });
+          return { id: newId, existing: false };
+        }
+      }
+
+      if (dni) {
+        const r = insertPaciente.run(apellidoP || '', '', nombres || apellidoP || '', dni, tipoDoc || 'dni', telefono || null, fechaNac || null);
+        if (r.changes > 0) {
+          const newId = Number(r.lastInsertRowid);
+          resultados.pacientes.exitosos++;
+          resultados.pacientesCreadosAutomaticamente.push({ id: newId, nombre: `${apellidoP || ''} ${nombres || ''}`.trim(), origen: sheetOrigin });
+          return { id: newId, existing: false };
+        }
+        paciente = findPatientByDni.get(dni);
+        if (paciente) return { id: paciente.id, existing: true };
+      }
+
+      return null;
+    }
+
+    function ensureHistoria(pacienteId, hclx) {
+      let historia = historiaByPacienteId.get(pacienteId);
+      if (historia) return historia;
+
+      historia = findHistoriaByPaciente.get(pacienteId);
+      if (historia) {
+        historiaByPacienteId.set(pacienteId, historia);
+        return historia;
+      }
+
+      const r = stmtHistoria.run(pacienteId, hclx || null, null, null);
+      historia = { id: Number(r.lastInsertRowid) };
+      historiaByPacienteId.set(pacienteId, historia);
+      return historia;
+    }
+
+    function ensureConsulta(historiaId, motivo, fecha) {
+      let existing = ultimaConsultaByHistoriaId.get(historiaId);
+      if (existing) return existing;
+
+      const fromDb = findConsulta.get(historiaId);
+      if (fromDb) {
+        ultimaConsultaByHistoriaId.set(historiaId, fromDb.id);
+        return fromDb.id;
+      }
+
+      const r = stmtConsulta.run(historiaId, fecha || new Date().toISOString().split('T')[0], motivo || 'Consulta importada', null);
+      const consultaId = Number(r.lastInsertRowid);
+      ultimaConsultaByHistoriaId.set(historiaId, consultaId);
+      return consultaId;
     }
 
     if (histSheet) {
@@ -308,34 +377,21 @@ exports.importarCompleto = (req, res) => {
 
           if (!dni && !apellidoP) throw new Error(`Falta nombre o documento del paciente`);
 
-          let paciente = null;
-          if (dni) {
-            paciente = findPatient.get(dni);
-          }
-          if (!paciente && apellidoP) {
-            paciente = db.prepare('SELECT id FROM pacientes WHERE apellido_paterno = ? AND nombres = ?').get(apellidoP, nombres);
-          }
+          const result = findOrCreatePaciente(apellidoP, nombres, dni, tipoDoc, telefono, fechaNac, 'historia_clinica');
+          if (!result) throw new Error(`No se pudo crear/encontrar paciente: ${apellidoP} ${nombres}`);
 
-          if (!paciente) {
-            const rPaciente = stmtPaciente.run(apellidoP, '', nombres || apellidoP, dni, dni ? tipoDoc : 'sin_doc', telefono, fechaNac);
-            paciente = { id: Number(rPaciente.lastInsertRowid) };
-            resultados.pacientes.exitosos++;
-          } else {
-            if (dni) {
-              try { db.prepare('UPDATE pacientes SET tipo_documento = ? WHERE id = ? AND (tipo_documento IS NULL OR tipo_documento = "dni")').run(tipoDoc, paciente.id); } catch (e) {}
-            }
-            resultados.pacientes.duplicados++;
-          }
+          const paciente = { id: result.id };
+          if (result.existing) resultados.pacientes.duplicados++;
 
-          pacienteByDni.set(dni, paciente);
           pacienteById.set(paciente.id, paciente);
-          if (hclx) pacienteByHclx.set(hclx, paciente);
+          if (hclx) {
+            pacienteByHclx.set(hclx, paciente);
+          }
 
           let historia = findHistoriaByPaciente.get(paciente.id);
           if (!historia) {
             const rHistoria = stmtHistoria.run(paciente.id, hclx || null, alergias, antecedentes);
             historia = { id: Number(rHistoria.lastInsertRowid) };
-            resultados.consultas.exitosos++;
           } else {
             if (alergias || antecedentes) {
               try { db.prepare('UPDATE historias_clinicas SET alergia_medicamentos = COALESCE(?, alergia_medicamentos), otras_enfermedades = COALESCE(?, otras_enfermedades) WHERE id = ?').run(alergias, antecedentes, historia.id); } catch (e) {}
@@ -354,25 +410,25 @@ exports.importarCompleto = (req, res) => {
             const consultaId = Number(rConsulta.lastInsertRowid);
             ultimaConsultaByHistoriaId.set(historia.id, consultaId);
 
-          const getVal = (keys) => { for (const k of keys) { if (row[k] !== undefined && row[k] !== '') return row[k]; } return null; };
-          const cariados = getVal(['CARIADOS', 'cariados']);
-          const curados = getVal(['CURADOS', 'curados']);
-          const porExtraer = getVal(['POR EXTRAER', 'por_extraer']);
-          const endodoncia = getVal(['ENDODONCIA', 'endodoncia']);
-          const orto = getVal(['ORTO', 'ortodoncia']);
-          const protesis = getVal(['PROTESIS', 'protesis']);
-          const extraidos = getVal(['EXTRAIDOS', 'extraidos']);
-          const destartraje = getVal(['DESTARTRAJE', 'destartraje']);
+            const getVal = (keys) => { for (const k of keys) { if (row[k] !== undefined && row[k] !== '') return row[k]; } return null; };
+            const cariados = getVal(['CARIADOS', 'cariados']);
+            const curados = getVal(['CURADOS', 'curados']);
+            const porExtraer = getVal(['POR EXTRAER', 'por_extraer']);
+            const endodoncia = getVal(['ENDODONCIA', 'endodoncia']);
+            const orto = getVal(['ORTO', 'ortodoncia']);
+            const protesis = getVal(['PROTESIS', 'protesis']);
+            const extraidos = getVal(['EXTRAIDOS', 'extraidos']);
+            const destartraje = getVal(['DESTARTRAJE', 'destartraje']);
 
-          if (cariados || curados || porExtraer || endodoncia || orto || protesis || extraidos || destartraje) {
-            try {
-              stmtNecesidades.run(consultaId, cariados ? String(cariados) : null, curados ? String(curados) : null, porExtraer ? String(porExtraer) : null, endodoncia ? String(endodoncia) : null, orto ? String(orto) : null, protesis ? String(protesis) : null, extraidos ? String(extraidos) : null, destartraje ? String(destartraje) : null);
-              resultados.necesidades.exitosos++;
-            } catch (e) {
-              resultados.necesidades.fallidos++;
-              resultados.necesidades.errores.push({ fila: i + 2, error: e.message });
+            if (cariados || curados || porExtraer || endodoncia || orto || protesis || extraidos || destartraje) {
+              try {
+                stmtNecesidades.run(consultaId, cariados ? String(cariados) : null, curados ? String(curados) : null, porExtraer ? String(porExtraer) : null, endodoncia ? String(endodoncia) : null, orto ? String(orto) : null, protesis ? String(protesis) : null, extraidos ? String(extraidos) : null, destartraje ? String(destartraje) : null);
+                resultados.necesidades.exitosos++;
+              } catch (e) {
+                resultados.necesidades.fallidos++;
+                resultados.necesidades.errores.push({ fila: i + 2, error: e.message });
+              }
             }
-          }
           }
         } catch (err) {
           resultados.pacientes.fallidos++;
@@ -390,39 +446,33 @@ exports.importarCompleto = (req, res) => {
             if (row[header] !== undefined && row[header] !== '') mapped[dbField] = row[header];
           }
 
-          const missing = ANTECEDENTE_REQUIRED.filter(f => !mapped[f]);
-          if (missing.length > 0) throw new Error(`Campos requeridos faltantes: ${missing.join(', ')}`);
-
           let paciente = null;
-          const hclx = String(row['N°HCLX'] || row['nhclx'] || row['hclx'] || mapped.numero_historia || '').trim();
+          const hclx = resolveHclx(row);
+
           if (hclx) {
             const hist = findHistoriaByHclx.get(hclx);
             if (hist) paciente = findPatientById.get(hist.paciente_id);
+            if (!paciente) {
+              const byHclx = pacienteByHclx.get(hclx);
+              if (byHclx) paciente = byHclx;
+            }
           }
 
           if (!paciente && mapped.paciente_nombre) {
-            paciente = getOrCreatePacienteByNombre(mapped.paciente_nombre, 'antecedentes');
+            const clean = cleanName(mapped.paciente_nombre);
+            const parts = clean.split(/\s+/);
+            const apellido = parts[0] || '';
+            const nombresArr = parts.slice(1).join(' ');
+            const result = findOrCreatePaciente(apellido, nombresArr, null, 'sin_doc', null, null, 'antecedentes');
+            if (result) paciente = { id: result.id };
           }
 
           if (!paciente) throw new Error(`Paciente no encontrado (N°HCLX: ${hclx || 'N/A'}, Nombre: ${mapped.paciente_nombre || 'N/A'})`);
 
           pacienteById.set(paciente.id, paciente);
 
-          let historia = findHistoriaByPaciente.get(paciente.id);
-          if (!historia) {
-            const rHistoria = stmtHistoria.run(paciente.id, hclx || null, null, null);
-            historia = { id: Number(rHistoria.lastInsertRowid) };
-            historiaByPacienteId.set(paciente.id, historia);
-          }
-
-          if (!ultimaConsultaByHistoriaId.has(historia.id)) {
-            const ultimaCons = findConsulta.get(historia.id);
-            if (ultimaCons) ultimaConsultaByHistoriaId.set(historia.id, ultimaCons.id);
-          }
-          const rConsulta = stmtConsulta.run(historia.id, new Date().toISOString().split('T')[0], 'Consulta desde antecedentes', null);
-          const consultaId = Number(rConsulta.lastInsertRowid);
-          ultimaConsultaByHistoriaId.set(historia.id, consultaId);
-          resultados.consultas.exitosos++;
+          const historia = ensureHistoria(paciente.id, hclx);
+          const consultaId = ensureConsulta(historia.id, 'Consulta desde antecedentes', new Date().toISOString().split('T')[0]);
 
           const diagnostico = mapped.diagnostico_lista || '';
           const tratamiento = mapped.tratamiento || '';
@@ -456,29 +506,29 @@ exports.importarCompleto = (req, res) => {
           if (missing.length > 0) throw new Error(`Campos requeridos faltantes: ${missing.join(', ')}`);
 
           let paciente = null;
-          const hclx = String(row['N°HCLX'] || row['nhclx'] || row['hclx'] || mapped.numero_historia || '').trim();
+          const hclx = resolveHclx(row);
+
           if (hclx) {
             const hist = findHistoriaByHclx.get(hclx);
             if (hist) paciente = findPatientById.get(hist.paciente_id);
+            if (!paciente) {
+              const byHclx = pacienteByHclx.get(hclx);
+              if (byHclx) paciente = byHclx;
+            }
           }
 
           if (!paciente && mapped.paciente_nombre) {
-            paciente = getOrCreatePacienteByNombre(mapped.paciente_nombre, 'saldos');
+            const clean = cleanName(mapped.paciente_nombre);
+            const parts = clean.split(/\s+/);
+            const apellido = parts[0] || '';
+            const nombresArr = parts.slice(1).join(' ');
+            const result = findOrCreatePaciente(apellido, nombresArr, null, 'sin_doc', null, null, 'saldos');
+            if (result) paciente = { id: result.id };
           }
 
           if (!paciente) throw new Error(`Paciente no encontrado (N°HCLX: ${hclx || 'N/A'}, Nombre: ${mapped.paciente_nombre || 'N/A'})`);
 
-          let historia = findHistoriaByPaciente.get(paciente.id);
-          if (!historia) {
-            const rHistoria = stmtHistoria.run(paciente.id, hclx || null, null, null);
-            historia = { id: Number(rHistoria.lastInsertRowid) };
-            historiaByPacienteId.set(paciente.id, historia);
-          }
-
-          if (!ultimaConsultaByHistoriaId.has(historia.id)) {
-            const ultimaCons = findConsulta.get(historia.id);
-            if (ultimaCons) ultimaConsultaByHistoriaId.set(historia.id, ultimaCons.id);
-          }
+          const historia = ensureHistoria(paciente.id, hclx);
           const consultaId = ultimaConsultaByHistoriaId.get(historia.id) || null;
 
           const transformed = applyTransforms(mapped, SALDO_TRANSFORMS);

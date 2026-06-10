@@ -68,6 +68,12 @@ function parseExcelDate(val) {
     if (p3 > 100 && p2 >= 1 && p2 <= 12 && p1 >= 1 && p1 <= 31) {
       return `${p3}-${String(p2).padStart(2, '0')}-${String(p1).padStart(2, '0')}`;
     }
+    if (p1 >= 1 && p1 <= 31 && p2 >= 1 && p2 <= 12) {
+      const year = p3 < 100 ? 2000 + p3 : p3;
+      if (year >= 1900 && year <= 2100) {
+        return `${year}-${String(p2).padStart(2, '0')}-${String(p1).padStart(2, '0')}`;
+      }
+    }
   }
   const d = new Date(str);
   if (!isNaN(d.getTime()) && d.getFullYear() > 1900) {
