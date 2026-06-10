@@ -161,8 +161,8 @@ function PerfilTab({ usuario }) {
             <input type="text" value={perfil.nombre} onChange={e => setPerfil({ ...perfil, nombre: e.target.value })} required />
           </div>
           <div className="field">
-            <label>Email *</label>
-            <input type="email" value={perfil.email} onChange={e => setPerfil({ ...perfil, email: e.target.value })} required />
+            <label>Email</label>
+            <input type="email" value={perfil.email} onChange={e => setPerfil({ ...perfil, email: e.target.value })} />
           </div>
         </div>
         <div className="field">
@@ -190,12 +190,14 @@ function PerfilTab({ usuario }) {
 // ============================================
 function FirmaTab({ usuario }) {
   const canvasRef = useRef(null);
+  const fileInputRef = useRef(null);
   const [dibujando, setDibujando] = useState(false);
   const [firmaExistente, setFirmaExistente] = useState('');
   const [mensaje, setMensaje] = useState('');
   const [error, setError] = useState('');
   const [guardando, setGuardando] = useState(false);
   const [mostrarFirma, setMostrarFirma] = useState(false);
+  const [modo, setmodo] = useState('dibujar');
 
   useEffect(() => { cargarFirma(); }, []);
 
@@ -219,6 +221,15 @@ function FirmaTab({ usuario }) {
       setFirmaExistente(res.firma_imagen);
       setMostrarFirma(true);
     }
+  };
+
+  const tieneContenido = (canvas) => {
+    const ctx = canvas.getContext('2d');
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    for (let i = 3; i < imageData.data.length; i += 4) {
+      if (imageData.data[i] > 0) return true;
+    }
+    return false;
   };
 
   const iniciarDibujo = (e) => {
@@ -250,13 +261,40 @@ function FirmaTab({ usuario }) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
   };
 
+  const importarImagen = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setError('Selecciona un archivo de imagen');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+        canvas.width = 400;
+        canvas.height = 150;
+        ctx.clearRect(0, 0, 400, 150);
+        const scale = Math.min(400 / img.width, 150 / img.height);
+        const w = img.width * scale;
+        const h = img.height * scale;
+        ctx.drawImage(img, (400 - w) / 2, (150 - h) / 2, w, h);
+        setmodo('dibujar');
+        setError('');
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
   const guardarFirma = async () => {
     const canvas = canvasRef.current;
     const dataUrl = canvas.toDataURL('image/png');
-    const ctx = canvas.getContext('2d');
-    const pixel = ctx.getImageData(0, 0, 1, 1).data;
-    if (pixel[3] === 0) {
-      setError('Dibuja tu firma antes de guardar');
+    if (!tieneContenido(canvas)) {
+      setError('Dibuja o importa una firma antes de guardar');
       return;
     }
     setGuardando(true); setError(''); setMensaje('');
@@ -281,29 +319,56 @@ function FirmaTab({ usuario }) {
     <div className="card">
       <h3 style={{ marginBottom: '12px' }}>Firma Digital del Doctor</h3>
       <p style={{ fontSize: '13px', color: '#666', marginBottom: '16px' }}>
-        Dibuja tu firma para que aparezca en los PDFs de historia clinica y recetas.
+        Dibuja, importa o sube tu firma para que aparezca en los PDFs.
       </p>
       {mensaje && <div className="alert alert-success">{mensaje}</div>}
       {error && <div className="alert alert-error">{error}</div>}
 
-      <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-        <canvas
-          ref={canvasRef}
-          width={400}
-          height={150}
-          style={{
-            border: '2px solid #e5e7eb',
-            borderRadius: '8px',
-            cursor: 'crosshair',
-            maxWidth: '100%',
-            background: '#fff',
-          }}
-          onMouseDown={iniciarDibujo}
-          onMouseMove={dibujar}
-          onMouseUp={terminarDibujo}
-          onMouseLeave={terminarDibujo}
-        />
+      <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', marginBottom: '12px' }}>
+        <button className={`btn btn-sm ${modo === 'dibujar' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setmodo('dibujar')}>Dibujar</button>
+        <button className={`btn btn-sm ${modo === 'importar' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setmodo('importar')}>Importar imagen</button>
+        <button className={`btn btn-sm ${modo === 'celular' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setmodo('celular')}>Desde celular</button>
       </div>
+
+      {modo === 'dibujar' && (
+        <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+          <canvas
+            ref={canvasRef}
+            width={400}
+            height={150}
+            style={{ border: '2px solid #e5e7eb', borderRadius: '8px', cursor: 'crosshair', maxWidth: '100%', background: '#fff' }}
+            onMouseDown={iniciarDibujo}
+            onMouseMove={dibujar}
+            onMouseUp={terminarDibujo}
+            onMouseLeave={terminarDibujo}
+          />
+        </div>
+      )}
+
+      {modo === 'importar' && (
+        <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+          <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={importarImagen} />
+          <div style={{ border: '2px dashed #d1d5db', borderRadius: '8px', padding: '32px', background: '#fafafa' }}>
+            <p style={{ fontSize: '13px', color: '#666', marginBottom: '12px' }}>Selecciona una imagen de tu firma</p>
+            <button className="btn btn-primary btn-sm" onClick={() => fileInputRef.current?.click()}>Seleccionar imagen</button>
+          </div>
+          <canvas ref={canvasRef} width={400} height={150} style={{ display: 'none' }} />
+        </div>
+      )}
+
+      {modo === 'celular' && (
+        <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+          <canvas ref={canvasRef} width={400} height={150} style={{ display: 'none' }} />
+          <div style={{ border: '2px dashed #d1d5db', borderRadius: '8px', padding: '32px', background: '#fafafa' }}>
+            <p style={{ fontSize: '13px', color: '#666', marginBottom: '8px' }}>Sube una foto de tu firma desde el celular</p>
+            <p style={{ fontSize: '11px', color: '#999', marginBottom: '12px' }}>Escanea el QR con tu celular para abrir la pagina de subida</p>
+            <button className="btn btn-primary btn-sm" onClick={() => {
+              const ip = window.location.hostname || 'localhost';
+              window.open(`http://${ip}:18234/upload`, '_blank');
+            }}>Abrir pagina de subida</button>
+          </div>
+        </div>
+      )}
 
       <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
         <button className="btn btn-secondary btn-sm" onClick={limpiarCanvas}>Limpiar</button>

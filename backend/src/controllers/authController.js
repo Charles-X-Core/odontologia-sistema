@@ -113,14 +113,18 @@ exports.cambiarPassword = (req, res) => {
 
 exports.actualizarPerfil = (req, res) => {
   const { nombre, email, titulo, cmp } = req.body;
-  if (!nombre || !email) {
-    return res.status(400).json({ error: 'Nombre y email son obligatorios' });
+  if (!nombre) {
+    return res.status(400).json({ error: 'Nombre es obligatorio' });
   }
   try {
-    const existente = db.prepare('SELECT id FROM usuarios WHERE email = ? AND id != ?').get(email, req.usuario.id);
-    if (existente) return res.status(409).json({ error: 'Ya existe otro usuario con ese email' });
+    if (email) {
+      const existente = db.prepare('SELECT id FROM usuarios WHERE email = ? AND id != ?').get(email, req.usuario.id);
+      if (existente) return res.status(409).json({ error: 'Ya existe otro usuario con ese email' });
+    }
+    const current = db.prepare('SELECT email FROM usuarios WHERE id = ?').get(req.usuario.id);
+    const finalEmail = email || current.email;
     db.prepare('UPDATE usuarios SET nombre = ?, email = ?, titulo = ?, cmp = ? WHERE id = ?')
-      .run(nombre, email, titulo || 'C.D Odontologia', cmp || '', req.usuario.id);
+      .run(nombre, finalEmail, titulo || 'C.D Odontologia', cmp || '', req.usuario.id);
     const usuarioActualizado = db.prepare('SELECT id, nombre, email, rol, titulo, cmp FROM usuarios WHERE id = ?').get(req.usuario.id);
     res.json({ message: 'Perfil actualizado', usuario: usuarioActualizado });
   } catch (err) {
