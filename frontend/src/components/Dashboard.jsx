@@ -85,9 +85,11 @@ export default function Dashboard({ onNavigate }) {
   const [stats, setStats] = useState(null);
   const [cargando, setCargando] = useState(true);
   const [filtroFecha, setFiltroFecha] = useState('todo');
+  const [waConnected, setWaConnected] = useState(false);
 
   useEffect(() => {
     cargarDatos();
+    api.whatsapp.estado().then(d => setWaConnected(!!d?.connected)).catch(() => {});
   }, []);
 
   const cargarDatos = async () => {
@@ -297,6 +299,26 @@ export default function Dashboard({ onNavigate }) {
           </button>
         </div>
       </div>
+
+      {waConnected && (
+        <div style={{
+          background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+          color: '#fff',
+          padding: '10px 16px',
+          borderRadius: '10px',
+          fontSize: '13px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          marginBottom: '4px',
+        }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+          WhatsApp conectado
+          <span style={{ opacity: 0.8, marginLeft: 'auto', fontSize: '11px' }}>
+            Evite enviar mas de 20 mensajes por hora para prevenir bloqueos
+          </span>
+        </div>
+      )}
 
       <div className="stats-grid">
         <div className="stat-card" onClick={() => onNavigate('pacientes')}>

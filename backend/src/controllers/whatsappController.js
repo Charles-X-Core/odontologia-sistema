@@ -593,6 +593,12 @@ exports.enviar = async (req, res) => {
     const { paciente_id, tipo, mensaje } = req.body;
     if (!paciente_id || !mensaje) return res.status(400).json({ error: 'paciente_id y mensaje son obligatorios' });
 
+    // Anti-bloqueo: verificar limite por hora
+    const enviadosHora = contarMensajesUltimaHora();
+    if (enviadosHora >= ANTI_BAN_MAX_POR_HORA) {
+      return res.status(429).json({ error: `Limite de ${ANTI_BAN_MAX_POR_HORA} mensajes/hora alcanzado. Intente en unos minutos.` });
+    }
+
     const paciente = db.prepare('SELECT * FROM pacientes WHERE id = ?').get(paciente_id);
     if (!paciente) return res.status(404).json({ error: 'Paciente no encontrado' });
 
@@ -604,6 +610,9 @@ exports.enviar = async (req, res) => {
 
     const result = await openWaClient.sendText(phone, mensaje);
     const logId = registrarEnvio(paciente_id, phone, tipo || 'custom', mensaje, 'enviado', null, false, result?.id);
+
+    // Anti-bloqueo: delay post-envio
+    await new Promise(r => setTimeout(r, ANTI_BAN_DELAY_MS + Math.floor(Math.random() * 1500)));
 
     res.json({ success: true, message: 'Mensaje enviado', to: nombreCompleto(paciente), phone, logId });
   } catch (err) {
@@ -922,7 +931,21 @@ exports.plantillas = (req, res) => {
 
 // ============================================
 // SCHEDULER: Procesar cola cada 60 segundos
+// Anti-bloqueo: max 20 mensajes/hora + delay 2-3s entre mensajes
 // ============================================
+const ANTI_BAN_MAX_POR_HORA = 20;
+const ANTI_BAN_DELAY_MS = 2000;
+
+function contarMensajesUltimaHora() {
+  try {
+    const row = db.prepare(`
+      SELECT COUNT(*) as total FROM whatsapp_envios
+      WHERE estado = 'enviado' AND fecha > datetime('now', '-1 hour')
+    `).get();
+    return row?.total || 0;
+  } catch { return 0; }
+}
+
 exports._procesarCola = async () => {
   try {
     const maxRetries = parseInt(getConfig('max_reintentos', '3'));
@@ -935,15 +958,22 @@ exports._procesarCola = async () => {
     if (pendientes.length === 0) return;
 
     const now = new Date();
-    console.log(`[Scheduler] Procesando ${pendientes.length} mensajes pendientes...`);
+    const enviadosHora = contarMensajesUltimaHora();
+    const restante = Math.max(0, ANTI_BAN_MAX_POR_HORA - enviadosHora);
 
-    for (const msg of pendientes) {
+    if (restante === 0) {
+      console.log(`[Scheduler] Anti-bloqueo: ${enviadosHora} mensajes en la ultima hora. Saltando.`);
+      return;
+    }
+
+    const aProcesar = pendientes.slice(0, restante);
+    console.log(`[Scheduler] Procesando ${aProcesar.length} mensajes (${enviadosHora}/${ANTI_BAN_MAX_POR_HORA} esta hora)...`);
+
+    for (const msg of aProcesar) {
       try {
         const fechaProgramada = new Date(msg.programado_para);
-        console.log(`[Scheduler] Msg #${msg.id}: programado=${fechaProgramada.toLocaleString()}, ahora=${now.toLocaleString()}`);
 
         if (fechaProgramada > now) {
-          console.log(`[Scheduler] Msg #${msg.id}: aun no, falta ${Math.round((fechaProgramada - now) / 1000)}s`);
           continue;
         }
 
@@ -957,6 +987,10 @@ exports._procesarCola = async () => {
         db.prepare("UPDATE whatsapp_cola SET estado = 'enviado' WHERE id = ?").run(msg.id);
         registrarEnvio(msg.paciente_id, phone, msg.tipo, msg.mensaje, 'enviado', null, true, result?.id);
         console.log(`[Scheduler] Msg #${msg.id}: ENVIADO a ${phone}`);
+
+        // Anti-bloqueo: delay entre mensajes
+        const delay = ANTI_BAN_DELAY_MS + Math.floor(Math.random() * 1500);
+        await new Promise(r => setTimeout(r, delay));
       } catch (error) {
         console.error(`[Scheduler] Msg #${msg.id}: ERROR - ${error.message}`);
         db.prepare('UPDATE whatsapp_cola SET intentos = intentos + 1, error = ? WHERE id = ?').run(error.message, msg.id);

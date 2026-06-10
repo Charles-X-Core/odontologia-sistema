@@ -196,6 +196,22 @@ console.log('[OPENWA] Chrome path:', chromePath || 'no encontrado');
 
 const clientConfig = {
   authStrategy: new LocalAuth({ dataPath: authPath }),
+
+  // ANTI-BAN: User-Agent real de Chrome 146 en Windows (NO macOS Chrome 101)
+  userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36',
+
+  // ANTI-BAN: Identificar dispositivo vinculado
+  deviceName: 'Vita Mirabilis',
+  browserName: 'Chrome',
+
+  // Anti-bloqueo: limitar reintentos QR
+  authTimeoutMs: 60000,
+  qrMaxRetries: 5,
+
+  // Anti-bloqueo: tomar sesión si hay conflicto
+  takeoverOnConflict: true,
+  takeoverTimeoutMs: 60000,
+
   puppeteer: {
     headless: true,
     protocolTimeout: 120000,
@@ -207,6 +223,9 @@ const clientConfig = {
       '--no-first-run',
       '--disable-gpu',
       '--disable-extensions',
+      // ANTI-BAN: Stealth flags
+      '--disable-blink-features=AutomationControlled',
+      '--disable-features=IsolateOrigins,site-per-process',
     ],
   },
 };
@@ -305,6 +324,15 @@ client.on('ready', () => {
   console.log('[OPENWA] WhatsApp client ready!');
   clientStatus = 'ready';
   currentQR = null;
+
+  // ANTI-BAN: Inyectar stealth en la página de WhatsApp Web
+  try {
+    client.pupPage.evaluateOnNewDocument(() => {
+      Object.defineProperty(navigator, 'webdriver', { get: () => false });
+      Object.defineProperty(navigator, 'languages', { get: () => ['es-PE', 'es', 'en'] });
+      Object.defineProperty(navigator, 'platform', { get: () => 'Win32' });
+    });
+  } catch (e) {}
 });
 
 client.on('disconnected', (reason) => {
@@ -413,7 +441,7 @@ function parsePhone(phone) {
 
 const server = http.createServer(async (req, res) => {
   res.setHeader('Content-Type', 'application/json');
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Origin', 'http://localhost:18234');
 
   if (req.url === '/api/getStatus') {
     return res.end(JSON.stringify({
