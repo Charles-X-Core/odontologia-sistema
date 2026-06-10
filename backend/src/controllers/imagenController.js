@@ -184,8 +184,6 @@ exports.subirMovil = (req, res) => {
       return res.status(401).json({ error: 'Token invalido o ya utilizado' });
     }
 
-    db.prepare('UPDATE imagenes SET updated_at = updated_at WHERE id = 0').run();
-
     const now = new Date();
     const dateStr = now.toISOString().slice(0, 10);
     const timeStr = now.toTimeString().slice(0, 5).replace(':', '-');
