@@ -189,7 +189,7 @@ async function startOpenWA(onProgress) {
     const child = spawn(nodeBin, [scriptPath], {
       stdio: ['pipe', 'pipe', 'pipe'],
       shell: false,
-      env: childEnv,
+      env: Object.assign({}, childEnv, { PORT: '18234' }),
       cwd: getProjectRoot(),
     });
 

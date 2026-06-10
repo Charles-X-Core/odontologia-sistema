@@ -181,6 +181,7 @@ function cleanupOrphanSessions() {
 cleanupOrphanSessions();
 
 const port = 3002;
+const BACKEND_PORT = process.env.PORT || 18234;
 let currentQR = null;
 let clientStatus = 'starting';
 
@@ -326,7 +327,7 @@ client.on('message_ack', (msg, ack) => {
     const data = JSON.stringify({ messageId: msg.id.id, ack: ack });
     const req = http.request({
       hostname: 'localhost',
-      port: 3001,
+      port: BACKEND_PORT,
       path: '/api/whatsapp/ack',
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) },
@@ -334,6 +335,61 @@ client.on('message_ack', (msg, ack) => {
     req.on('error', () => {});
     req.write(data);
     req.end();
+  }
+});
+
+// Auto-ingest: escuchar mensajes entrantes con imagenes
+client.on('message', async (msg) => {
+  try {
+    if (!msg.hasMedia) return;
+    const mediaType = msg.type;
+    if (mediaType !== 'image') return;
+
+    const phone = msg.from.replace('@c.us', '');
+    console.log('[OPENWA] Imagen recibida de:', phone);
+
+    const media = await msg.downloadMedia();
+    if (!media || !media.data) {
+      console.log('[OPENWA] No se pudo descargar media de:', phone);
+      return;
+    }
+
+    const caption = msg.body || '';
+    const payload = JSON.stringify({
+      phone,
+      base64: `data:${media.mimetype};base64,${media.data}`,
+      filename: media.filename || `whatsapp_${Date.now()}.jpg`,
+      mimetype: media.mimetype,
+      caption,
+      timestamp: msg.timestamp,
+      fromMe: msg.fromMe,
+      chatId: msg.chat?.id?.serialized || '',
+    });
+
+    const req = http.request({
+      hostname: 'localhost',
+      port: BACKEND_PORT,
+      path: '/api/whatsapp/ingest-image',
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) },
+    }, (res) => {
+      let body = '';
+      res.on('data', c => body += c);
+      res.on('end', () => {
+        if (res.statusCode === 200) {
+          console.log('[OPENWA] Imagen ingestada OK:', phone);
+        } else {
+          console.log('[OPENWA] ingest-image response:', res.statusCode, body.substring(0, 200));
+        }
+      });
+    });
+    req.on('error', (err) => {
+      console.error('[OPENWA] ingest-image error:', err.message);
+    });
+    req.write(payload);
+    req.end();
+  } catch (err) {
+    console.error('[OPENWA] Error procesando mensaje entrante:', err.message);
   }
 });
 

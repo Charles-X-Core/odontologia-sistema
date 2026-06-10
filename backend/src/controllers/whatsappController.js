@@ -1,5 +1,6 @@
 const db = require('../database');
 const path = require('path');
+const fs = require('fs');
 const openWaClient = require('../services/whatsapp/openWaClient');
 
 // ============================================
@@ -999,6 +1000,80 @@ exports.deliveryStatus = (req, res) => {
     if (!log) return res.status(404).json({ error: 'Mensaje no encontrado' });
     res.json({ delivery_status: log.delivery_status, message_id: log.message_id });
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// ============================================
+// INGEST: Recibir imagenes entrantes de WhatsApp
+// ============================================
+exports.ingestImage = (req, res) => {
+  try {
+    const { phone, base64, filename, mimetype, caption, timestamp, fromMe, chatId } = req.body;
+
+    if (!phone || !base64) {
+      return res.status(400).json({ error: 'phone y base64 requeridos' });
+    }
+
+    // No procesar mensajes propios
+    if (fromMe) {
+      return res.json({ success: true, skipped: true, reason: 'fromMe' });
+    }
+
+    // Normalizar telefono peruano
+    let phoneNorm = phone.replace(/[^0-9]/g, '');
+    if (!phoneNorm.startsWith('51')) phoneNorm = '51' + phoneNorm.slice(-9);
+
+    // Buscar paciente por telefono
+    const paciente = db.prepare(
+      "SELECT id, dni, nombres, apellido_paterno, apellido_materno FROM pacientes WHERE REPLACE(REPLACE(telefono, ' ', ''), '-', '') LIKE ? OR telefono LIKE ?"
+    ).get(`%${phoneNorm.slice(-9)}%`, `%${phoneNorm}%`);
+
+    if (!paciente) {
+      console.log('[WHATSAPP-INGEST] Paciente no encontrado para telefono:', phoneNorm);
+      return res.json({ success: true, skipped: true, reason: 'no_patient', phone: phoneNorm });
+    }
+
+    // Decodificar base64
+    const base64Data = base64.replace(/^data:[^;]+;base64,/, '');
+    const buffer = Buffer.from(base64Data, 'base64');
+
+    // Guardar imagen
+    const BASE_DIR = process.env.UPLOAD_DIR || path.join(__dirname, '..', '..', 'uploads');
+    const now = new Date();
+    const dateStr = now.toISOString().slice(0, 10);
+    const timeStr = now.toTimeString().slice(0, 5).replace(':', '-');
+    const secStr = String(now.getSeconds()).padStart(2, '0');
+    const msStr = String(now.getMilliseconds()).padStart(3, '0');
+    const ext = mimetype === 'image/png' ? '.png' : '.jpg';
+    const readableName = `${dateStr}_${timeStr}-${secStr}-${msStr}_whatsapp${ext}`;
+
+    const pacienteDir = path.join(BASE_DIR, 'evidencias', String(paciente.id));
+    if (!fs.existsSync(pacienteDir)) fs.mkdirSync(pacienteDir, { recursive: true });
+    const finalPath = path.join(pacienteDir, readableName);
+
+    fs.writeFileSync(finalPath, buffer);
+
+    // Calcular hash
+    const crypto = require('crypto');
+    const hash = crypto.createHash('sha256').update(buffer).digest('hex');
+
+    // Guardar en base de datos
+    const archivoNombre = `evidencias/${paciente.id}/${readableName}`;
+    const result = db.prepare(
+      'INSERT INTO imagenes (paciente_id, archivo_nombre, archivo_original, tipo, descripcion, hash_sha256) VALUES (?, ?, ?, ?, ?, ?)'
+    ).run(paciente.id, archivoNombre, filename || readableName, 'foto_whatsapp', caption || `Imagen de WhatsApp - ${phoneNorm}`, hash);
+
+    console.log(`[WHATSAPP-INGEST] Imagen guardada: paciente=${paciente.nombres} ${paciente.apellido_paterno}, id=${result.lastInsertRowid}`);
+
+    res.json({
+      success: true,
+      imagen_id: result.lastInsertRowid,
+      paciente_id: paciente.id,
+      paciente_nombre: `${paciente.apellido_paterno} ${paciente.apellido_materno} ${paciente.nombres}`.trim(),
+    });
+  } catch (err) {
+    console.error('[WHATSAPP-INGEST] Error:', err.message);
     res.status(500).json({ error: err.message });
   }
 };

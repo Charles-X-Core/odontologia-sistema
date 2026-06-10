@@ -76,6 +76,12 @@ try {
 } catch(e) { console.error('[INDEX] imagenes mobile error:', e.message); }
 
 try {
+  const whatsappCtrl = require('./controllers/whatsappController');
+  app.post('/api/whatsapp/ingest-image', whatsappCtrl.ingestImage);
+  console.log('[INDEX] /api/whatsapp/ingest-image OK (sin auth)');
+} catch(e) { console.error('[INDEX] whatsapp ingest error:', e.message); }
+
+try {
   app.use('/api/pacientes', auth, require('./routes/pacientes'));
   console.log('[INDEX] /api/pacientes OK');
 } catch(e) { console.error('[INDEX] /api/pacientes error:', e.message); }

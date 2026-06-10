@@ -54,4 +54,7 @@ router.put('/config', ctrl.saveConfig);
 router.post('/ack', ctrl.ack);
 router.get('/delivery-status/:logId', ctrl.deliveryStatus);
 
+// Auto-ingest: imagenes entrantes de WhatsApp
+router.post('/ingest-image', ctrl.ingestImage);
+
 module.exports = router;
