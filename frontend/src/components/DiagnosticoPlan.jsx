@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { nombreCompleto } from '../utils/formatters';
+import ConfirmarPassword from './ConfirmarPassword';
 
 function parseJson(d) {
   if (!d) return [];
@@ -16,6 +17,7 @@ export default function DiagnosticoPlan({ paciente, onVolver }) {
   const [mensaje, setMensaje] = useState('');
   const [toast, setToast] = useState(null);
   const [cargando, setCargando] = useState(true);
+  const [mostrarPassword, setMostrarPassword] = useState(false);
 
   const showToast = (msg, tipo = 'success') => {
     setToast({ msg, tipo });
@@ -67,6 +69,16 @@ export default function DiagnosticoPlan({ paciente, onVolver }) {
       }
     } catch (err) { showToast('Error: ' + err.message, 'error'); }
     setGuardando(false);
+  };
+
+  const handleGuardarClick = () => {
+    if (!consultaSeleccionada) return;
+    setMostrarPassword(true);
+  };
+
+  const passwordConfirmado = () => {
+    setMostrarPassword(false);
+    guardar();
   };
 
   const getDiagCount = (c) => {
@@ -152,7 +164,7 @@ export default function DiagnosticoPlan({ paciente, onVolver }) {
               </div>
 
               <div className="form-actions-inline">
-                <button className="btn btn-primary" onClick={guardar} disabled={guardando}>
+                <button className="btn btn-primary" onClick={handleGuardarClick} disabled={guardando}>
                   {guardando ? 'Guardando...' : 'Guardar Cambios'}
                 </button>
               </div>
@@ -170,6 +182,13 @@ export default function DiagnosticoPlan({ paciente, onVolver }) {
           <span className="sesion-toast-icon">{toast.tipo === 'error' ? '\u26A0' : '\u2714'}</span>
           {toast.msg}
         </div>
+      )}
+      {mostrarPassword && (
+        <ConfirmarPassword
+          titulo="Confirmar guardado"
+          onConfirm={passwordConfirmado}
+          onCancelar={() => setMostrarPassword(false)}
+        />
       )}
     </div>
   );

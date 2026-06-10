@@ -6874,3 +6874,169 @@ body {
   font-size: 9px;
   color: #999;
 }
+
+/* ========== ESTACION DATOS v2 ========== */
+.ed-stat-card {
+  background: #fff;
+  border: 1px solid var(--gray-200);
+  border-left: 3px solid;
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: box-shadow 0.15s;
+}
+
+.ed-stat-card:hover {
+  box-shadow: var(--shadow-sm);
+}
+
+.ed-stat-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ed-stat-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.ed-stat-num {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.ed-stat-label {
+  font-size: 11px;
+  color: var(--gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.ed-total-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  background: var(--gray-50);
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.ed-total-label {
+  font-size: 13px;
+  color: var(--gray-600);
+  font-weight: 500;
+}
+
+.ed-total-num {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.ed-section-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.ed-section-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.ed-section-header h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--gray-800);
+  margin: 0 0 2px;
+}
+
+.ed-card-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ed-export-progress {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  min-width: 120px;
+}
+
+.ed-progress-bar {
+  width: 100%;
+  height: 4px;
+  background: var(--gray-200);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.ed-progress-fill {
+  height: 100%;
+  background: var(--primary);
+  border-radius: 2px;
+  animation: edProgress 1.2s ease-in-out;
+}
+
+.ed-progress-fill.loading {
+  animation: edProgressLoading 1.5s ease-in-out infinite;
+}
+
+@keyframes edProgress {
+  0% { width: 0; }
+  50% { width: 70%; }
+  100% { width: 100%; }
+}
+
+@keyframes edProgressLoading {
+  0% { width: 0; margin-left: 0; }
+  50% { width: 60%; margin-left: 20%; }
+  100% { width: 0; margin-left: 100%; }
+}
+
+.ed-progress-text {
+  font-size: 11px;
+  color: var(--gray-500);
+  font-weight: 500;
+}
+
+.ed-drop-icon {
+  margin-bottom: 12px;
+  opacity: 0.6;
+}
+
+.ed-result-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.ed-result-header h4 {
+  margin: 0;
+  font-size: 15px;
+  color: #10b981;
+}
