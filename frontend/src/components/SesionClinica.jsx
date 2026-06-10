@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import Odontograma from './Odontograma';
-import { nombreCompleto } from '../utils/formatters';
+import { nombreCompleto, tipoDocLabel, calcularEdad, validarDocumento } from '../utils/formatters';
 
 const PASOS = [
   { id: 1, label: 'Paciente', icon: 'user' },
@@ -47,6 +47,10 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
   const [toast, setToast] = useState(null);
   const [verHistorial, setVerHistorial] = useState(false);
   const [consultaExpandida, setConsultaExpandida] = useState(null);
+  const [mostrarAlertaDni, setMostrarAlertaDni] = useState(false);
+  const [dniAlertForm, setDniAlertForm] = useState({ dni: '', tipo_documento: 'dni' });
+  const [dniAlertError, setDniAlertError] = useState('');
+  const [dniAlertGuardando, setDniAlertGuardando] = useState(false);
 
   const showToast = (msg, tipo = 'error') => {
     setToast({ msg, tipo });
@@ -175,6 +179,39 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
         });
       }
     } catch {}
+  };
+
+  useEffect(() => {
+    if (paciente.dni?.startsWith('AUTO_') || paciente.tipo_documento === 'sin_doc') {
+      setDniAlertForm({ dni: '', tipo_documento: paciente.tipo_documento === 'sin_doc' ? 'dni' : paciente.tipo_documento || 'dni' });
+      setTimeout(() => setMostrarAlertaDni(true), 800);
+    }
+  }, [paciente.id]);
+
+  const handleGuardarDniAlert = async () => {
+    setDniAlertError('');
+    if (!dniAlertForm.dni.trim()) {
+      setDniAlertError('Ingrese el numero de documento');
+      return;
+    }
+    if (!validarDocumento(dniAlertForm.tipo_documento, dniAlertForm.dni)) {
+      setDniAlertError(`Formato invalido para ${tipoDocLabel(dniAlertForm.tipo_documento)}`);
+      return;
+    }
+    setDniAlertGuardando(true);
+    try {
+      const res = await api.pacientes.actualizarDni(paciente.id, dniAlertForm.dni.trim(), dniAlertForm.tipo_documento);
+      if (res.error) {
+        setDniAlertError(res.error);
+      } else {
+        if (res.paciente) Object.assign(paciente, res.paciente);
+        setMostrarAlertaDni(false);
+        showToast('Documento actualizado correctamente', 'exito');
+      }
+    } catch (err) {
+      setDniAlertError('Error al guardar: ' + err.message);
+    }
+    setDniAlertGuardando(false);
   };
 
   const guardarAntecedentes = async () => {
@@ -368,12 +405,7 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
     setGuardando(false);
   };
 
-  const edad = paciente.fecha_nacimiento ? (() => {
-    const h = new Date(); const n = new Date(paciente.fecha_nacimiento);
-    let e = h.getFullYear() - n.getFullYear();
-    if (h.getMonth() < n.getMonth() || (h.getMonth() === n.getMonth() && h.getDate() < n.getDate())) e--;
-    return e;
-  })() : null;
+  const edad = calcularEdad(paciente.fecha_nacimiento);
 
   const totalConsultas = consultas.length;
   const ultimaConsulta = consultas.length > 0 ? consultas[0] : null;
@@ -385,7 +417,7 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
           <button className="btn-back" onClick={onVolver}>&larr;</button>
           <div className="sesion-paciente-info">
             <h2>{nombreCompleto(paciente)}</h2>
-            <span>DNI: {paciente.dni}{edad ? ` | ${edad} anos` : ''}{paciente.telefono ? ` | Tel: ${paciente.telefono}` : ''}</span>
+            <span>{tipoDocLabel(paciente.tipo_documento)}: {paciente.dni}{edad ? ` | ${edad} anos` : ''}{paciente.telefono ? ` | Tel: ${paciente.telefono}` : ''}</span>
           </div>
         </div>
         <div className="sesion-header-right">
@@ -420,7 +452,7 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
                     {(paciente.apellido_paterno || paciente.nombre || '?').charAt(0)}
                   </div>
                   <h3>{nombreCompleto(paciente)}</h3>
-                  <span className="paso-paciente-dni">DNI {paciente.dni}</span>
+                  <span className="paso-paciente-dni">{tipoDocLabel(paciente.tipo_documento)} {paciente.dni}</span>
                   <div className="paso-paciente-meta-grid">
                     <div className="paso-paciente-meta-item">
                       <span className="meta-label">Edad</span>
@@ -781,7 +813,7 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
                   <div className="patient-avatar-sm">{(paciente.apellido_paterno || paciente.nombre || '?').charAt(0)}</div>
                   <div>
                     <span className="motivo-paciente-nombre">{nombreCompleto(paciente)}</span>
-                    <span className="motivo-paciente-dni">DNI: {paciente.dni}</span>
+                    <span className="motivo-paciente-dni">{tipoDocLabel(paciente.tipo_documento)}: {paciente.dni}</span>
                   </div>
                 </div>
                 {historia?.alergia_medicamentos && historia.alergia_medicamentos !== 'No' && (
@@ -1154,6 +1186,48 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
         <div className={`sesion-toast sesion-toast-${toast.tipo}`}>
           <span className="sesion-toast-icon">{toast.tipo === 'error' ? '\u26A0' : '\u2714'}</span>
           {toast.msg}
+        </div>
+      )}
+
+      {mostrarAlertaDni && (
+        <div className="modal-overlay" onClick={() => setMostrarAlertaDni(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '420px' }}>
+            <div className="modal-header">
+              <h3>Documento no registrado</h3>
+              <button className="btn-close" onClick={() => setMostrarAlertaDni(false)}>&times;</button>
+            </div>
+            <div style={{ padding: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', padding: '12px', background: '#fef3c7', borderRadius: '8px', border: '1px solid #fcd34d' }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#92400e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <span style={{ fontSize: '13px', color: '#92400e' }}>Este paciente fue registrado sin documento real. Se recomienda ingresar el DNI/CE correcto para mejor identificacion.</span>
+              </div>
+              <div className="field" style={{ marginBottom: '12px' }}>
+                <label>Tipo de Documento</label>
+                <select value={dniAlertForm.tipo_documento} onChange={(e) => setDniAlertForm({...dniAlertForm, tipo_documento: e.target.value})}>
+                  <option value="dni">DNI</option>
+                  <option value="ce">CE (Carnet de Extranjeria)</option>
+                  <option value="pasaporte">Pasaporte</option>
+                </select>
+              </div>
+              <div className="field" style={{ marginBottom: '16px' }}>
+                <label>{tipoDocLabel(dniAlertForm.tipo_documento)}</label>
+                <input
+                  type="text"
+                  value={dniAlertForm.dni}
+                  onChange={(e) => setDniAlertForm({...dniAlertForm, dni: e.target.value})}
+                  placeholder={dniAlertForm.tipo_documento === 'dni' ? '8 digitos' : 'Numero de documento'}
+                  autoFocus
+                />
+              </div>
+              {dniAlertError && <div style={{ color: '#dc2626', fontSize: '13px', marginBottom: '12px' }}>{dniAlertError}</div>}
+              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                <button className="btn btn-secondary" onClick={() => setMostrarAlertaDni(false)}>Omitir</button>
+                <button className="btn btn-primary" onClick={handleGuardarDniAlert} disabled={dniAlertGuardando}>
+                  {dniAlertGuardando ? 'Guardando...' : 'Guardar DNI'}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

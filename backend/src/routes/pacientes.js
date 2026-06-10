@@ -7,6 +7,7 @@ router.get('/', ctrl.listar);
 router.get('/buscar', ctrl.buscar);
 router.get('/:id', ctrl.obtenerPorId);
 router.get('/:id/historial', ctrl.obtenerHistorial);
+router.patch('/:id/dni', ctrl.actualizarDni);
 router.put('/:id', ctrl.actualizar);
 router.delete('/:id', ctrl.eliminar);
 

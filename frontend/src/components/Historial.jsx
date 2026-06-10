@@ -7,7 +7,7 @@ import DiagnosticoPlan from './DiagnosticoPlan';
 import Pagos from './Pagos';
 import Odontograma from './Odontograma';
 import ConfirmarPassword from './ConfirmarPassword';
-import { nombreCompleto } from '../utils/formatters';
+import { nombreCompleto, tipoDocLabel } from '../utils/formatters';
 
 function parseJson(d) {
   if (!d) return [];
@@ -439,7 +439,7 @@ export default function Historial({ paciente, onVolver, onNuevaConsulta }) {
         <div>
           <button className="btn-back" onClick={onVolver}>&larr; Volver</button>
           <h2>{nombreCompleto(paciente)}</h2>
-          <p>DNI: {paciente.dni} {paciente.telefono ? `| Tel: ${paciente.telefono}` : ''}</p>
+          <p>{tipoDocLabel(paciente.tipo_documento)}: {paciente.dni} {paciente.telefono ? `| Tel: ${paciente.telefono}` : ''}</p>
         </div>
         {historia && (
           <button className="btn btn-primary" onClick={() => onNuevaConsulta?.()}>

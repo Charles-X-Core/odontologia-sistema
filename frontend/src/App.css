@@ -7040,3 +7040,17 @@ body {
   font-size: 15px;
   color: #10b981;
 }
+
+/* ========== AUTO-DNI BADGE ========== */
+.dni-auto-badge {
+  color: #92400e;
+  font-weight: 600;
+}
+
+.row-auto-doc {
+  background: #fffbeb !important;
+}
+
+.row-auto-doc:hover {
+  background: #fef3c7 !important;
+}

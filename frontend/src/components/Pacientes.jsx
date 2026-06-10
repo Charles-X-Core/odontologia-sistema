@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { nombreCompleto } from '../utils/formatters';
+import { nombreCompleto, tipoDocLabel, tipoDocPlaceholder, validarDocumento } from '../utils/formatters';
 
 const FORM_DEFAULT = {
-  apellido_paterno: '', apellido_materno: '', nombres: '', dni: '', telefono: '', email: '',
+  apellido_paterno: '', apellido_materno: '', nombres: '', dni: '', tipo_documento: 'dni', telefono: '', email: '',
   fecha_nacimiento: '', sexo: '', estado_civil: '', direccion: '', lugar_nacimiento: '',
   lugar_procedencia: '', grado_instruccion: '', ocupacion: '', nombre_acompanante: '',
   contacto_emergencia: '', telefono_emergencia: '',
@@ -29,12 +29,23 @@ export default function Pacientes({ onVerHistorial, onVer360 }) {
   const filtrados = pacientes.filter(p => {
     const nombre = nombreCompleto(p).toLowerCase();
     const q = busqueda.toLowerCase();
-    return nombre.includes(q) || p.dni.includes(q);
+    return nombre.includes(q) || (p.dni && p.dni.includes(q));
   });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    if (form.tipo_documento !== 'sin_doc' && form.tipo_documento !== 'dni' && !form.dni) {
+      setError(`El numero de ${tipoDocLabel(form.tipo_documento)} es obligatorio`);
+      return;
+    }
+
+    if (form.dni && !validarDocumento(form.tipo_documento, form.dni)) {
+      setError(`Formato invalido para ${tipoDocLabel(form.tipo_documento)}`);
+      return;
+    }
+
     if (editando) {
       const res = await api.pacientes.actualizar(editando.id, form);
       if (res.error) { setError(res.error); return; }
@@ -54,6 +65,7 @@ export default function Pacientes({ onVerHistorial, onVer360 }) {
       apellido_materno: p.apellido_materno || '',
       nombres: p.nombres || '',
       dni: p.dni || '',
+      tipo_documento: p.tipo_documento || 'dni',
       telefono: p.telefono || '',
       email: p.email || '',
       fecha_nacimiento: p.fecha_nacimiento || '',
@@ -83,6 +95,8 @@ export default function Pacientes({ onVerHistorial, onVer360 }) {
     setEditando(null);
     setMostrarForm(true);
   };
+
+  const isAutoDoc = (p) => p.dni && (p.dni.startsWith('AUTO_') || p.tipo_documento === 'sin_doc');
 
   return (
     <div>
@@ -122,9 +136,28 @@ export default function Pacientes({ onVerHistorial, onVer360 }) {
                     <input type="text" value={form.nombres} onChange={(e) => setForm({...form, nombres: e.target.value})} required />
                   </div>
                   <div className="field">
-                    <label>DNI *</label>
-                    <input type="text" value={form.dni} onChange={(e) => setForm({...form, dni: e.target.value})} required />
+                    <label>Tipo de Documento</label>
+                    <select value={form.tipo_documento} onChange={(e) => setForm({...form, tipo_documento: e.target.value, dni: e.target.value === 'sin_doc' ? '' : form.dni})}>
+                      <option value="dni">DNI</option>
+                      <option value="ce">CE (Carnet de Extranjeria)</option>
+                      <option value="pasaporte">Pasaporte</option>
+                      <option value="sin_doc">Sin documento</option>
+                    </select>
                   </div>
+                  {form.tipo_documento !== 'sin_doc' && (
+                    <div className="field">
+                      <label>{tipoDocLabel(form.tipo_documento)} {form.tipo_documento === 'dni' ? '*' : ''}</label>
+                      <input
+                        type="text"
+                        value={form.dni}
+                        onChange={(e) => setForm({...form, dni: e.target.value})}
+                        placeholder={tipoDocPlaceholder(form.tipo_documento)}
+                        required={form.tipo_documento === 'dni'}
+                        maxLength={form.tipo_documento === 'dni' ? 8 : 15}
+                        pattern={form.tipo_documento === 'dni' ? '\\d{8}' : undefined}
+                      />
+                    </div>
+                  )}
                   <div className="field">
                     <label>Fecha de Nacimiento</label>
                     <input type="date" value={form.fecha_nacimiento} onChange={(e) => setForm({...form, fecha_nacimiento: e.target.value})} />
@@ -222,7 +255,7 @@ export default function Pacientes({ onVerHistorial, onVer360 }) {
               <thead>
                 <tr>
                   <th>Paciente</th>
-                  <th>DNI</th>
+                  <th>Documento</th>
                   <th>Telefono</th>
                   <th>Email</th>
                   <th>Sexo</th>
@@ -234,9 +267,13 @@ export default function Pacientes({ onVerHistorial, onVer360 }) {
                   <tr><td colSpan="6" className="empty">No se encontraron pacientes</td></tr>
                 ) : (
                   filtrados.map((p) => (
-                    <tr key={p.id}>
+                    <tr key={p.id} className={isAutoDoc(p) ? 'row-auto-doc' : ''}>
                       <td><strong>{nombreCompleto(p)}</strong></td>
-                      <td>{p.dni}</td>
+                      <td>
+                        <span className={isAutoDoc(p) ? 'dni-auto-badge' : ''}>
+                          {tipoDocLabel(p.tipo_documento)}: {p.dni}
+                        </span>
+                      </td>
                       <td>{p.telefono || '-'}</td>
                       <td>{p.email || '-'}</td>
                       <td>{p.sexo === 'M' ? 'Masculino' : p.sexo === 'F' ? 'Femenino' : '-'}</td>

@@ -4,7 +4,7 @@ import WhatsAppConfirm from './WhatsAppConfirm';
 import WhatsAppSetup from './WhatsAppSetup';
 import Odontograma from './Odontograma';
 import Galeria from './Galeria';
-import { nombreCompleto } from '../utils/formatters';
+import { nombreCompleto, tipoDocLabel, calcularEdad, formatFechaNacimiento } from '../utils/formatters';
 
 const ESTADO_COLORS = {
   realizado: { bg: '#dcfce7', text: '#166534' },
@@ -56,12 +56,7 @@ export default function Paciente360({ paciente, onVolver, onVerHistorial }) {
     try { return typeof d === 'string' ? JSON.parse(d) : d; } catch { return []; }
   };
 
-  const edad = paciente.fecha_nacimiento ? (() => {
-    const h = new Date(); const n = new Date(paciente.fecha_nacimiento);
-    let e = h.getFullYear() - n.getFullYear();
-    if (h.getMonth() < n.getMonth() || (h.getMonth() === n.getMonth() && h.getDate() < n.getDate())) e--;
-    return e;
-  })() : null;
+  const edad = calcularEdad(paciente.fecha_nacimiento);
 
   return (
     <div className="paciente360">
@@ -69,7 +64,7 @@ export default function Paciente360({ paciente, onVolver, onVerHistorial }) {
         <div>
           <button className="btn-back" onClick={onVolver}>&larr; Volver</button>
           <h2>{nombreCompleto(paciente)}</h2>
-          <p>DNI: {paciente.dni} {paciente.telefono ? `| Tel: ${paciente.telefono}` : ''} {paciente.email ? `| ${paciente.email}` : ''}</p>
+          <p>{tipoDocLabel(paciente.tipo_documento)}: {paciente.dni} {paciente.telefono ? `| Tel: ${paciente.telefono}` : ''} {paciente.email ? `| ${paciente.email}` : ''}</p>
         </div>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <button className="btn btn-primary" onClick={() => onVerHistorial(paciente)}>
@@ -118,8 +113,8 @@ export default function Paciente360({ paciente, onVolver, onVerHistorial }) {
             <h4>Datos Personales</h4>
             <div className="paciente360-fields">
               <div className="field-row"><span className="field-label">Nombre:</span><span>{nombreCompleto(paciente)}</span></div>
-              <div className="field-row"><span className="field-label">DNI:</span><span>{paciente.dni}</span></div>
-              <div className="field-row"><span className="field-label">Fecha Nac:</span><span>{paciente.fecha_nacimiento ? new Date(paciente.fecha_nacimiento).toLocaleDateString() : '-'}</span></div>
+              <div className="field-row"><span className="field-label">{tipoDocLabel(paciente.tipo_documento)}:</span><span>{paciente.dni}</span></div>
+              <div className="field-row"><span className="field-label">Fecha Nac:</span><span>{formatFechaNacimiento(paciente.fecha_nacimiento)}</span></div>
               <div className="field-row"><span className="field-label">Edad:</span><span>{edad ? `${edad} anos` : '-'}</span></div>
               <div className="field-row"><span className="field-label">Sexo:</span><span>{paciente.sexo === 'M' ? 'Masculino' : paciente.sexo === 'F' ? 'Femenino' : '-'}</span></div>
               <div className="field-row"><span className="field-label">Estado Civil:</span><span>{paciente.estado_civil || '-'}</span></div>

@@ -65,6 +65,7 @@ export const api = {
     obtener: (id) => request(`/pacientes/${id}`),
     crear: (data) => request('/pacientes', { method: 'POST', body: JSON.stringify(data) }),
     actualizar: (id, data) => request(`/pacientes/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    actualizarDni: (id, dni, tipo_documento) => request(`/pacientes/${id}/dni`, { method: 'PATCH', body: JSON.stringify({ dni, tipo_documento }) }),
     eliminar: (id) => request(`/pacientes/${id}`, { method: 'DELETE' }),
     historial: (id) => request(`/pacientes/${id}/historial`),
     buscar: (q) => request(`/pacientes/buscar?q=${encodeURIComponent(q)}`),

@@ -1,37 +1,68 @@
 const db = require('../database');
 
+function validarDocumento(tipo, numero) {
+  if (!numero || numero.trim() === '') return tipo === 'sin_doc' || !tipo;
+  const t = numero.trim();
+  switch (tipo) {
+    case 'dni': return /^\d{8}$/.test(t);
+    case 'ce': return /^[A-Z]{1,2}\d{1,10}$/i.test(t) || /^\d{9,12}$/.test(t);
+    case 'pasaporte': return /^[A-Z0-9]{6,15}$/i.test(t);
+    default: return t.length >= 4;
+  }
+}
+
+function mensajeValidacionDoc(tipo) {
+  switch (tipo) {
+    case 'dni': return 'DNI debe tener exactamente 8 digitos';
+    case 'ce': return 'CE debe tener 1-2 letras seguidas de digitos (ej: A12345678), o 9-12 digitos';
+    case 'pasaporte': return 'Pasaporte debe tener 6-15 caracteres alfanumericos';
+    default: return 'Formato de documento invalido';
+  }
+}
+
 exports.crear = (req, res) => {
   const {
-    apellido_paterno, apellido_materno, nombres, dni, telefono, email,
+    apellido_paterno, apellido_materno, nombres, dni, tipo_documento, telefono, email,
     fecha_nacimiento, sexo, estado_civil, direccion, lugar_nacimiento,
     lugar_procedencia, grado_instruccion, ocupacion, nombre_acompanante,
     contacto_emergencia, telefono_emergencia
   } = req.body;
 
-  if (!apellido_paterno || !nombres || !dni) {
-    return res.status(400).json({ error: 'Apellido paterno, nombres y DNI son obligatorios' });
+  if (!apellido_paterno || !nombres) {
+    return res.status(400).json({ error: 'Apellido paterno y nombres son obligatorios' });
+  }
+
+  const docTipo = tipo_documento || 'dni';
+  const docNumero = dni || '';
+
+  if (docTipo !== 'sin_doc' && !docNumero) {
+    return res.status(400).json({ error: 'El numero de documento es obligatorio para este tipo' });
+  }
+
+  if (docNumero && !validarDocumento(docTipo, docNumero)) {
+    return res.status(400).json({ error: mensajeValidacionDoc(docTipo) });
   }
 
   try {
     const stmt = db.prepare(`
       INSERT INTO pacientes (
-        apellido_paterno, apellido_materno, nombres, dni, telefono, email,
+        apellido_paterno, apellido_materno, nombres, dni, tipo_documento, telefono, email,
         fecha_nacimiento, sexo, estado_civil, direccion, lugar_nacimiento,
         lugar_procedencia, grado_instruccion, ocupacion, nombre_acompanante,
         contacto_emergencia, telefono_emergencia
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const result = stmt.run(
-      apellido_paterno, apellido_materno || '', nombres, dni,
+      apellido_paterno, apellido_materno || '', nombres, docNumero || null, docTipo,
       telefono || null, email || null, fecha_nacimiento || null, sexo || null,
       estado_civil || '', direccion || null, lugar_nacimiento || '',
       lugar_procedencia || '', grado_instruccion || '', ocupacion || null,
       nombre_acompanante || '', contacto_emergencia || null, telefono_emergencia || null
     );
-    res.status(201).json({ id: result.lastInsertRowid, apellido_paterno, apellido_materno, nombres, dni });
+    res.status(201).json({ id: result.lastInsertRowid, apellido_paterno, apellido_materno, nombres, dni: docNumero, tipo_documento: docTipo });
   } catch (err) {
     if (err.message.includes('UNIQUE constraint')) {
-      return res.status(409).json({ error: 'Ya existe un paciente con ese DNI' });
+      return res.status(409).json({ error: 'Ya existe un paciente con ese documento' });
     }
     res.status(500).json({ error: err.message });
   }
@@ -66,17 +97,24 @@ exports.obtenerPorId = (req, res) => {
 
 exports.actualizar = (req, res) => {
   const {
-    apellido_paterno, apellido_materno, nombres, telefono, email,
+    apellido_paterno, apellido_materno, nombres, dni, tipo_documento, telefono, email,
     fecha_nacimiento, sexo, estado_civil, direccion, lugar_nacimiento,
     lugar_procedencia, grado_instruccion, ocupacion, nombre_acompanante,
     contacto_emergencia, telefono_emergencia, estado
   } = req.body;
   const { id } = req.params;
 
+  if (dni && tipo_documento && tipo_documento !== 'sin_doc') {
+    if (!validarDocumento(tipo_documento, dni)) {
+      return res.status(400).json({ error: mensajeValidacionDoc(tipo_documento) });
+    }
+  }
+
   try {
     const stmt = db.prepare(`
       UPDATE pacientes SET
         apellido_paterno = ?, apellido_materno = ?, nombres = ?,
+        dni = ?, tipo_documento = ?,
         telefono = ?, email = ?, fecha_nacimiento = ?, sexo = ?,
         estado_civil = ?, direccion = ?, lugar_nacimiento = ?,
         lugar_procedencia = ?, grado_instruccion = ?, ocupacion = ?,
@@ -86,6 +124,7 @@ exports.actualizar = (req, res) => {
     `);
     stmt.run(
       apellido_paterno || '', apellido_materno || '', nombres || '',
+      dni || '', tipo_documento || 'dni',
       telefono || null, email || null, fecha_nacimiento || null, sexo || null,
       estado_civil || '', direccion || null, lugar_nacimiento || '',
       lugar_procedencia || '', grado_instruccion || '', ocupacion || null,
@@ -93,6 +132,36 @@ exports.actualizar = (req, res) => {
       telefono_emergencia || null, estado || 'activo', id
     );
     res.json({ message: 'Paciente actualizado' });
+  } catch (err) {
+    if (err.message.includes('UNIQUE constraint')) {
+      return res.status(409).json({ error: 'Ya existe otro paciente con ese documento' });
+    }
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.actualizarDni = (req, res) => {
+  const { dni, tipo_documento } = req.body;
+  const { id } = req.params;
+
+  if (!dni || !dni.trim()) {
+    return res.status(400).json({ error: 'El numero de documento es obligatorio' });
+  }
+
+  const docTipo = tipo_documento || 'dni';
+  if (!validarDocumento(docTipo, dni)) {
+    return res.status(400).json({ error: mensajeValidacionDoc(docTipo) });
+  }
+
+  try {
+    const existing = db.prepare('SELECT id FROM pacientes WHERE dni = ? AND id != ?').get(dni.trim(), id);
+    if (existing) {
+      return res.status(409).json({ error: 'Ya existe otro paciente con ese documento' });
+    }
+
+    db.prepare('UPDATE pacientes SET dni = ?, tipo_documento = ? WHERE id = ?').run(dni.trim(), docTipo, id);
+    const paciente = db.prepare('SELECT * FROM pacientes WHERE id = ?').get(id);
+    res.json({ message: 'Documento actualizado', paciente });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -122,7 +191,6 @@ exports.obtenerHistorial = (req, res) => {
     ORDER BY c.fecha DESC
   `).all(historia.id);
 
-  // Enriquecer cada consulta con datos vinculados
   consultas.forEach(c => {
     if (c.odontograma) {
       try { c.odontograma = JSON.parse(c.odontograma); } catch {}
@@ -142,7 +210,6 @@ exports.obtenerHistorial = (req, res) => {
     necesidades = ultimaConsulta.necesidades;
   }
 
-  // Resumen general del paciente
   const resumen = {};
   resumen.total_consultas = consultas.length;
   resumen.total_tratamientos = db.prepare('SELECT COUNT(*) as n FROM tratamientos WHERE paciente_id = ?').get(req.params.id).n;

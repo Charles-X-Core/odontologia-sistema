@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { nombreCompleto } from '../utils/formatters';
+import { nombreCompleto, tipoDocLabel } from '../utils/formatters';
 
 const FORM_NUEVO = {
-  apellido_paterno: '', apellido_materno: '', nombres: '', dni: '', telefono: '',
+  apellido_paterno: '', apellido_materno: '', nombres: '', dni: '', tipo_documento: 'dni', telefono: '',
   email: '', fecha_nacimiento: '', sexo: '',
 };
 
@@ -145,7 +145,7 @@ export default function Recepcion({ onVolver, onStartSesion }) {
                   <div className="patient-avatar">{(p.apellido_paterno || p.nombre || '?').charAt(0)}</div>
                   <div className="patient-info">
                     <span className="patient-name">{nombreCompleto(p)}</span>
-                    <span className="patient-meta">DNI: {p.dni}</span>
+                  <span className="patient-meta">{tipoDocLabel(p.tipo_documento)}: {p.dni}</span>
                     {p.telefono && <span className="patient-meta">Tel: {p.telefono}</span>}
                   </div>
                   <div className="patient-action">
