@@ -60,6 +60,7 @@ try { db.exec("ALTER TABLE whatsapp_log ADD COLUMN delivery_status TEXT DEFAULT 
 try { db.exec("ALTER TABLE whatsapp_log ADD COLUMN message_id TEXT DEFAULT ''"); } catch {}
 try { db.exec("ALTER TABLE pacientes ADD COLUMN tipo_documento TEXT DEFAULT 'dni'"); } catch {}
 try { db.exec("ALTER TABLE usuarios ADD COLUMN titulo TEXT DEFAULT 'C.D Odontologia'"); } catch {}
+try { db.exec("ALTER TABLE usuarios ADD COLUMN firma_imagen TEXT DEFAULT ''"); } catch {}
 try { db.exec("ALTER TABLE usuarios ADD COLUMN cmp TEXT DEFAULT ''"); } catch {}
 try { db.exec("ALTER TABLE imagenes ADD COLUMN hash_sha256 TEXT DEFAULT ''"); } catch {}
 
