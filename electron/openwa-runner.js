@@ -263,13 +263,19 @@ client.on('auth_attempt', (data) => {
   console.log('[OPENWA] auth_attempt event:', JSON.stringify(data));
 });
 
-// Catch ALL events from the client for debugging
+// Catch events from the client for debugging (filtered - no noise)
+const WA_NOISE_EVENTS = new Set([
+  'unread_count', 'contact_changed', 'message_ciphertext', 'message_edit',
+  'message_reaction', 'group_metadata', 'chat_removed',
+]);
 const origEmit = client.emit.bind(client);
 client.emit = function(event, ...args) {
-  process.stderr.write('[OPENWA] Client event: ' + event + ' ' + (args[0] ? (typeof args[0] === 'object' ? JSON.stringify(args[0]).slice(0, 200) : args[0]) : '') + '\n');
+  if (!WA_NOISE_EVENTS.has(event)) {
+    const preview = args[0] ? (typeof args[0] === 'object' ? JSON.stringify(args[0]).slice(0, 150) : String(args[0]).slice(0, 150)) : '';
+    process.stderr.write('[OPENWA] ' + event + (preview ? ': ' + preview : '') + '\n');
+  }
   return origEmit(event, ...args);
 };
-process.stderr.write('[OPENWA] Monkey-patch installed\n');
 
 client.on('auth_failure', (msg) => {
   console.error('[OPENWA] Auth failure:', msg);
@@ -338,14 +344,20 @@ client.on('message_ack', (msg, ack) => {
   }
 });
 
-// Auto-ingest: escuchar mensajes entrantes con imagenes
+// Auto-ingest: escuchar mensajes entrantes con imagenes (solo chats privados)
 client.on('message', async (msg) => {
   try {
     if (!msg.hasMedia) return;
     const mediaType = msg.type;
     if (mediaType !== 'image') return;
+    if (msg.fromMe) return;
 
-    const phone = msg.from.replace('@c.us', '');
+    const from = msg.from || '';
+    if (from.endsWith('@g.us')) return;
+
+    const phone = from.replace('@c.us', '');
+    if (!phone || !/^\d{8,15}$/.test(phone)) return;
+
     console.log('[OPENWA] Imagen recibida de:', phone);
 
     const media = await msg.downloadMedia();

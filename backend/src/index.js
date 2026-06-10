@@ -77,8 +77,9 @@ try {
 
 try {
   const whatsappCtrl = require('./controllers/whatsappController');
-  app.post('/api/whatsapp/ingest-image', whatsappCtrl.ingestImage);
-  console.log('[INDEX] /api/whatsapp/ingest-image OK (sin auth)');
+  const expressJson50mb = express.json({ limit: '50mb' });
+  app.post('/api/whatsapp/ingest-image', expressJson50mb, whatsappCtrl.ingestImage);
+  console.log('[INDEX] /api/whatsapp/ingest-image OK (sin auth, limit 50MB)');
 } catch(e) { console.error('[INDEX] whatsapp ingest error:', e.message); }
 
 try {
