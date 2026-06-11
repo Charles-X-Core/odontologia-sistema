@@ -67,6 +67,17 @@ exports.receta = (req, res) => {
     `).get(req.usuario.id, req.params.id);
     if (!receta) return res.status(404).json({ error: 'Receta no encontrada' });
 
+    // Fallback: si el usuario logueado no tiene firma, usar la de cualquier usuario con firma
+    if (!receta.doctor_firma) {
+      const doctorConFirma = db.prepare("SELECT nombre, titulo, cmp, firma_imagen FROM usuarios WHERE firma_imagen IS NOT NULL AND firma_imagen != '' LIMIT 1").get();
+      if (doctorConFirma) {
+        receta.doctor_firma = doctorConFirma.firma_imagen;
+        if (!receta.doctor_nombre || receta.doctor_nombre === 'Doctor') receta.doctor_nombre = doctorConFirma.nombre;
+        if (!receta.doctor_titulo || receta.doctor_titulo === 'Odontologo') receta.doctor_titulo = doctorConFirma.titulo;
+        if (!receta.doctor_cmp) receta.doctor_cmp = doctorConFirma.cmp;
+      }
+    }
+
     const meds = typeof receta.medicamentos === 'string' ? JSON.parse(receta.medicamentos) : receta.medicamentos;
     const doc = new PDFDocument({ size: 'LETTER', margin: 50 });
     res.setHeader('Content-Type', 'application/pdf');
