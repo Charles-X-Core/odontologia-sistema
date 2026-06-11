@@ -97,7 +97,6 @@ exports.receta = (req, res) => {
     doc.fillColor('#000000').font('Helvetica').fontSize(10).text(receta.indicaciones || 'Sin indicaciones');
     doc.moveDown(2);
 
-    doc.font('Helvetica').fontSize(10).text('________________________', { align: 'center' });
     if (receta.doctor_firma) {
       try {
         const imgData = receta.doctor_firma.replace(/^data:image\/\w+;base64,/, '');
@@ -106,6 +105,7 @@ exports.receta = (req, res) => {
         doc.moveDown(0.5);
       } catch (e) { console.error('[PDF] Error rendering firma in receta:', e.message); }
     }
+    doc.font('Helvetica').fontSize(10).text('________________________', { align: 'center' });
     doc.font('Helvetica-Bold').text(receta.doctor_nombre || 'Doctor', { align: 'center' });
     doc.font('Helvetica').fontSize(8).text(receta.doctor_titulo || 'Odontologo', { align: 'center' });
     if (receta.doctor_cmp) {
