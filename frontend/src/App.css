@@ -960,11 +960,6 @@ body {
   margin-bottom: 24px;
 }
 
-/* ========== STATS GRID 9 ========== */
-.stats-grid-9 {
-  grid-template-columns: repeat(9, 1fr);
-}
-
 .stat-card.clickable {
   cursor: pointer;
 }
@@ -986,54 +981,6 @@ body {
   opacity: 0.8;
   margin-left: auto;
   font-size: 11px;
-}
-
-/* ========== TOP DIAGNÓSTICOS ========== */
-.top-diag-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  width: 100%;
-}
-
-.top-diag-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.top-diag-label {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--gray-700);
-  min-width: 100px;
-  max-width: 140px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.top-diag-bar-wrap {
-  flex: 1;
-  height: 20px;
-  background: var(--gray-100);
-  border-radius: 10px;
-  overflow: hidden;
-}
-
-.top-diag-bar {
-  height: 100%;
-  background: linear-gradient(90deg, var(--primary) 0%, #6366f1 100%);
-  border-radius: 10px;
-  transition: width 0.6s ease;
-}
-
-.top-diag-count {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--gray-800);
-  min-width: 24px;
-  text-align: right;
 }
 
 /* ========== CLICKABLE ROW ========== */
@@ -1164,7 +1111,7 @@ body {
 }
 
 @media (max-width: 1200px) {
-  .stats-grid, .stats-grid-9 {
+  .stats-grid {
     grid-template-columns: repeat(3, 1fr);
   }
   .dashboard-charts {
@@ -1179,7 +1126,7 @@ body {
 }
 
 @media (max-width: 768px) {
-  .stats-grid, .stats-grid-9 {
+  .stats-grid {
     grid-template-columns: repeat(2, 1fr);
   }
   .dashboard-grid-2col {

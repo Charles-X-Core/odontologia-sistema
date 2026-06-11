@@ -748,7 +748,7 @@ exports.enviarPdf = async (req, res) => {
       case 'historia': {
         const historia = db.prepare('SELECT * FROM historias_clinicas WHERE paciente_id = ? ORDER BY id DESC LIMIT 1').get(paciente_id) || {};
         const consultas = db.prepare('SELECT c.*, o.datos_json as odontograma FROM consultas c LEFT JOIN odontogramas o ON o.consulta_id = c.id WHERE c.historia_id = ? ORDER BY c.fecha DESC').all(historia.id || 0);
-        const pagosHistoria = db.prepare('SELECT * FROM pagos WHERE paciente_id = ? ORDER BY fecha_pago DESC').all(paciente_id);
+        const pagosHistoria = db.prepare('SELECT * FROM pagos WHERE paciente_id = ? ORDER BY fecha DESC').all(paciente_id);
         html = await generateHistoriaHtml(paciente, historia, consultas, pagosHistoria);
         filename = `Historia_${nombreCompleto(paciente).replace(/\s+/g, '_')}.pdf`;
         break;

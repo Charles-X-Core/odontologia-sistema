@@ -35,7 +35,7 @@ function generatePagoHtml(paciente, pago) {
     <div class="info-grid">
       <div><span class="label">Nombre:</span> ${nombreCompleto(paciente)}</div>
       <div><span class="label">Telefono:</span> ${paciente.telefono || '-'}</div>
-      <div><span class="label">Fecha de Pago:</span> ${new Date(pago.fecha_pago || pago.created_at || Date.now()).toLocaleDateString('es-PE')}</div>
+      <div><span class="label">Fecha de Pago:</span> ${new Date(pago.fecha || pago.created_at || Date.now()).toLocaleDateString('es-PE')}</div>
       <div><span class="label">Metodo:</span> ${pago.metodo_pago || 'Efectivo'}</div>
     </div>
   </div>
