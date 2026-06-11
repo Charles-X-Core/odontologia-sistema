@@ -725,16 +725,16 @@ exports.enviarPdf = async (req, res) => {
           ? db.prepare('SELECT * FROM recetas WHERE id = ?').get(receta_id)
           : db.prepare('SELECT * FROM recetas WHERE paciente_id = ? ORDER BY created_at DESC LIMIT 1').get(paciente_id);
         if (!receta) return res.status(404).json({ error: 'Receta no encontrada' });
-        const doctor = db.prepare('SELECT nombre, titulo FROM usuarios LIMIT 1').get();
+        const doctor = db.prepare("SELECT nombre, titulo, cmp, firma_imagen FROM usuarios WHERE firma_imagen IS NOT NULL AND firma_imagen != '' LIMIT 1").get();
         html = generateRecetaHtml(paciente, receta, doctor);
-        filename = `Receta_${nombreCompleto(paciente).replace(/\s+/g, '_')}.html`;
+        filename = `Receta_${nombreCompleto(paciente).replace(/\s+/g, '_')}.pdf`;
         break;
       }
       case 'pago': {
         const pago = db.prepare('SELECT * FROM pagos WHERE paciente_id = ? ORDER BY created_at DESC LIMIT 1').get(paciente_id);
         if (!pago) return res.status(404).json({ error: 'Pago no encontrado' });
         html = generatePagoHtml(paciente, pago);
-        filename = `Comprobante_${nombreCompleto(paciente).replace(/\s+/g, '_')}.html`;
+        filename = `Comprobante_${nombreCompleto(paciente).replace(/\s+/g, '_')}.pdf`;
         break;
       }
       case 'plan':
@@ -742,7 +742,7 @@ exports.enviarPdf = async (req, res) => {
         const pagos = db.prepare('SELECT * FROM pagos WHERE paciente_id = ? ORDER BY created_at DESC').all(paciente_id);
         const tratamientos = db.prepare('SELECT * FROM tratamientos WHERE paciente_id = ? ORDER BY fecha DESC').all(paciente_id);
         html = generateTratamientosHtml(paciente, tratamientos, []);
-        filename = `Plan_${nombreCompleto(paciente).replace(/\s+/g, '_')}.html`;
+        filename = `Plan_${nombreCompleto(paciente).replace(/\s+/g, '_')}.pdf`;
         break;
       }
       case 'historia': {
@@ -750,7 +750,7 @@ exports.enviarPdf = async (req, res) => {
         const consultas = db.prepare('SELECT c.*, o.datos_json as odontograma FROM consultas c LEFT JOIN odontogramas o ON o.consulta_id = c.id WHERE c.historia_id = ? ORDER BY c.fecha DESC').all(historia.id || 0);
         const pagosHistoria = db.prepare('SELECT * FROM pagos WHERE paciente_id = ? ORDER BY fecha_pago DESC').all(paciente_id);
         html = await generateHistoriaHtml(paciente, historia, consultas, pagosHistoria);
-        filename = `Historia_${nombreCompleto(paciente).replace(/\s+/g, '_')}.html`;
+        filename = `Historia_${nombreCompleto(paciente).replace(/\s+/g, '_')}.pdf`;
         break;
       }
       default:
