@@ -4,7 +4,7 @@ import { nombreCompleto, tipoDocLabel, validarDocumento, validarFechaNacimiento 
 
 const FORM_NUEVO = {
   apellido_paterno: '', apellido_materno: '', nombres: '', dni: '', tipo_documento: 'dni', telefono: '',
-  email: '', fecha_nacimiento: '', sexo: '',
+  email: '', fecha_nacimiento: '', sexo: '', direccion: '', ocupacion: '',
 };
 
 export default function Recepcion({ onVolver, onStartSesion }) {
@@ -48,8 +48,21 @@ export default function Recepcion({ onVolver, onStartSesion }) {
     e.preventDefault();
     setErrorNuevo('');
 
-    if (formNuevo.dni && !validarDocumento(formNuevo.tipo_documento || 'dni', formNuevo.dni)) {
-      setErrorNuevo(`Formato invalido para ${tipoDocLabel(formNuevo.tipo_documento || 'dni')}`);
+    if (!formNuevo.apellido_paterno?.trim() || !formNuevo.nombres?.trim()) {
+      setErrorNuevo('Apellido paterno y nombres son obligatorios');
+      setGuardandoNuevo(false);
+      return;
+    }
+
+    const docTipo = formNuevo.tipo_documento || 'dni';
+    if (docTipo !== 'sin_doc' && !formNuevo.dni?.trim()) {
+      setErrorNuevo(`El numero de documento es obligatorio para ${tipoDocLabel(docTipo)}`);
+      setGuardandoNuevo(false);
+      return;
+    }
+
+    if (formNuevo.dni && !validarDocumento(docTipo, formNuevo.dni)) {
+      setErrorNuevo(`Formato invalido para ${tipoDocLabel(docTipo)}`);
       setGuardandoNuevo(false);
       return;
     }
@@ -193,16 +206,27 @@ export default function Recepcion({ onVolver, onStartSesion }) {
                   <input type="text" value={formNuevo.nombres} onChange={(e) => setFormNuevo({...formNuevo, nombres: e.target.value})} required />
                 </div>
                 <div className="field">
-                  <label>DNI *</label>
-                  <input type="text" value={formNuevo.dni} onChange={(e) => setFormNuevo({...formNuevo, dni: e.target.value})} required />
+                  <label>Tipo de Documento</label>
+                  <select value={formNuevo.tipo_documento} onChange={(e) => setFormNuevo({...formNuevo, tipo_documento: e.target.value, dni: e.target.value === 'sin_doc' ? '' : formNuevo.dni})}>
+                    <option value="dni">DNI</option>
+                    <option value="ce">Carnet de Extranjeria</option>
+                    <option value="pasaporte">Pasaporte</option>
+                    <option value="sin_doc">Sin documento</option>
+                  </select>
                 </div>
+                {formNuevo.tipo_documento !== 'sin_doc' && (
+                  <div className="field">
+                    <label>{formNuevo.tipo_documento === 'dni' ? 'DNI' : formNuevo.tipo_documento === 'ce' ? 'Carnet de Extranjeria' : 'Pasaporte'} *</label>
+                    <input type="text" value={formNuevo.dni} onChange={(e) => setFormNuevo({...formNuevo, dni: e.target.value})} required />
+                  </div>
+                )}
                 <div className="field">
                   <label>Telefono</label>
                   <input type="text" value={formNuevo.telefono} onChange={(e) => setFormNuevo({...formNuevo, telefono: e.target.value})} />
                 </div>
                 <div className="field">
                   <label>Email</label>
-                  <input type="email" value={formNuevo.email} onChange={(e) => setFormNuevo({...formNuevo, email: e.target.value})} />
+                  <input type="text" value={formNuevo.email} onChange={(e) => setFormNuevo({...formNuevo, email: e.target.value})} />
                 </div>
                 <div className="field">
                   <label>Fecha de Nacimiento</label>
@@ -215,6 +239,14 @@ export default function Recepcion({ onVolver, onStartSesion }) {
                     <option value="M">Masculino</option>
                     <option value="F">Femenino</option>
                   </select>
+                </div>
+                <div className="field">
+                  <label>Direccion</label>
+                  <input type="text" value={formNuevo.direccion || ''} onChange={(e) => setFormNuevo({...formNuevo, direccion: e.target.value})} />
+                </div>
+                <div className="field">
+                  <label>Ocupacion</label>
+                  <input type="text" value={formNuevo.ocupacion || ''} onChange={(e) => setFormNuevo({...formNuevo, ocupacion: e.target.value})} />
                 </div>
               </div>
               <div className="form-actions">
