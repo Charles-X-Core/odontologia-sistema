@@ -6,12 +6,12 @@ import {
 
 const ESTADOS = {
   sano:        { label: 'Sano',        color: '#22c55e', icon: CheckCircle,  letra: '' },
-  caries:      { label: 'Caries',      color: '#ef4444', icon: AlertTriangle, letra: 'C' },
+  caries:      { label: 'Caries',      color: '#991b1b', icon: AlertTriangle, letra: 'C' },
   obturado:    { label: 'Obturado',    color: '#3b82f6', icon: Circle,        letra: 'O' },
   endodoncia:  { label: 'Endodoncia',  color: '#8b5cf6', icon: CircleDot,     letra: 'E' },
   corona:      { label: 'Corona',      color: '#f59e0b', icon: Crown,         letra: 'CR' },
-  extraccion:  { label: 'Extraccion',  color: '#6b7280', icon: X,             letra: 'X' },
-  ausente:     { label: 'Ausente',     color: '#d1d5db', icon: CircleOff,     letra: '' },
+  extraccion:  { label: 'Extraccion',  color: '#ef4444', icon: X,             letra: 'X' },
+  ausente:     { label: 'Ausente',     color: '#2563eb', icon: CircleOff,     letra: '' },
   provisional: { label: 'Provisional', color: '#06b6d4', icon: Triangle,      letra: 'P' },
   implante:    { label: 'Implante',    color: '#14b8a6', icon: Pin,            letra: 'I' },
   puente:      { label: 'Puente',      color: '#a855f7', icon: Minus,         letra: 'PU' },
@@ -72,7 +72,7 @@ function Diente({ numero, estado, onClick, esTemporal, sinColor }) {
               color: '#fff',
             }}
           >
-            <Icon size={esTemporal ? 10 : 14} strokeWidth={2.5} />
+            <Icon size={esTemporal ? 10 : 14} strokeWidth={2.5} style={{ opacity: estado === 'ausente' ? 0.4 : 1 }} />
           </div>
         )}
       </div>
