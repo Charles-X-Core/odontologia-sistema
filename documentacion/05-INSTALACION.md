@@ -73,12 +73,12 @@ npm start
 npm run build
 ```
 
-El instalador se genera en `dist-electron/Vita Mirabilis Setup 1.0.0.exe`
+El instalador se genera en `dist-electron/Clinica Dental Pro Setup 1.0.0.exe`
 
 ### Archivos generados
 ```
 dist-electron/
-├── Vita Mirabilis Setup 1.0.0.exe  ← Instalador NSIS
+├── Clinica Dental Pro Setup 1.0.0.exe  ← Instalador NSIS
 ├── win-unpacked/                    ← Version portable
 └── builder-effective-config.yaml
 ```

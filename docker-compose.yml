@@ -3,7 +3,7 @@ version: '3.8'
 services:
   openwa:
     image: openwa/wa-automate:latest
-    container_name: vita-mirabilis-whatsapp
+    container_name: clinica-dental-pro-whatsapp
     ports:
       - "3002:3000"
     environment:

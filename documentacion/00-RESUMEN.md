@@ -1,4 +1,4 @@
-# Vita Mirabilis - Documentacion del Sistema
+# Clinica Dental Pro - Documentacion del Sistema
 
 ## Sistema de Historial Clinico Odontologico
 

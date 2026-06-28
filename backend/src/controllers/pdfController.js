@@ -6,7 +6,7 @@ function nombreCompleto(p) {
 }
 
 function addHeader(doc) {
-  doc.fontSize(20).font('Helvetica-Bold').text('Vita Mirabilis', { align: 'center' });
+  doc.fontSize(20).font('Helvetica-Bold').text('Clinica Dental Pro', { align: 'center' });
   doc.fontSize(10).font('Helvetica').text('Clinica Odontologica', { align: 'center' });
   doc.moveDown(0.3);
   doc.moveTo(50, doc.y).lineTo(565, doc.y).strokeColor('#2563eb').lineWidth(1).stroke();

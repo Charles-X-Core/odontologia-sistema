@@ -1,4 +1,4 @@
-# Vita Mirabilis — Roadmap
+# Clinica Dental Pro — Roadmap
 
 Documento vivo del estado del proyecto, errores resueltos y trabajo pendiente.
 
@@ -46,7 +46,7 @@ Documento vivo del estado del proyecto, errores resueltos y trabajo pendiente.
 - [x] **Build con electron-builder** (`--dir` para portable)
 - [x] **asarUnpack completo** de `node_modules/` y `electron/`
 - [x] **postbuild hook** (`scripts/copy-portable.js`)
-- [x] **Iniciar Vita Mirabilis.bat** con:
+- [x] **Iniciar Clinica Dental Pro.bat** con:
   - Auto-elevacion a administrador
   - Verificacion de VC++ Redist, Chrome, Node.js, espacio
   - Instalacion automatica via `winget` con `--silent`
@@ -152,12 +152,12 @@ Llamada en cada retry: `auth_failure`, `disconnected`, `initialize error`.
 
 **Fix** (en `electron/openwa-runner.js`):
 ```js
-const logFile = path.join(process.env.APPDATA || process.env.TEMP, 'Vita Mirabilis', 'runner.log');
+const logFile = path.join(process.env.APPDATA || process.env.TEMP, 'Clinica Dental Pro', 'runner.log');
 function fileLog(msg) { /* append con timestamp ISO */ }
 // Override console.* y process.stderr.write
 ```
 
-**Log path**: `%APPDATA%\Vita Mirabilis\runner.log`
+**Log path**: `%APPDATA%\Clinica Dental Pro\runner.log`
 
 ---
 
@@ -212,7 +212,7 @@ function fileLog(msg) { /* append con timestamp ISO */ }
 
 ### Conclusion
 
-**Vita Mirabilis NO puede danar drivers de sonido o camara.**
+**Clinica Dental Pro NO puede danar drivers de sonido o camara.**
 
 Si una PC donde se instalo tiene problemas de drivers, las causas probables son:
 

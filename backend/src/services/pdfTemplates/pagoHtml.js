@@ -27,7 +27,7 @@ function generatePagoHtml(paciente, pago) {
 <body>
   <div class="header">
     <h1>COMPROBANTE DE PAGO</h1>
-    <p>Vita Mirabilis - Clinica Odontologica</p>
+    <p>Clinica Dental Pro - Clinica Odontologica</p>
   </div>
 
   <div class="section">
@@ -47,7 +47,7 @@ function generatePagoHtml(paciente, pago) {
 
   ${pago.concepto ? `<div class="section"><h3>Concepto</h3><p>${pago.concepto}</p></div>` : ''}
 
-  <div class="footer">Vita Mirabilis - Clinica Odontologica | Comprobante generado electronicamente</div>
+  <div class="footer">Clinica Dental Pro - Clinica Odontologica | Comprobante generado electronicamente</div>
 </body>
 </html>`;
 }

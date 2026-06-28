@@ -1,6 +1,6 @@
 @echo off
 chcp 65001 >nul
-title Vita Mirabilis - Iniciando
+title Clinica Dental Pro - Iniciando
 setlocal EnableExtensions
 cd /d "%~dp0"
 
@@ -10,8 +10,8 @@ cd /d "%~dp0"
 :: ============================================================
 ::
 :: USO:
-::   Iniciar Vita Mirabilis.bat              (modo normal)
-::   Iniciar Vita Mirabilis.bat --no-install  (sin instalar nada)
+::   Iniciar Clinica Dental Pro.bat              (modo normal)
+::   Iniciar Clinica Dental Pro.bat --no-install  (sin instalar nada)
 ::
 ::   --no-install:   No instala dependencias. Solo verifica que
 ::                   Chrome y Node.js esten en el sistema. Si
@@ -228,11 +228,11 @@ echo              TODO LISTO - INICIANDO APP
 echo ============================================================
 echo.
 
-if exist "Vita Mirabilis.exe" (
+if exist "Clinica Dental Pro.exe" (
     :: Usar PowerShell para lanzar el exe y desligarse del proceso cmd
-    powershell -Command "Start-Process -FilePath '.\Vita Mirabilis.exe' -WorkingDirectory '%~dp0'"
+    powershell -Command "Start-Process -FilePath '.\Clinica Dental Pro.exe' -WorkingDirectory '%~dp0'"
 ) else (
-    echo [X] ERROR: No se encontro "Vita Mirabilis.exe" en esta carpeta
+    echo [X] ERROR: No se encontro "Clinica Dental Pro.exe" en esta carpeta
     echo     Asegurate de haber descomprimido TODO el contenido del .rar
     pause
     exit /b 1

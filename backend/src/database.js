@@ -39,16 +39,16 @@ db.exec("CREATE TABLE IF NOT EXISTS whatsapp_batch (id INTEGER PRIMARY KEY AUTOI
 const count = db.prepare('SELECT COUNT(*) as total FROM whatsapp_plantillas').get();
 if (count.total === 0) {
   const insert = db.prepare('INSERT INTO whatsapp_plantillas (nombre, categoria, asunto, cuerpo) VALUES (?, ?, ?, ?)');
-  insert.run('Receta Medica', 'salud', 'Receta Medica', 'Buenos dias {nombre_completo}, le comparto su receta medica:\n\n{medicamentos}\n\nIndicaciones: {indicaciones}\n\nSi tiene alguna duda, no dude en comunicarse.\n_Vita Mirabilis - Clinica Odontologica_');
-  insert.run('Plan de Tratamiento', 'tratamiento', 'Plan de Tratamiento', 'Buenos dias {nombre_completo}, le compartimos su plan de tratamiento:\n\n{tratamientos_lista}\n\nTotal: S/{costo_total}\nSaldo pendiente: S/{saldo_pendiente}\n\nAgende su proxima cita: 982-890-328\n_Vita Mirabilis - Clinica Odontologica_');
-  insert.run('Recordatorio de Pago', 'pago', 'Recordatorio de Pago', 'Buenos dias {nombre_completo}, le recordamos que tiene un saldo pendiente de:\n\nS/{saldo_pendiente}\n\nPuede realizar su pago en clinica o comunicarse para coordinar una fecha.\n\n_Vita Mirabilis - Clinica Odontologica_');
-  insert.run('Proxima Cita', 'cita', 'Proxima Cita', 'Buenos dias {nombre_completo}, le recordamos su proxima cita:\n\nFecha: {fecha_cita}\nHora: {hora_cita}\nProcedimiento: {procedimiento}\n\nSi necesita reprogramar, comuniquese con nosotros.\n_Vita Mirabilis - Clinica Odontologica_');
-  insert.run('Bienvenida', 'marketing', 'Bienvenida', 'Hola {nombre_completo}, bienvenido(a) a Vita Mirabilis - Clinica Odontologica!\n\nEstamos encantados de atenderle. Si tiene alguna consulta, no dude en escribirnos.\n\nTelefono: 982-890-328\n_Vita Mirabilis - Clinica Odontologica_');
-  insert.run('Seguimiento', 'salud', 'Seguimiento Post-Tratamiento', 'Buenos dias {nombre_completo}, como se encuentra despues de su tratamiento?\n\nSi tiene alguna molestia o consulta, estamos para ayudarle.\n\n_Vita Mirabilis - Clinica Odontologica_');
-  insert.run('Confirmacion de Cita', 'cita', 'Confirmacion de Cita', 'Buenos dias {nombre_completo}, tiene una cita programada para:\n\nFecha: {fecha_cita}\nHora: {hora_cita}\n\nPor favor confirme su asistencia respondiendo SI o NO.\n_Vita Mirabilis - Clinica Odontologica_');
-  insert.run('Feliz Cumpleanos', 'marketing', 'Feliz Cumpleanos!', 'Feliz cumpleanos {nombre_completo}!\n\nDe parte de todo el equipo de Vita Mirabilis le deseamos lo mejor en este dia tan especial.\n\nTelefono: 982-890-328\n_Vita Mirabilis - Clinica Odontologica_');
-  insert.run('Recordatorio de Limpieza', 'salud', 'Recordatorio de Limpieza Dental', 'Buenos dias {nombre_completo}, ya han pasado varios meses desde su ultima limpieza dental.\n\nEs recomendable realizarse una limpieza cada 6 meses para mantener su salud bucal.\n\nAgende su cita: 982-890-328\n_Vita Mirabilis - Clinica Odontologica_');
-  insert.run('Saldo a Favor', 'pago', 'Saldo a Favor', 'Buenos dias {nombre_completo}, le informamos que cuenta con un saldo a favor de:\n\nS/{saldo_a_favor}\n\nEste credito puede ser utilizado en su proximo tratamiento.\n\n_Vita Mirabilis - Clinica Odontologica_');
+  insert.run('Receta Medica', 'salud', 'Receta Medica', 'Buenos dias {nombre_completo}, le comparto su receta medica:\n\n{medicamentos}\n\nIndicaciones: {indicaciones}\n\nSi tiene alguna duda, no dude en comunicarse.\n_Clinica Dental Pro - Clinica Odontologica_');
+  insert.run('Plan de Tratamiento', 'tratamiento', 'Plan de Tratamiento', 'Buenos dias {nombre_completo}, le compartimos su plan de tratamiento:\n\n{tratamientos_lista}\n\nTotal: S/{costo_total}\nSaldo pendiente: S/{saldo_pendiente}\n\nAgende su proxima cita: 982-890-328\n_Clinica Dental Pro - Clinica Odontologica_');
+  insert.run('Recordatorio de Pago', 'pago', 'Recordatorio de Pago', 'Buenos dias {nombre_completo}, le recordamos que tiene un saldo pendiente de:\n\nS/{saldo_pendiente}\n\nPuede realizar su pago en clinica o comunicarse para coordinar una fecha.\n\n_Clinica Dental Pro - Clinica Odontologica_');
+  insert.run('Proxima Cita', 'cita', 'Proxima Cita', 'Buenos dias {nombre_completo}, le recordamos su proxima cita:\n\nFecha: {fecha_cita}\nHora: {hora_cita}\nProcedimiento: {procedimiento}\n\nSi necesita reprogramar, comuniquese con nosotros.\n_Clinica Dental Pro - Clinica Odontologica_');
+  insert.run('Bienvenida', 'marketing', 'Bienvenida', 'Hola {nombre_completo}, bienvenido(a) a Clinica Dental Pro - Clinica Odontologica!\n\nEstamos encantados de atenderle. Si tiene alguna consulta, no dude en escribirnos.\n\nTelefono: 982-890-328\n_Clinica Dental Pro - Clinica Odontologica_');
+  insert.run('Seguimiento', 'salud', 'Seguimiento Post-Tratamiento', 'Buenos dias {nombre_completo}, como se encuentra despues de su tratamiento?\n\nSi tiene alguna molestia o consulta, estamos para ayudarle.\n\n_Clinica Dental Pro - Clinica Odontologica_');
+  insert.run('Confirmacion de Cita', 'cita', 'Confirmacion de Cita', 'Buenos dias {nombre_completo}, tiene una cita programada para:\n\nFecha: {fecha_cita}\nHora: {hora_cita}\n\nPor favor confirme su asistencia respondiendo SI o NO.\n_Clinica Dental Pro - Clinica Odontologica_');
+  insert.run('Feliz Cumpleanos', 'marketing', 'Feliz Cumpleanos!', 'Feliz cumpleanos {nombre_completo}!\n\nDe parte de todo el equipo de Clinica Dental Pro le deseamos lo mejor en este dia tan especial.\n\nTelefono: 982-890-328\n_Clinica Dental Pro - Clinica Odontologica_');
+  insert.run('Recordatorio de Limpieza', 'salud', 'Recordatorio de Limpieza Dental', 'Buenos dias {nombre_completo}, ya han pasado varios meses desde su ultima limpieza dental.\n\nEs recomendable realizarse una limpieza cada 6 meses para mantener su salud bucal.\n\nAgende su cita: 982-890-328\n_Clinica Dental Pro - Clinica Odontologica_');
+  insert.run('Saldo a Favor', 'pago', 'Saldo a Favor', 'Buenos dias {nombre_completo}, le informamos que cuenta con un saldo a favor de:\n\nS/{saldo_a_favor}\n\nEste credito puede ser utilizado en su proximo tratamiento.\n\n_Clinica Dental Pro - Clinica Odontologica_');
   insert.run('Custom', 'otro', '', '{mensaje_personalizado}');
 }
 
@@ -63,6 +63,9 @@ try { db.exec("ALTER TABLE usuarios ADD COLUMN titulo TEXT DEFAULT 'C.D Odontolo
 try { db.exec("ALTER TABLE usuarios ADD COLUMN firma_imagen TEXT DEFAULT ''"); } catch {}
 try { db.exec("ALTER TABLE usuarios ADD COLUMN cmp TEXT DEFAULT ''"); } catch {}
 try { db.exec("ALTER TABLE imagenes ADD COLUMN hash_sha256 TEXT DEFAULT ''"); } catch {}
+try { db.exec("ALTER TABLE pacientes ADD COLUMN alergias TEXT DEFAULT ''"); } catch {}
+try { db.exec("ALTER TABLE pacientes ADD COLUMN antecedentes_personales TEXT DEFAULT ''"); } catch {}
+try { db.exec("ALTER TABLE pacientes ADD COLUMN antecedentes_familiares TEXT DEFAULT ''"); } catch {}
 
 db.exec("CREATE TABLE IF NOT EXISTS importaciones_historial (id INTEGER PRIMARY KEY AUTOINCREMENT, archivo_nombre TEXT, archivo_hash TEXT, fecha_importacion TEXT DEFAULT (datetime('now')), pacientes_creados INTEGER DEFAULT 0, pacientes_duplicados INTEGER DEFAULT 0, consultas_creadas INTEGER DEFAULT 0, tratamientos_creados INTEGER DEFAULT 0, pagos_creados INTEGER DEFAULT 0, total_errores INTEGER DEFAULT 0, usuario_id INTEGER)");
 

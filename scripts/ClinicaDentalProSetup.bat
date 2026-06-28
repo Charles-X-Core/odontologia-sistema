@@ -15,7 +15,7 @@ if "%INSTDIR%"=="" set "INSTDIR=%~dp0"
 
 echo.
 echo ========================================
-echo   Vita Mirabilis - Configuracion
+echo   Clinica Dental Pro - Configuracion
 echo   Charles-X RedFlame Systems
 echo ========================================
 echo.
@@ -105,12 +105,12 @@ echo ========================================
 echo   Configuracion completada
 echo ========================================
 echo.
-echo   Vita Mirabilis esta listo para usar.
+echo   Clinica Dental Pro esta listo para usar.
 echo   Abra la aplicacion desde el acceso directo
 echo   del escritorio o del menu inicio.
 echo.
 echo   Si alguna dependencia fallo, puede ejecutar
-echo   "Iniciar Vita Mirabilis.bat" desde la
+echo   "Iniciar Clinica Dental Pro.bat" desde la
 echo   carpeta de instalacion para reintentar.
 echo.
 

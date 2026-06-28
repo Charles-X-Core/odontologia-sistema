@@ -1,6 +1,6 @@
 # Solucion de Problemas
 
-Guia detallada para resolver los problemas mas comunes de Vita Mirabilis.
+Guia detallada para resolver los problemas mas comunes de Clinica Dental Pro.
 
 ---
 
@@ -22,7 +22,7 @@ Guia detallada para resolver los problemas mas comunes de Vita Mirabilis.
 ## 1. La app no inicia
 
 ### Sintomas
-- Doble click en "Vita Mirabilis.exe" y no pasa nada
+- Doble click en "Clinica Dental Pro.exe" y no pasa nada
 - La ventana aparece y se cierra inmediatamente
 - Mensaje "Error: ENOENT" o "Cannot find module"
 
@@ -31,8 +31,8 @@ Guia detallada para resolver los problemas mas comunes de Vita Mirabilis.
 **Paso 1**: Abrir una terminal PowerShell en la carpeta de la app:
 ```powershell
 # En la carpeta donde esta el .exe
-cd "C:\Users\TU_USUARIO\Desktop\Vita Mirabilis"
-.\"Vita Mirabilis.exe"
+cd "C:\Users\TU_USUARIO\Desktop\Clinica Dental Pro"
+.\"Clinica Dental Pro.exe"
 ```
 
 **Paso 2**: Leer el mensaje de error que aparece.
@@ -95,7 +95,7 @@ cd "C:\Users\TU_USUARIO\Desktop\Vita Mirabilis"
 **Paso 1**: Ver el log del runner:
 ```powershell
 # Ver las ultimas 50 lineas
-Get-Content "$env:APPDATA\Vita Mirabilis\runner.log" -Tail 50
+Get-Content "$env:APPDATA\Clinica Dental Pro\runner.log" -Tail 50
 ```
 
 **Paso 2**: Buscar palabras clave: `error`, `fail`, `disconnect`, `auth_failure`.
@@ -130,7 +130,7 @@ Despues reabrir la app.
 **Solucion**:
 ```powershell
 # Borrar la sesion guardada
-Remove-Item -Recurse -Force "$env:APPDATA\Vita Mirabilis\wwebjs_auth"
+Remove-Item -Recurse -Force "$env:APPDATA\Clinica Dental Pro\wwebjs_auth"
 
 # Reabrir la app y escanear QR de nuevo
 ```
@@ -170,7 +170,7 @@ Si dice "no se reconoce", ver [Seccion 4](#4-error-chrome-not-found).
 
 **Paso 2**: Probar generar PDF simple desde la terminal:
 ```powershell
-cd "C:\Users\TU_USUARIO\Desktop\Vita Mirabilis\resources\app.asar.unpacked\node_modules\puppeteer"
+cd "C:\Users\TU_USUARIO\Desktop\Clinica Dental Pro\resources\app.asar.unpacked\node_modules\puppeteer"
 node -e "const puppeteer = require('puppeteer'); puppeteer.launch({headless:true}).then(async b => { const p = await b.newPage(); await p.setContent('<h1>Test</h1>'); await p.pdf({path:'test.pdf'}); await b.close(); console.log('OK'); });"
 ```
 
@@ -250,7 +250,7 @@ Si descargaste Chrome portable (`.zip`), extraer a:
 
 ```powershell
 # En la carpeta de la app
-cd "C:\Users\TU_USUARIO\Desktop\Vita Mirabilis"
+cd "C:\Users\TU_USUARIO\Desktop\Clinica Dental Pro"
 node node_modules\@puppeteer\browsers\bin\init.js install chrome
 ```
 
@@ -273,7 +273,7 @@ Esto descarga Chrome a `%LOCALAPPDATA%\puppeteer\chrome`.
 **Respuesta corta**: NO. La app solo:
 - Extrae archivos a una carpeta
 - Instala paquetes oficiales de Microsoft, Google y OpenJS via `winget`
-- Lee/escribe archivos en `%APPDATA%\Vita Mirabilis\`
+- Lee/escribe archivos en `%APPDATA%\Clinica Dental Pro\`
 - Lee/escribe la base de datos SQLite
 - Abre Chrome y WhatsApp Web
 
@@ -285,13 +285,13 @@ Esto descarga Chrome a `%LOCALAPPDATA%\puppeteer\chrome`.
 2. Correr:
    ```powershell
    # Verificar que la app no modifico el registro
-   reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall" | findstr "Vita Mirabilis"
+   reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall" | findstr "Clinica Dental Pro"
    ```
    Si NO aparece, la app no se "instalo" en el sentido tradicional.
 
 3. Verificar que el unico directorio nuevo es el de la app:
    ```powershell
-   Get-ChildItem "C:\Users\TU_USUARIO\AppData\Roaming" | Where-Object Name -eq "Vita Mirabilis"
+   Get-ChildItem "C:\Users\TU_USUARIO\AppData\Roaming" | Where-Object Name -eq "Clinica Dental Pro"
    ```
    Esto muestra que la app creo su carpeta en AppData (normal para apps Electron).
 
@@ -306,9 +306,9 @@ Esto descarga Chrome a `%LOCALAPPDATA%\puppeteer\chrome`.
 
 ## 6. Drivers de sonido o camara no funcionan
 
-### Esto NO es culpa de Vita Mirabilis
+### Esto NO es culpa de Clinica Dental Pro
 
-Vita Mirabilis **NO**:
+Clinica Dental Pro **NO**:
 - Instala drivers
 - Modifica drivers existentes
 - Accede a `pnputil`, `devcon`, `reg.exe`
@@ -382,7 +382,7 @@ Si la app tiene la funcionalidad de backup (Fase 4), restaurar el ultimo `.db` v
 Si no, buscar en:
 ```powershell
 # Backups automaticos de Windows
-Get-ChildItem "$env:APPDATA\Vita Mirabilis\backups" -ErrorAction SilentlyContinue
+Get-ChildItem "$env:APPDATA\Clinica Dental Pro\backups" -ErrorAction SilentlyContinue
 ```
 
 #### b) Intentar reparar SQLite
@@ -403,10 +403,10 @@ Ultimo recurso: borrar `clinica.db` y dejar que la app la regenere.
 
 ```powershell
 # Backup primero
-Copy-Item "$env:APPDATA\Vita Mirabilis\clinica.db" "$env:DESKTOP\backup_$(Get-Date -Format 'yyyyMMdd').db"
+Copy-Item "$env:APPDATA\Clinica Dental Pro\clinica.db" "$env:DESKTOP\backup_$(Get-Date -Format 'yyyyMMdd').db"
 
 # Borrar
-Remove-Item "$env:APPDATA\Vita Mirabilis\clinica.db*"
+Remove-Item "$env:APPDATA\Clinica Dental Pro\clinica.db*"
 ```
 
 ---
@@ -483,7 +483,7 @@ Si el antivirus esta escaneando constantemente la carpeta de la app, relentiza t
 Click derecho en el icono de la app en la bandeja del sistema (system tray) → "Cerrar".
 
 Si no aparece, abrir Administrador de tareas (Ctrl+Shift+Esc) y cerrar:
-- `Vita Mirabilis.exe`
+- `Clinica Dental Pro.exe`
 - `electron.exe`
 - `chrome.exe` (los que no sean tu Chrome normal)
 - `openwa-runner.exe` o `node.exe` (si lo ves)
@@ -492,14 +492,14 @@ Si no aparece, abrir Administrador de tareas (Ctrl+Shift+Esc) y cerrar:
 
 ```powershell
 # Ajustar la ruta a donde tengas la app
-Remove-Item -Recurse -Force "C:\Users\TU_USUARIO\Desktop\Vita Mirabilis"
+Remove-Item -Recurse -Force "C:\Users\TU_USUARIO\Desktop\Clinica Dental Pro"
 ```
 
 #### c) Borrar los datos de usuario
 
 ```powershell
-Remove-Item -Recurse -Force "$env:APPDATA\Vita Mirabilis"
-Remove-Item -Recurse -Force "$env:LOCALAPPDATA\Vita Mirabilis"
+Remove-Item -Recurse -Force "$env:APPDATA\Clinica Dental Pro"
+Remove-Item -Recurse -Force "$env:LOCALAPPDATA\Clinica Dental Pro"
 ```
 
 #### d) (Opcional) Desinstalar Chrome, Node.js, VC++
@@ -516,8 +516,8 @@ winget uninstall Microsoft.VCRedist.2015+.x64
 
 ```powershell
 # Buscar archivos relacionados
-Get-ChildItem "C:\" -Recurse -Filter "*vitamirabilis*" -ErrorAction SilentlyContinue -Depth 3
-Get-ChildItem "C:\" -Recurse -Filter "*Vita Mirabilis*" -ErrorAction SilentlyContinue -Depth 3
+Get-ChildItem "C:\" -Recurse -Filter "*clinicadentalpro*" -ErrorAction SilentlyContinue -Depth 3
+Get-ChildItem "C:\" -Recurse -Filter "*Clinica Dental Pro*" -ErrorAction SilentlyContinue -Depth 3
 ```
 
 Si no aparece nada, desinstalacion completa.
@@ -530,15 +530,15 @@ Si no aparece nada, desinstalacion completa.
 
 | Log | Path |
 |---|---|
-| WhatsApp Runner | `%APPDATA%\Vita Mirabilis\runner.log` |
-| Sesion WhatsApp | `%APPDATA%\Vita Mirabilis\wwebjs_auth\` |
+| WhatsApp Runner | `%APPDATA%\Clinica Dental Pro\runner.log` |
+| Sesion WhatsApp | `%APPDATA%\Clinica Dental Pro\wwebjs_auth\` |
 | Electron Main | Solo visible en terminal donde se ejecuto |
 | Backend | Solo visible en terminal donde se ejecuto |
 
 ### Ver log en tiempo real
 
 ```powershell
-Get-Content "$env:APPDATA\Vita Mirabilis\runner.log" -Wait
+Get-Content "$env:APPDATA\Clinica Dental Pro\runner.log" -Wait
 ```
 
 (Ctrl+C para salir)
@@ -546,7 +546,7 @@ Get-Content "$env:APPDATA\Vita Mirabilis\runner.log" -Wait
 ### Borrar logs para empezar limpio
 
 ```powershell
-Remove-Item "$env:APPDATA\Vita Mirabilis\runner.log"
+Remove-Item "$env:APPDATA\Clinica Dental Pro\runner.log"
 ```
 
 ---
@@ -587,7 +587,7 @@ icacls "resources\data\evidencias"
 **Diagnóstico**:
 ```powershell
 # Ver log del runner
-Get-Content "$env:APPDATA\Vita Mirabilis\runner.log" -Tail 50 | Select-String "message|image|media"
+Get-Content "$env:APPDATA\Clinica Dental Pro\runner.log" -Tail 50 | Select-String "message|image|media"
 ```
 
 **Causas**:
@@ -630,12 +630,12 @@ Si ninguna de estas soluciones funciono:
 1. **Recopilar info del sistema**:
    ```powershell
    systeminfo | Out-File "$env:DESKTOP\info_sistema.txt"
-   Get-ChildItem "$env:APPDATA\Vita Mirabilis" -Recurse -ErrorAction SilentlyContinue | Out-File "$env:DESKTOP\info_app.txt"
+   Get-ChildItem "$env:APPDATA\Clinica Dental Pro" -Recurse -ErrorAction SilentlyContinue | Out-File "$env:DESKTOP\info_app.txt"
    ```
 
 2. **Recopilar log del runner**:
    ```powershell
-   Copy-Item "$env:APPDATA\Vita Mirabilis\runner.log" "$env:DESKTOP\"
+   Copy-Item "$env:APPDATA\Clinica Dental Pro\runner.log" "$env:DESKTOP\"
    ```
 
 3. **Reportar el issue** en:

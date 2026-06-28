@@ -30,7 +30,7 @@ export default function Login() {
       <div className="login-container">
         <div className="login-branding">
           <div className="login-branding-content">
-            <img src="/logo2.png" alt="Vita Mirabilis" className="login-branding-logo" />
+            <img src="/logo2.png" alt="Clinica Dental Pro" className="login-branding-logo" />
             <div className="login-divider"></div>
             <div className="login-features">
               <div className="login-feature">
@@ -52,7 +52,7 @@ export default function Login() {
             </div>
           </div>
           <div className="login-branding-footer">
-            <p>Vita Mirabilis v1.0</p>
+            <p>Clinica Dental Pro v1.2</p>
           </div>
         </div>
 

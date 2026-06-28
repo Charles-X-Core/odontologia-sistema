@@ -62,8 +62,8 @@ La DB se crea automaticamente al primera ejecucion via `seed.js`.
 ```json
 {
   "build": {
-    "appId": "com.vitamirabilis.odontologia",
-    "productName": "Vita Mirabilis",
+    "appId": "com.clinicadentalpro.odontologia",
+    "productName": "Clinica Dental Pro",
     "files": [
       "electron/**/*",
       "backend/src/**/*",

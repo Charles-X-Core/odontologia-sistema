@@ -12,7 +12,7 @@ export default function TitleBar() {
       <div className="titlebar-drag">
         <div className="titlebar-logo">
           <img src="logo.ico" alt="VM" className="titlebar-icon" draggable={false} />
-          <span className="titlebar-text">Vita Mirabilis</span>
+          <span className="titlebar-text">Clinica Dental Pro</span>
         </div>
       </div>
       <div className="titlebar-controls">

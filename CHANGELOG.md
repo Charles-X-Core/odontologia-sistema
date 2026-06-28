@@ -1,15 +1,41 @@
 # Changelog
 
-Todos los cambios notables de Vita Mirabilis seran documentados en este archivo.
+Todos los cambios notables de Clinica Dental Pro seran documentados en este archivo.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
-## [1.0.0] — 2025-XX-XX
+## [1.2.0] — 2026-06-28 — Rebranding + Documentacion
 
-### Primera version publica portable
+### Cambiado
+- Renombrado de "Vita Mirabilis" a "Clinica Dental Pro" (resolucion de marca registrada)
+- Documentacion completa reescrita para GitHub
+
+### Agregado
+- LICENSE (MIT)
+- AGENTS.md (guia para agentes AI)
+- CONTRIBUTING.md (guia de contribuidores)
+- .github/ISSUE_TEMPLATE (bug report + feature request)
+- .github/PULL_REQUEST_TEMPLATE.md
+- Configuracion de GitHub Releases con electron-builder
+- Seccion "Verificado por doctor odontologo" en README
+- Publish config en package.json para GitHub Releases
+
+### Archivos afectados por rebranding
+- package.json (name, appId, productName, artifactName)
+- electron/main.js, openwa-runner.js
+- frontend/src/App.jsx, Login.jsx, TitleBar.jsx, index.html
+- portable/*.bat (5 archivos)
+- scripts/ClinicaDentalProSetup.bat (renombrado)
+- build/installer.nsh
+- 11 archivos en documentacion/
+- CHANGELOG.md, ROADMAP.md, PLAN_MEJORAS.md
+
+---
+
+## [1.1.0] — 2026-06-08 — Plan de Mejoras UI/UX
 
 ### Agregado
 - Sistema completo de gestion odontologica (pacientes, consultas, tratamientos, pagos, recetas)
@@ -27,14 +53,14 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 - **whatsapp-web.js #5754**: Race condition en `appState.hasSynced` → patch via `patch-package`
 - **@puppeteer/browsers no encontrado**: dep agregada a `dependencies` + asarUnpack completo
 - **Chrome zombie processes**: `taskkill /F /IM chrome.exe /T` en cada retry
-- **Logging en dist**: file logging a `%APPDATA%\Vita Mirabilis\runner.log`
+- **Logging en dist**: file logging a `%APPDATA%\Clinica Dental Pro\runner.log`
 - **asar bloated (393 MB)**: cambio a `**/node_modules/**` (asar 9.7 MB)
 
 ### Configuracion
 - asarUnpack: `**/node_modules/** + **/electron/**`
 - postbuild: `node scripts/copy-portable.js`
 - postinstall: `patch-package`
-- electron-builder: appId `com.vitamirabilis.odontologia`, productName `Vita Mirabilis`
+- electron-builder: appId `com.charlesx.clinicadentalpro`, productName `Clinica Dental Pro`
 
 ### Stack Tecnologico
 - Frontend: React 18 + Vite

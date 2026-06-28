@@ -1,6 +1,6 @@
 @echo off
 echo ========================================
-echo  Vita Mirabilis - Modo Administrador
+echo  Clinica Dental Pro - Modo Administrador
 echo ========================================
 echo.
 echo Solicitando permisos de administrador...
@@ -39,7 +39,7 @@ start /b node src/index.js
 timeout /t 3 /nobreak >nul
 
 :: Iniciar Electron
-echo Iniciando Vita Mirabilis...
+echo Iniciando Clinica Dental Pro...
 cd /d "%~dp0"
 start /b node node_modules/electron/cli.js .
 

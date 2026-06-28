@@ -1,6 +1,6 @@
 # Guia de Desarrollo
 
-Como configurar el entorno, hacer cambios y construir Vita Mirabilis.
+Como configurar el entorno, hacer cambios y construir Clinica Dental Pro.
 
 ---
 
@@ -130,10 +130,10 @@ npm run pack
 
 # 3. Comprimir en 7z (recomendado)
 cd dist-electron
-"C:\Program Files\7-Zip\7z.exe" a "Vita Mirabilis v1.0.0.7z" "win-unpacked\*"
+"C:\Program Files\7-Zip\7z.exe" a "Clinica Dental Pro v1.0.0.7z" "win-unpacked\*"
 
 # 4. SFX autoextraible (requiere WinRAR)
-"C:\Program Files\WinRAR\Rar.exe" a -sfx -r -m5 "Vita Mirabilis v1.0.0.exe" "win-unpacked\"
+"C:\Program Files\WinRAR\Rar.exe" a -sfx -r -m5 "Clinica Dental Pro v1.0.0.exe" "win-unpacked\"
 ```
 
 ### Linting
@@ -227,11 +227,11 @@ DEBUG=* npm run dev
 
 **En desarrollo**: aparecen en la terminal donde se ejecuto `npm start`
 
-**En produccion**: archivo en `%APPDATA%\Vita Mirabilis\runner.log`
+**En produccion**: archivo en `%APPDATA%\Clinica Dental Pro\runner.log`
 
 ```powershell
 # Ver en tiempo real
-Get-Content "$env:APPDATA\Vita Mirabilis\runner.log" -Wait
+Get-Content "$env:APPDATA\Clinica Dental Pro\runner.log" -Wait
 ```
 
 ### DevTools en la app empaquetada
@@ -246,7 +246,7 @@ if (process.env.NODE_ENV === 'development' || process.argv.includes('--devtools'
 
 Luego ejecutar:
 ```bash
-"Vita Mirabilis.exe" --devtools
+"Clinica Dental Pro.exe" --devtools
 ```
 
 ### Inspecionar SQLite
@@ -453,9 +453,9 @@ npm run pack
 ### "WhatsApp QR no aparece"
 
 1. Verificar que el runner esta corriendo: `http://localhost:3002/` debe responder
-2. Ver log: `Get-Content "$env:APPDATA\Vita Mirabilis\runner.log"`
+2. Ver log: `Get-Content "$env:APPDATA\Clinica Dental Pro\runner.log"`
 3. Si dice "Chrome not found", instalar Chrome
-4. Si dice "auth_failure", borrar `%APPDATA%\Vita Mirabilis\wwebjs_auth` y reintentar
+4. Si dice "auth_failure", borrar `%APPDATA%\Clinica Dental Pro\wwebjs_auth` y reintentar
 
 ---
 

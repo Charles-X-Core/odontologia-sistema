@@ -1,15 +1,15 @@
-# Arquitectura de Vita Mirabilis
+# Arquitectura de Clinica Dental Pro
 
 ## Vision General
 
-Vita Mirabilis es una aplicacion de escritorio para Windows construida con Electron. Sigue una arquitectura de 3 procesos con responsabilidades claramente separadas:
+Clinica Dental Pro es una aplicacion de escritorio para Windows construida con Electron. Sigue una arquitectura de 3 procesos con responsabilidades claramente separadas:
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │                    USUARIO (Windows PC)                        │
 └──────────────────────────────────────────────────────────────┘
                               │
-                              │ click en "Vita Mirabilis.exe"
+                              │ click en "Clinica Dental Pro.exe"
                               ▼
 ┌──────────────────────────────────────────────────────────────┐
 │  PROCESO PRINCIPAL (Electron Main)                            │
@@ -186,7 +186,7 @@ SQLite con `better-sqlite3` (sincronico, ~3x mas rapido que `sqlite3`).
 
 **Responsabilidades**:
 - Iniciar sesion de WhatsApp (QR + multi-device)
-- Mantener sesion activa en `%APPDATA%\Vita Mirabilis\wwebjs_auth`
+- Mantener sesion activa en `%APPDATA%\Clinica Dental Pro\wwebjs_auth`
 - Exponer API HTTP para que el backend consulte estado y envie mensajes
 - Reintentar conexion ante caidas
 - Matar procesos Chrome zombie antes de reintentar
@@ -205,7 +205,7 @@ SQLite con `better-sqlite3` (sincronico, ~3x mas rapido que `sqlite3`).
 // electron/openwa-runner.js
 async function initWhatsApp() {
   const client = new Client({
-    authStrategy: new LocalAuth({ clientId: 'vitamirabilis' }),
+    authStrategy: new LocalAuth({ clientId: 'clinicadentalpro' }),
     puppeteer: {
       headless: true,
       args: ['--no-sandbox', '--disable-setuid-sandbox'],
@@ -285,7 +285,7 @@ async function initWhatsApp() {
 
 - **Electron IPC** (preload + contextBridge) para Main ↔ Renderer
 - **HTTP** (puerto fijo) para Main ↔ Backend ↔ Runner
-- **Archivos compartidos** (`%APPDATA%\Vita Mirabilis\`) para estado persistente
+- **Archivos compartidos** (`%APPDATA%\Clinica Dental Pro\`) para estado persistente
 
 ---
 
@@ -313,7 +313,7 @@ async function initWhatsApp() {
 La app corre en localhost, no esta expuesta a internet. La unica superficie de ataque es:
 1. USB/CD que copie la carpeta del usuario
 2. Otro usuario con acceso a la PC
-3. Malware en la PC que lea `%APPDATA%\Vita Mirabilis\`
+3. Malware en la PC que lea `%APPDATA%\Clinica Dental Pro\`
 
 **No es un sistema de alto riesgo** (no maneja datos bancarios, no se expone online).
 
@@ -363,7 +363,7 @@ odontologia-sistema/
 ├── scripts/
 │   └── copy-portable.js            # postbuild hook
 ├── portable/
-│   ├── Iniciar Vita Mirabilis.bat
+│   ├── Iniciar Clinica Dental Pro.bat
 │   ├── VERIFICAR.bat
 │   └── README.txt
 ├── electron/

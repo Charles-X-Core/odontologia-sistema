@@ -9,7 +9,7 @@ const FONTS = {
   }
 };
 
-const CLINIC_NAME = 'Vita Mirabilis';
+const CLINIC_NAME = 'Clinica Dental Pro';
 const CLINIC_SUBTITLE = 'Clinica Odontologica';
 
 const styles = {

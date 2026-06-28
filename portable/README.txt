@@ -12,11 +12,11 @@ SISTEMA DE GESTIÓN ODONTOLÓGICA
   1. Descomprime esta carpeta donde quieras (ej: C:\Vita)
      IMPORTANTE: descomprime TODO el contenido, no solo
      algunos archivos
-  2. Doble-click en "Iniciar Vita Mirabilis.bat"
+  2. Doble-click en "Iniciar Clinica Dental Pro.bat"
   3. Acepta la elevación de administrador (solo 1ra vez)
   4. Espera a que verifique/instale Chrome y Node.js
      (solo 1ra vez, ~5 minutos con internet)
-  5. La ventana de Vita Mirabilis aparecerá automáticamente
+  5. La ventana de Clinica Dental Pro aparecerá automáticamente
 
 
 ------------------------------------------------------------
@@ -36,8 +36,8 @@ SISTEMA DE GESTIÓN ODONTOLÓGICA
 ------------------------------------------------------------
 
   - La próxima vez, basta con doble-click en
-    "Vita Mirabilis.exe" directamente
-  - O seguir usando "Iniciar Vita Mirabilis.bat" (es
+    "Clinica Dental Pro.exe" directamente
+  - O seguir usando "Iniciar Clinica Dental Pro.bat" (es
     más seguro porque verifica dependencias)
 
 
@@ -45,7 +45,7 @@ SISTEMA DE GESTIÓN ODONTOLÓGICA
 4. LOGIN POR DEFECTO
 ------------------------------------------------------------
 
-  Email:     admin@vitamirabilis.com
+  Email:     admin@clinicadentalpro.com
   Password:  admin123
 
   (Se recomienda cambiar la contraseña al primer ingreso
@@ -64,10 +64,10 @@ SISTEMA DE GESTIÓN ODONTOLÓGICA
 
   Sesión de WhatsApp (NO borrar si quieres mantener
   la sesión activa):
-    → %APPDATA%\Vita Mirabilis\wwebjs_auth\
+    → %APPDATA%\Clinica Dental Pro\wwebjs_auth\
 
   Logs de diagnóstico (si hay problemas):
-    → %APPDATA%\Vita Mirabilis\runner.log
+    → %APPDATA%\Clinica Dental Pro\runner.log
 
 
 ------------------------------------------------------------
@@ -77,13 +77,13 @@ SISTEMA DE GESTIÓN ODONTOLÓGICA
   Para hacer backup de toda tu información:
     1. Cierra la aplicación completamente
     2. Copia la carpeta resources\data\ a un lugar seguro
-    3. (Opcional) Copia %APPDATA%\Vita Mirabilis\wwebjs_auth\
+    3. (Opcional) Copia %APPDATA%\Clinica Dental Pro\wwebjs_auth\
        si quieres conservar la sesión de WhatsApp
 
   Para restaurar:
     1. Descomprime la app en una nueva carpeta
     2. Reemplaza resources\data\ con tu backup
-    3. Reemplaza %APPDATA%\Vita Mirabilis\wwebjs_auth\
+    3. Reemplaza %APPDATA%\Clinica Dental Pro\wwebjs_auth\
        con tu backup de sesión
 
 
@@ -110,20 +110,20 @@ SISTEMA DE GESTIÓN ODONTOLÓGICA
 
   "La app no abre"
     → Ejecuta "VERIFICAR.bat" para ver qué falta
-    → Ejecuta "Iniciar Vita Mirabilis.bat" para que
+    → Ejecuta "Iniciar Clinica Dental Pro.bat" para que
       instale/repare dependencias
 
   "WhatsApp no conecta"
     → Ve a Configuración → WhatsApp y escanea el QR
-    → Revisa el log en %APPDATA%\Vita Mirabilis\runner.log
+    → Revisa el log en %APPDATA%\Clinica Dental Pro\runner.log
 
   "La app se cierra sola al abrir"
-    → Revisa el log en %APPDATA%\Vita Mirabilis\runner.log
-    → Borra la carpeta %APPDATA%\Vita Mirabilis\wwebjs_auth\
+    → Revisa el log en %APPDATA%\Clinica Dental Pro\runner.log
+    → Borra la carpeta %APPDATA%\Clinica Dental Pro\wwebjs_auth\
       y reintenta (esto resetea la sesión de WhatsApp)
 
   "Error: puerto 18234 ocupado"
-    → Cierra otras instancias de Vita Mirabilis
+    → Cierra otras instancias de Clinica Dental Pro
     → O reinicia la PC
 
   "Antivirus bloquea la app"
@@ -166,7 +166,7 @@ la app en tu PC, sin tecnicismos.
   • Crea una carpeta con los archivos del programa
     (donde descomprimiste el .rar / .7z / .exe)
   • Crea una carpeta con tus datos en:
-        %APPDATA%\Vita Mirabilis\
+        %APPDATA%\Clinica Dental Pro\
     Ahí se guardan: la base de datos, sesión de WhatsApp
     y logs de diagnóstico.
   • La primera vez, instala 3 cosas oficiales:
@@ -176,7 +176,7 @@ la app en tu PC, sin tecnicismos.
     Se instalan vía "winget" (el instalador oficial de Windows)
   • Abre Google Chrome para conectarse a WhatsApp Web
   • Lee y guarda archivos en su propia carpeta
-    (nada fuera de %APPDATA%\Vita Mirabilis\ y donde la
+    (nada fuera de %APPDATA%\Clinica Dental Pro\ y donde la
     descomprimiste)
 
 ❌ LO QUE NO HACE (verificado por el código fuente):
@@ -201,7 +201,7 @@ la app en tu PC, sin tecnicismos.
   Si notas que algo dejó de funcionar (sonido, cámara, etc.):
 
   1. Abre "Configuración" → "Aplicaciones" → busca
-     "Vita Mirabilis". Si NO aparece listada, la app
+     "Clinica Dental Pro". Si NO aparece listada, la app
      no se "instaló" en el sentido tradicional.
   2. La app solo agrega 3 cosas oficiales de Microsoft,
      Google y OpenJS. Ninguna de ellas toca drivers.
@@ -213,7 +213,7 @@ la app en tu PC, sin tecnicismos.
      Si no muestra nada, la app no creó servicios.
 
   Si quieres estar 100% seguro, desinstala la app
-  (borrar la carpeta + %APPDATA%\Vita Mirabilis\)
+  (borrar la carpeta + %APPDATA%\Clinica Dental Pro\)
   y reinicia la PC. Si el problema persiste, NO era
   la app.
 
@@ -237,7 +237,7 @@ la app en tu PC, sin tecnicismos.
   Si prefieres instalar tú mismo las dependencias (sin
   que la app lo haga automáticamente), ejecuta:
 
-      Iniciar Vita Mirabilis.bat --no-install
+      Iniciar Clinica Dental Pro.bat --no-install
 
   Este modo asume que ya tienes Chrome y Node.js
   instalados en tu sistema.
@@ -245,5 +245,5 @@ la app en tu PC, sin tecnicismos.
 
 ============================================================
    ¿Más ayuda? Revisa el log en:
-   %APPDATA%\Vita Mirabilis\runner.log
+   %APPDATA%\Clinica Dental Pro\runner.log
 ============================================================

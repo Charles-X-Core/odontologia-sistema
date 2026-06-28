@@ -1,4 +1,4 @@
-# Plan de Mejoras — Vita Mirabilis
+# Plan de Mejoras — Clinica Dental Pro
 
 Plan detallado de mejoras a implementar, organizado por fases, con estimacion de esfuerzo y prioridad.
 

@@ -41,7 +41,7 @@ function generateRecetaHtml(paciente, receta, doctor) {
 <body>
   <div class="header">
     <h1>RECETA MEDICA</h1>
-    <p>Vita Mirabilis - Clinica Odontologica</p>
+    <p>Clinica Dental Pro - Clinica Odontologica</p>
   </div>
 
   <div class="section">
@@ -74,7 +74,7 @@ function generateRecetaHtml(paciente, receta, doctor) {
     ${doctor?.cmp ? `<p style="font-size:11px;color:#666">C.M.P.: ${doctor.cmp}</p>` : ''}
   </div>
 
-  <div class="footer">Vita Mirabilis - Clinica Odontologica | Receta generada electronicamente</div>
+  <div class="footer">Clinica Dental Pro - Clinica Odontologica | Receta generada electronicamente</div>
 </body>
 </html>`;
 }

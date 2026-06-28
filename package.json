@@ -1,7 +1,7 @@
 {
-  "name": "vita-mirabilis",
-  "version": "1.0.0",
-  "description": "Vita Mirabilis - Sistema de Historial Clinico Odontologico",
+  "name": "clinica-dental-pro",
+  "version": "1.2.0",
+  "description": "Clinica Dental Pro - Sistema de Historial Clinico Odontologico",
   "author": "Charles-X RedFlame Systems",
   "main": "electron/main.js",
   "scripts": {
@@ -16,11 +16,12 @@
     "postbuild": "node scripts/copy-portable.js",
     "postinstall": "patch-package",
     "seed": "cd backend && node src/seed.js",
-    "install:all": "cd backend && npm install && cd ../frontend && npm install && cd .. && npm install"
+    "install:all": "cd backend && npm install && cd ../frontend && npm install && cd .. && npm install",
+    "release": "npm run build:installer && npx electron-builder --publish always"
   },
   "build": {
-    "appId": "com.charlesx.vitamirabilis",
-    "productName": "Vita Mirabilis",
+    "appId": "com.charlesx.clinicadentalpro",
+    "productName": "Clinica Dental Pro",
     "directories": {
       "output": "dist-electron"
     },
@@ -41,8 +42,8 @@
     ],
     "extraFiles": [
       {
-        "from": "portable/Iniciar Vita Mirabilis.bat",
-        "to": "Iniciar Vita Mirabilis.bat"
+        "from": "portable/Iniciar Clinica Dental Pro.bat",
+        "to": "Iniciar Clinica Dental Pro.bat"
       },
       {
         "from": "portable/VERIFICAR.bat",
@@ -67,8 +68,8 @@
       "runAfterFinish": false,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "menuCategory": "Charles-X RedFlame Systems",
-      "shortcutName": "Vita Mirabilis",
+      "menuCategory": "Clinica Dental Pro",
+      "shortcutName": "Clinica Dental Pro",
       "installerIcon": "electron/logo.ico",
       "uninstallerIcon": "electron/logo.ico",
       "installerHeader": "build/installerHeader.bmp",
@@ -77,7 +78,12 @@
       "include": "build/installer.nsh",
       "unicode": true,
       "deleteAppDataOnUninstall": false,
-      "artifactName": "Vita Mirabilis Setup ${version}.${ext}"
+      "artifactName": "Clinica Dental Pro Setup ${version}.${ext}"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "Charles-X-Core",
+      "repo": "odontologia-sistema"
     }
   },
   "dependencies": {

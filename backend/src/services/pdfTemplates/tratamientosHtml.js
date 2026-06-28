@@ -49,7 +49,7 @@ function generateTratamientosHtml(paciente, tratamientos, pagos) {
 <body>
   <div class="header">
     <h1>PLAN DE TRATAMIENTO</h1>
-    <p>Vita Mirabilis - Clinica Odontologica</p>
+    <p>Clinica Dental Pro - Clinica Odontologica</p>
   </div>
 
   <div class="section">
@@ -76,7 +76,7 @@ function generateTratamientosHtml(paciente, tratamientos, pagos) {
     </div>
   </div>
 
-  <div class="footer">Vita Mirabilis - Clinica Odontologica | Plan de tratamiento generado electronicamente</div>
+  <div class="footer">Clinica Dental Pro - Clinica Odontologica | Plan de tratamiento generado electronicamente</div>
 </body>
 </html>`;
 }

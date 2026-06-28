@@ -82,7 +82,7 @@ function ensureDatabase(dataPath) {
     console.log('[MAIN] Creating new database...');
     process.env.DB_PATH = dbPath;
     process.env.PORT = PORT;
-    process.env.JWT_SECRET = 'vita-mirabilis-desktop-secret';
+    process.env.JWT_SECRET = 'clinica-dental-pro-desktop-secret';
     try {
       require(path.join(__dirname, '..', 'backend', 'src', 'seed.js'));
       console.log('[MAIN] Seed completed');
@@ -118,7 +118,7 @@ function startBackend() {
       process.env.PORT = PORT;
       process.env.DB_PATH = dbPath;
       process.env.UPLOAD_DIR = uploadsPath;
-      process.env.JWT_SECRET = 'vita-mirabilis-desktop-secret';
+      process.env.JWT_SECRET = 'clinica-dental-pro-desktop-secret';
       process.env.FRONTEND_URL = '*';
 
       const indexPath = path.join(__dirname, '..', 'backend', 'src', 'index.js');
@@ -286,9 +286,9 @@ app.whenReady().then(async () => {
     console.error('[MAIN] Faltan dependencias:', health.missing);
     const msg = 'Faltan las siguientes dependencias:\n\n'
       + health.missing.map((m, i) => '  ' + (i + 1) + '. ' + m).join('\n')
-      + '\n\nSolucion: ejecuta "Iniciar Vita Mirabilis.bat"'
+      + '\n\nSolucion: ejecuta "Iniciar Clinica Dental Pro.bat"'
         + (process.platform === 'win32' ? '\n       (incluido en esta carpeta) para instalar dependencias automaticamente.' : '\n       para instalar las dependencias manualmente.');
-    dialog.showErrorBox('Vita Mirabilis - Dependencias Faltantes', msg);
+    dialog.showErrorBox('Clinica Dental Pro - Dependencias Faltantes', msg);
     app.quit();
     return;
   }
@@ -308,9 +308,9 @@ app.whenReady().then(async () => {
     console.error('[MAIN] Server did not start in time');
     const choice = dialog.showMessageBoxSync({
       type: 'warning',
-      title: 'Vita Mirabilis',
+      title: 'Clinica Dental Pro',
       message: 'El servidor no pudo iniciar.',
-      detail: `Puerto ${PORT} puede estar ocupado por otra instancia.\n\nCierra todas las instancias de Vita Mirabilis y vuelve a intentar.`,
+      detail: `Puerto ${PORT} puede estar ocupado por otra instancia.\n\nCierra todas las instancias de Clinica Dental Pro y vuelve a intentar.`,
       buttons: ['Reintentar', 'Cerrar'],
       defaultId: 0,
       cancelId: 1,

@@ -44,7 +44,7 @@ const qrcode = require(qrcodePath);
 
 // Auth path: FUERA de app.asar.unpacked (Puppeteer tiene problemas con sesiones dentro de asar)
 // Usar AppData/Local para que sea escribible y no este dentro de un directorio asar
-const appName = 'Vita Mirabilis';
+const appName = 'Clinica Dental Pro';
 let baseAuthDir;
 if (process.env.APPDATA) {
   baseAuthDir = path.join(process.env.APPDATA, appName, 'wwebjs_auth');
@@ -201,7 +201,7 @@ const clientConfig = {
   userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36',
 
   // ANTI-BAN: Identificar dispositivo vinculado
-  deviceName: 'Vita Mirabilis',
+  deviceName: 'Clinica Dental Pro',
   browserName: 'Chrome',
 
   // Anti-bloqueo: limitar reintentos QR

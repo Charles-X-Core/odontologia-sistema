@@ -63,7 +63,7 @@ const PLANTILLAS = {
     if (!receta) return null;
     const meds = typeof receta.medicamentos === 'string' ? JSON.parse(receta.medicamentos) : receta.medicamentos;
     const medsText = meds.map(m => `  *${m.nombre}* ${m.dosis}\n    Frecuencia: ${m.frecuencia}\n    Duracion: ${m.duracion}`).join('\n\n');
-    return `${saludo()} ${nombreCompleto(p)}, le comparto su receta medica:\n\n*Receta Medica*\nFecha: ${new Date(receta.created_at || Date.now()).toLocaleDateString('es-PE')}\n\n${medsText}\n\n${receta.indicaciones ? `*Indicaciones:* ${receta.indicaciones}\n\n` : ''}Si tiene alguna duda, no dude en comunicarse.\n_Vita Mirabilis - Clinica Odontologica_`;
+    return `${saludo()} ${nombreCompleto(p)}, le comparto su receta medica:\n\n*Receta Medica*\nFecha: ${new Date(receta.created_at || Date.now()).toLocaleDateString('es-PE')}\n\n${medsText}\n\n${receta.indicaciones ? `*Indicaciones:* ${receta.indicaciones}\n\n` : ''}Si tiene alguna duda, no dude en comunicarse.\n_Clinica Dental Pro - Clinica Odontologica_`;
   },
 
   plan: (p, data) => {
@@ -75,45 +75,45 @@ const PLANTILLAS = {
     }).join('\n\n');
     const total = tratamientos.reduce((s, t) => s + (t.costo_total || 0), 0);
     const saldo = tratamientos.reduce((s, t) => s + (t.saldo_pendiente || 0), 0);
-    return `${saludo()} ${nombreCompleto(p)}, este es su plan de tratamiento:\n\n${trats}\n\n*Total:* S/ ${total.toFixed(2)}\n*Saldo pendiente:* S/ ${saldo.toFixed(2)}\n\nPara agendar su proxima cita, responda este mensaje.\n_Vita Mirabilis - Clinica Odontologica_`;
+    return `${saludo()} ${nombreCompleto(p)}, este es su plan de tratamiento:\n\n${trats}\n\n*Total:* S/ ${total.toFixed(2)}\n*Saldo pendiente:* S/ ${saldo.toFixed(2)}\n\nPara agendar su proxima cita, responda este mensaje.\n_Clinica Dental Pro - Clinica Odontologica_`;
   },
 
   recordatorio_pago: (p, data) => {
     const saldo = data?.saldo ?? db.prepare('SELECT COALESCE(SUM(saldo), 0) as total FROM pagos WHERE paciente_id = ?').get(p.id)?.total ?? 0;
-    return `${saludo()} ${nombreCompleto(p)}, le recordamos que tiene un saldo pendiente de *S/ ${saldo.toFixed(2)}*.\n\nPuede realizar su pago en clinica o comunicarse para coordinar una fecha.\n\n_Vita Mirabilis - Clinica Odontologica_`;
+    return `${saludo()} ${nombreCompleto(p)}, le recordamos que tiene un saldo pendiente de *S/ ${saldo.toFixed(2)}*.\n\nPuede realizar su pago en clinica o comunicarse para coordinar una fecha.\n\n_Clinica Dental Pro - Clinica Odontologica_`;
   },
 
   proxima_cita: (p, data) => {
     const c = data?.consulta || db.prepare("SELECT * FROM consultas WHERE historia_id = (SELECT id FROM historias_clinicas WHERE paciente_id = ?) ORDER BY fecha DESC LIMIT 1").get(p.id);
-    return `${saludo()} ${nombreCompleto(p)}, le recordamos su proxima cita:\n\n📅 *Fecha:* ${c?.fecha || 'Por confirmar'}\n🕐 *Hora:* ${c?.hora || 'Por confirmar'}\n🦷 *Procedimiento:* ${c?.motivo || 'Revision general'}\n\nSi necesita reprogramar, comuniquese con nosotros.\n_Vita Mirabilis - Clinica Odontologica_`;
+    return `${saludo()} ${nombreCompleto(p)}, le recordamos su proxima cita:\n\n📅 *Fecha:* ${c?.fecha || 'Por confirmar'}\n🕐 *Hora:* ${c?.hora || 'Por confirmar'}\n🦷 *Procedimiento:* ${c?.motivo || 'Revision general'}\n\nSi necesita reprogramar, comuniquese con nosotros.\n_Clinica Dental Pro - Clinica Odontologica_`;
   },
 
   bienvenida: (p) => {
-    return `Hola ${nombreCompleto(p)}, bienvenido(a) a *Vita Mirabilis - Clinica Odontologica* 🦷\n\nNos complace tenerlo como paciente. Si tiene alguna consulta o desea agendar una cita, no dude en escribirnos.\n\nTelefono: 982-890-328\n_Vita Mirabilis - Clinica Odontologica_`;
+    return `Hola ${nombreCompleto(p)}, bienvenido(a) a *Clinica Dental Pro - Clinica Odontologica* 🦷\n\nNos complace tenerlo como paciente. Si tiene alguna consulta o desea agendar una cita, no dude en escribirnos.\n\nTelefono: 982-890-328\n_Clinica Dental Pro - Clinica Odontologica_`;
   },
 
   seguimiento: (p, data) => {
     const c = data?.consulta || db.prepare("SELECT * FROM consultas WHERE historia_id = (SELECT id FROM historias_clinicas WHERE paciente_id = ?) ORDER BY fecha DESC LIMIT 1").get(p.id);
-    return `${saludo()} ${nombreCompleto(p)}, esperamos que se encuentre bien despues de su tratamiento.\n\nComo se siente? Tiene alguna molestia?\n\nSi tiene alguna consulta, estamos para servirle.\n_Vita Mirabilis - Clinica Odontologica_`;
+    return `${saludo()} ${nombreCompleto(p)}, esperamos que se encuentre bien despues de su tratamiento.\n\nComo se siente? Tiene alguna molestia?\n\nSi tiene alguna consulta, estamos para servirle.\n_Clinica Dental Pro - Clinica Odontologica_`;
   },
 
   confirmacion_cita: (p, data) => {
     const c = data?.consulta || db.prepare("SELECT * FROM consultas WHERE historia_id = (SELECT id FROM historias_clinicas WHERE paciente_id = ?) ORDER BY fecha DESC LIMIT 1").get(p.id);
-    return `${saludo()} ${nombreCompleto(p)}, tiene una cita programada para:\n\n📅 *Fecha:* ${c?.fecha || 'Por confirmar'}\n🕐 *Hora:* ${c?.hora || 'Por confirmar'}\n\nPor favor confirme su asistencia respondiendo SI o NO.\n_Vita Mirabilis - Clinica Odontologica_`;
+    return `${saludo()} ${nombreCompleto(p)}, tiene una cita programada para:\n\n📅 *Fecha:* ${c?.fecha || 'Por confirmar'}\n🕐 *Hora:* ${c?.hora || 'Por confirmar'}\n\nPor favor confirme su asistencia respondiendo SI o NO.\n_Clinica Dental Pro - Clinica Odontologica_`;
   },
 
   cumpleanos: (p) => {
-    return `Feliz cumpleanos ${nombreCompleto(p)}! 🎂🎉\n\nDe parte de todo el equipo de *Vita Mirabilis - Clinica Odontologica* le deseamos lo mejor en este dia tan especial.\n\nTelefono: 982-890-328\n_Vita Mirabilis - Clinica Odontologica_`;
+    return `Feliz cumpleanos ${nombreCompleto(p)}! 🎂🎉\n\nDe parte de todo el equipo de *Clinica Dental Pro - Clinica Odontologica* le deseamos lo mejor en este dia tan especial.\n\nTelefono: 982-890-328\n_Clinica Dental Pro - Clinica Odontologica_`;
   },
 
   higiene: (p, data) => {
     const meses = data?.meses || 6;
-    return `${saludo()} ${nombreCompleto(p)}, ya han pasado ${meses} meses desde su ultima limpieza dental.\n\nEs recomendable realizarse una limpieza cada 6 meses para mantener su salud bucal.\n\nAgende su cita: 982-890-328\n_Vita Mirabilis - Clinica Odontologica_`;
+    return `${saludo()} ${nombreCompleto(p)}, ya han pasado ${meses} meses desde su ultima limpieza dental.\n\nEs recomendable realizarse una limpieza cada 6 meses para mantener su salud bucal.\n\nAgende su cita: 982-890-328\n_Clinica Dental Pro - Clinica Odontologica_`;
   },
 
   credito: (p, data) => {
     const credito = data?.credito ?? 0;
-    return `${saludo()} ${nombreCompleto(p)}, le informamos que cuenta con un saldo a favor de:\n\n*S/ ${credito.toFixed(2)}*\n\nEste credito puede ser utilizado en su proximo tratamiento.\n\n_Vita Mirabilis - Clinica Odontologica_`;
+    return `${saludo()} ${nombreCompleto(p)}, le informamos que cuenta con un saldo a favor de:\n\n*S/ ${credito.toFixed(2)}*\n\nEste credito puede ser utilizado en su proximo tratamiento.\n\n_Clinica Dental Pro - Clinica Odontologica_`;
   },
 
   custom: (p, mensaje) => {

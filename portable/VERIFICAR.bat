@@ -1,6 +1,6 @@
 @echo off
 chcp 65001 >nul
-title Vita Mirabilis - Diagnostico
+title Clinica Dental Pro - Diagnostico
 setlocal EnableExtensions
 cd /d "%~dp0"
 
@@ -89,10 +89,10 @@ echo -----------------------------------------------------------
 echo                      ARCHIVOS DE LA APP
 echo -----------------------------------------------------------
 echo.
-if exist "Vita Mirabilis.exe" (
-    echo       [OK] Vita Mirabilis.exe - presente
+if exist "Clinica Dental Pro.exe" (
+    echo       [OK] Clinica Dental Pro.exe - presente
 ) else (
-    echo       [X]  Vita Mirabilis.exe - NO ENCONTRADO
+    echo       [X]  Clinica Dental Pro.exe - NO ENCONTRADO
 )
 
 if exist "resources\app.asar" (
@@ -118,7 +118,7 @@ echo -----------------------------------------------------------
 echo                    DATOS DEL USUARIO
 echo -----------------------------------------------------------
 echo.
-set "APPDATA_DIR=%APPDATA%\Vita Mirabilis"
+set "APPDATA_DIR=%APPDATA%\Clinica Dental Pro"
 if exist "%APPDATA_DIR%\wwebjs_auth" (
     echo       [OK] Sesion WhatsApp: %APPDATA_DIR%\wwebjs_auth
 ) else (
@@ -132,7 +132,7 @@ echo.
 echo ============================================================
 echo.
 echo Si todo aparece [OK] excepto los [!], ejecuta
-echo "Iniciar Vita Mirabilis.bat" para instalar lo que falta.
+echo "Iniciar Clinica Dental Pro.bat" para instalar lo que falta.
 echo.
 echo Si hay [X] en archivos de la app, descarga nuevamente
 echo el archivo .rar y descomprime TODO el contenido.

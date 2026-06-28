@@ -18,12 +18,13 @@ Thumbs.db
 .vscode/
 
 # Build artifacts (se distribuyen por fuera del repo)
-Vita*Mirabilis*Portable*.7z
-Vita*Mirabilis*Portable*.exe
-Vita*Mirabilis*Portable*.rar
-Vita*Mirabilis*v*.7z
-Vita*Mirabilis*v*.exe
-Vita*Mirabilis*v*.rar
+Clinica*Dental*Pro*Portable*.7z
+Clinica*Dental*Pro*Portable*.exe
+Clinica*Dental*Pro*Portable*.rar
+Clinica*Dental*Pro*v*.7z
+Clinica*Dental*Pro*v*.exe
+Clinica*Dental*Pro*v*.rar
+electron/win-unpacked/
 
 # Debug / temp (eliminados en Fase 2)
 qr-para-escanear.png
