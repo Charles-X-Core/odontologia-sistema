@@ -7,7 +7,22 @@ const FORM_NUEVO = {
   email: '', fecha_nacimiento: '', sexo: '', estado_civil: '', direccion: '', lugar_nacimiento: '',
   lugar_procedencia: '', grado_instruccion: '', ocupacion: '', nombre_acompanante: '',
   contacto_emergencia: '', telefono_emergencia: '',
+  alergias: '', antecedentes_personales: '', antecedentes_familiares: '',
 };
+
+const ANTECEDENTES_FIELDS = [
+  { key: 'alergia_medicamentos', label: 'Alergia a medicamentos' },
+  { key: 'propension_hemorragias', label: 'Propension a hemorragia' },
+  { key: 'complicaciones_anestesia', label: 'Complicaciones con anestesia' },
+  { key: 'presion_arterial_medicacion', label: 'Presion Arterial / Medicacion' },
+  { key: 'cardiopatias_personales', label: 'Cardiopatias personales' },
+  { key: 'cardiopatias_familiares', label: 'Cardiopatias familiares' },
+  { key: 'diabetes_personal', label: 'Diabetes personal' },
+  { key: 'diabetes_familiar', label: 'Diabetes familiar' },
+  { key: 'hepatitis', label: 'Hepatitis (tipo A B C)' },
+  { key: 'otras_enfermedades', label: 'Otras enfermedades' },
+  { key: 'enfermedad_actual_medicacion', label: 'Enfermedad actual / Medicacion' },
+];
 
 export default function Recepcion({ onVolver, onStartSesion }) {
   const [busqueda, setBusqueda] = useState('');
@@ -20,6 +35,7 @@ export default function Recepcion({ onVolver, onStartSesion }) {
   const [formNuevo, setFormNuevo] = useState({ ...FORM_NUEVO });
   const [errorNuevo, setErrorNuevo] = useState('');
   const [guardandoNuevo, setGuardandoNuevo] = useState(false);
+  const [antecedentesForm, setAntecedentesForm] = useState({});
 
   useEffect(() => { cargarRecientes(); }, []);
 
@@ -78,9 +94,13 @@ export default function Recepcion({ onVolver, onStartSesion }) {
     try {
       const res = await api.pacientes.crear(formNuevo);
       if (res.error) { setErrorNuevo(res.error); setGuardandoNuevo(false); return; }
+      if (Object.values(antecedentesForm).some(v => v && v !== 'No')) {
+        await api.historias.crear({ paciente_id: res.id, ...antecedentesForm });
+      }
       const pacienteCreado = await api.pacientes.obtener(res.id);
       setMostrarFormNuevo(false);
       setFormNuevo({ ...FORM_NUEVO });
+      setAntecedentesForm({});
       onStartSesion(pacienteCreado);
     } catch (err) {
       setErrorNuevo('Error al crear paciente: ' + err.message);
@@ -90,6 +110,7 @@ export default function Recepcion({ onVolver, onStartSesion }) {
 
   const abrirFormNuevo = () => {
     setFormNuevo({ ...FORM_NUEVO });
+    setAntecedentesForm({});
     setErrorNuevo('');
     setMostrarFormNuevo(true);
   };
@@ -302,6 +323,45 @@ export default function Recepcion({ onVolver, onStartSesion }) {
                     <label>Telefono de Emergencia</label>
                     <input type="text" value={formNuevo.telefono_emergencia} onChange={(e) => setFormNuevo({...formNuevo, telefono_emergencia: e.target.value})} />
                   </div>
+                </div>
+              </div>
+              <div className="form-section">
+                <h4>Antecedentes Medicos</h4>
+                <div className="antecedentes-form">
+                  {ANTECEDENTES_FIELDS.map(({ key, label }) => {
+                    const valor = antecedentesForm[key] || '';
+                    const isYes = valor && valor !== 'No' && valor !== '';
+                    return (
+                      <div key={key} className="antecedente-field">
+                        <label>{label}</label>
+                        <div className="antecedente-sino">
+                          <button
+                            type="button"
+                            className={`antecedente-btn ${isYes ? 'si-activo' : ''}`}
+                            onClick={() => setAntecedentesForm({ ...antecedentesForm, [key]: isYes ? '' : 'Si' })}
+                          >
+                            Si
+                          </button>
+                          <button
+                            type="button"
+                            className={`antecedente-btn ${!isYes && valor === 'No' ? 'no-activo' : ''}`}
+                            onClick={() => setAntecedentesForm({ ...antecedentesForm, [key]: 'No' })}
+                          >
+                            No
+                          </button>
+                        </div>
+                        {isYes && (
+                          <input
+                            type="text"
+                            value={valor === 'Si' ? '' : valor}
+                            onChange={e => setAntecedentesForm({ ...antecedentesForm, [key]: e.target.value || 'Si' })}
+                            placeholder="Observaciones (opcional)"
+                            className="antecedente-obs"
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
               <div className="form-actions">

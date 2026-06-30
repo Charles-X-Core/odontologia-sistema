@@ -493,6 +493,26 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
                       <span className="emergencia-value">{paciente.contacto_emergencia} {paciente.telefono_emergencia ? `- ${paciente.telefono_emergencia}` : ''}</span>
                     </div>
                   )}
+                  {(paciente.alergias || paciente.antecedentes_personales || paciente.antecedentes_familiares) && (
+                    <div className="paso-paciente-antecedentes-rapido">
+                      <span className="antecedente-rapido-label">Antecedentes del Paciente</span>
+                      {paciente.alergias && (
+                        <div className="antecedente-rapido-item alerta">
+                          <strong>Alergias:</strong> {paciente.alergias}
+                        </div>
+                      )}
+                      {paciente.antecedentes_personales && (
+                        <div className="antecedente-rapido-item">
+                          <strong>Personales:</strong> {paciente.antecedentes_personales}
+                        </div>
+                      )}
+                      {paciente.antecedentes_familiares && (
+                        <div className="antecedente-rapido-item">
+                          <strong>Familiares:</strong> {paciente.antecedentes_familiares}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {historia && (

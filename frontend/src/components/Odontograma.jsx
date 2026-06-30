@@ -167,7 +167,7 @@ export default function Odontograma({ datos = {}, onGuardar, consultaId, soloLec
           </div>
         </div>
 
-        {!soloLectura && mostrarTemporales && (
+        {mostrarTemporales && (
           <>
             <div className="odontograma-temporales">
               <div className="seccion-label">Denticion Temporal Superior</div>
@@ -198,22 +198,24 @@ export default function Odontograma({ datos = {}, onGuardar, consultaId, soloLec
         </div>
       </div>
 
-      {!soloLectura && (
-        <div className="odontograma-actions">
+      <div className="odontograma-actions">
           <button className="btn btn-secondary btn-sm" onClick={() => setMostrarTemporales(!mostrarTemporales)}>
             {mostrarTemporales ? 'Ocultar Temporales' : 'Mostrar Temporales'}
           </button>
-          <button
-            className={`btn btn-sm ${sinColor ? 'btn-secondary' : 'btn-outline'}`}
-            onClick={() => setSinColor(!sinColor)}
-          >
-            {sinColor ? 'Modo Color' : 'Sin Color'}
-          </button>
-          <button className="btn btn-primary" onClick={handleGuardar}>
-            {guardado ? 'Guardado' : 'Guardar Odontograma'}
-          </button>
-        </div>
-      )}
+          {!soloLectura && (
+            <>
+              <button
+                className={`btn btn-sm ${sinColor ? 'btn-secondary' : 'btn-outline'}`}
+                onClick={() => setSinColor(!sinColor)}
+              >
+                {sinColor ? 'Modo Color' : 'Sin Color'}
+              </button>
+              <button className="btn btn-primary" onClick={handleGuardar}>
+                {guardado ? 'Guardado' : 'Guardar Odontograma'}
+              </button>
+            </>
+          )}
+      </div>
     </div>
   );
 }

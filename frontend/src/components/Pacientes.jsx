@@ -7,7 +7,22 @@ const FORM_DEFAULT = {
   fecha_nacimiento: '', sexo: '', estado_civil: '', direccion: '', lugar_nacimiento: '',
   lugar_procedencia: '', grado_instruccion: '', ocupacion: '', nombre_acompanante: '',
   contacto_emergencia: '', telefono_emergencia: '',
+  alergias: '', antecedentes_personales: '', antecedentes_familiares: '',
 };
+
+const ANTECEDENTES_FIELDS = [
+  { key: 'alergia_medicamentos', label: 'Alergia a medicamentos' },
+  { key: 'propension_hemorragias', label: 'Propension a hemorragia' },
+  { key: 'complicaciones_anestesia', label: 'Complicaciones con anestesia' },
+  { key: 'presion_arterial_medicacion', label: 'Presion Arterial / Medicacion' },
+  { key: 'cardiopatias_personales', label: 'Cardiopatias personales' },
+  { key: 'cardiopatias_familiares', label: 'Cardiopatias familiares' },
+  { key: 'diabetes_personal', label: 'Diabetes personal' },
+  { key: 'diabetes_familiar', label: 'Diabetes familiar' },
+  { key: 'hepatitis', label: 'Hepatitis (tipo A B C)' },
+  { key: 'otras_enfermedades', label: 'Otras enfermedades' },
+  { key: 'enfermedad_actual_medicacion', label: 'Enfermedad actual / Medicacion' },
+];
 
 export default function Pacientes({ onVerHistorial, onVer360 }) {
   const [pacientes, setPacientes] = useState([]);
@@ -17,6 +32,7 @@ export default function Pacientes({ onVerHistorial, onVer360 }) {
   const [cargando, setCargando] = useState(true);
   const [form, setForm] = useState({ ...FORM_DEFAULT });
   const [error, setError] = useState('');
+  const [antecedentesForm, setAntecedentesForm] = useState({});
 
   useEffect(() => { cargar(); }, []);
 
@@ -59,17 +75,26 @@ export default function Pacientes({ onVerHistorial, onVer360 }) {
     if (editando) {
       const res = await api.pacientes.actualizar(editando.id, form);
       if (res.error) { setError(res.error); return; }
+      if (editando.historia?.id) {
+        await api.historias.actualizar(editando.historia.id, antecedentesForm);
+      } else if (Object.values(antecedentesForm).some(v => v && v !== 'No')) {
+        await api.historias.crear({ paciente_id: editando.id, ...antecedentesForm });
+      }
     } else {
       const res = await api.pacientes.crear(form);
       if (res.error) { setError(res.error); return; }
+      if (Object.values(antecedentesForm).some(v => v && v !== 'No')) {
+        await api.historias.crear({ paciente_id: res.id, ...antecedentesForm });
+      }
     }
     setMostrarForm(false);
     setEditando(null);
     setForm({ ...FORM_DEFAULT });
+    setAntecedentesForm({});
     cargar();
   };
 
-  const handleEditar = (p) => {
+  const handleEditar = async (p) => {
     setForm({
       apellido_paterno: p.apellido_paterno || '',
       apellido_materno: p.apellido_materno || '',
@@ -89,8 +114,31 @@ export default function Pacientes({ onVerHistorial, onVer360 }) {
       nombre_acompanante: p.nombre_acompanante || '',
       contacto_emergencia: p.contacto_emergencia || '',
       telefono_emergencia: p.telefono_emergencia || '',
+      alergias: p.alergias || '',
+      antecedentes_personales: p.antecedentes_personales || '',
+      antecedentes_familiares: p.antecedentes_familiares || '',
     });
-    setEditando(p);
+    let historia = null;
+    try {
+      const hist = await api.historias.obtener(p.id);
+      historia = hist;
+      setAntecedentesForm({
+        alergia_medicamentos: hist?.alergia_medicamentos || '',
+        propension_hemorragias: hist?.propension_hemorragias || '',
+        complicaciones_anestesia: hist?.complicaciones_anestesia || '',
+        presion_arterial_medicacion: hist?.presion_arterial_medicacion || '',
+        cardiopatias_personales: hist?.cardiopatias_personales || '',
+        cardiopatias_familiares: hist?.cardiopatias_familiares || '',
+        diabetes_personal: hist?.diabetes_personal || '',
+        diabetes_familiar: hist?.diabetes_familiar || '',
+        hepatitis: hist?.hepatitis || '',
+        otras_enfermedades: hist?.otras_enfermedades || '',
+        enfermedad_actual_medicacion: hist?.enfermedad_actual_medicacion || '',
+      });
+    } catch {
+      setAntecedentesForm({});
+    }
+    setEditando({ ...p, historia });
     setMostrarForm(true);
   };
 
@@ -102,6 +150,7 @@ export default function Pacientes({ onVerHistorial, onVer360 }) {
 
   const abrirNuevo = () => {
     setForm({ ...FORM_DEFAULT });
+    setAntecedentesForm({});
     setEditando(null);
     setMostrarForm(true);
   };
@@ -238,6 +287,45 @@ export default function Pacientes({ onVerHistorial, onVer360 }) {
                     <label>Telefono de Emergencia</label>
                     <input type="text" value={form.telefono_emergencia} onChange={(e) => setForm({...form, telefono_emergencia: e.target.value})} />
                   </div>
+                </div>
+              </div>
+              <div className="form-section">
+                <h4>Antecedentes Medicos</h4>
+                <div className="antecedentes-form">
+                  {ANTECEDENTES_FIELDS.map(({ key, label }) => {
+                    const valor = antecedentesForm[key] || '';
+                    const isYes = valor && valor !== 'No' && valor !== '';
+                    return (
+                      <div key={key} className="antecedente-field">
+                        <label>{label}</label>
+                        <div className="antecedente-sino">
+                          <button
+                            type="button"
+                            className={`antecedente-btn ${isYes ? 'si-activo' : ''}`}
+                            onClick={() => setAntecedentesForm({ ...antecedentesForm, [key]: isYes ? '' : 'Si' })}
+                          >
+                            Si
+                          </button>
+                          <button
+                            type="button"
+                            className={`antecedente-btn ${!isYes && valor === 'No' ? 'no-activo' : ''}`}
+                            onClick={() => setAntecedentesForm({ ...antecedentesForm, [key]: 'No' })}
+                          >
+                            No
+                          </button>
+                        </div>
+                        {isYes && (
+                          <input
+                            type="text"
+                            value={valor === 'Si' ? '' : valor}
+                            onChange={e => setAntecedentesForm({ ...antecedentesForm, [key]: e.target.value || 'Si' })}
+                            placeholder="Observaciones (opcional)"
+                            className="antecedente-obs"
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
               <div className="form-actions">

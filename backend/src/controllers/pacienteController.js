@@ -25,7 +25,8 @@ exports.crear = (req, res) => {
     apellido_paterno, apellido_materno, nombres, dni, tipo_documento, telefono, email,
     fecha_nacimiento, sexo, estado_civil, direccion, lugar_nacimiento,
     lugar_procedencia, grado_instruccion, ocupacion, nombre_acompanante,
-    contacto_emergencia, telefono_emergencia
+    contacto_emergencia, telefono_emergencia,
+    alergias, antecedentes_personales, antecedentes_familiares
   } = req.body;
 
   if (!apellido_paterno || !nombres) {
@@ -49,15 +50,17 @@ exports.crear = (req, res) => {
         apellido_paterno, apellido_materno, nombres, dni, tipo_documento, telefono, email,
         fecha_nacimiento, sexo, estado_civil, direccion, lugar_nacimiento,
         lugar_procedencia, grado_instruccion, ocupacion, nombre_acompanante,
-        contacto_emergencia, telefono_emergencia
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        contacto_emergencia, telefono_emergencia,
+        alergias, antecedentes_personales, antecedentes_familiares
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const result = stmt.run(
       apellido_paterno, apellido_materno || '', nombres, docNumero || null, docTipo,
       telefono || null, email || null, fecha_nacimiento || null, sexo || null,
       estado_civil || '', direccion || null, lugar_nacimiento || '',
       lugar_procedencia || '', grado_instruccion || '', ocupacion || null,
-      nombre_acompanante || '', contacto_emergencia || null, telefono_emergencia || null
+      nombre_acompanante || '', contacto_emergencia || null, telefono_emergencia || null,
+      alergias || '', antecedentes_personales || '', antecedentes_familiares || ''
     );
     res.status(201).json({ id: result.lastInsertRowid, apellido_paterno, apellido_materno, nombres, dni: docNumero, tipo_documento: docTipo });
   } catch (err) {
@@ -128,7 +131,8 @@ exports.actualizar = (req, res) => {
     apellido_paterno, apellido_materno, nombres, dni, tipo_documento, telefono, email,
     fecha_nacimiento, sexo, estado_civil, direccion, lugar_nacimiento,
     lugar_procedencia, grado_instruccion, ocupacion, nombre_acompanante,
-    contacto_emergencia, telefono_emergencia, estado
+    contacto_emergencia, telefono_emergencia, estado,
+    alergias, antecedentes_personales, antecedentes_familiares
   } = req.body;
   const { id } = req.params;
 
@@ -147,7 +151,8 @@ exports.actualizar = (req, res) => {
         estado_civil = ?, direccion = ?, lugar_nacimiento = ?,
         lugar_procedencia = ?, grado_instruccion = ?, ocupacion = ?,
         nombre_acompanante = ?, contacto_emergencia = ?,
-        telefono_emergencia = ?, estado = ?
+        telefono_emergencia = ?, estado = ?,
+        alergias = ?, antecedentes_personales = ?, antecedentes_familiares = ?
       WHERE id = ?
     `);
     stmt.run(
@@ -157,7 +162,9 @@ exports.actualizar = (req, res) => {
       estado_civil || '', direccion || null, lugar_nacimiento || '',
       lugar_procedencia || '', grado_instruccion || '', ocupacion || null,
       nombre_acompanante || '', contacto_emergencia || null,
-      telefono_emergencia || null, estado || 'activo', id
+      telefono_emergencia || null, estado || 'activo',
+      alergias || '', antecedentes_personales || '', antecedentes_familiares || '',
+      id
     );
     res.json({ message: 'Paciente actualizado' });
   } catch (err) {

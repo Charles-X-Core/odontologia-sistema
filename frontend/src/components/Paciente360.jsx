@@ -24,6 +24,9 @@ export default function Paciente360({ paciente, onVolver, onVerHistorial }) {
   const [tipoSugerencia, setTipoSugerencia] = useState(null);
   const [dataSugerencia, setDataSugerencia] = useState(null);
   const [enviandoPdf, setEnviandoPdf] = useState(null);
+  const [editandoAntecedentes, setEditandoAntecedentes] = useState(false);
+  const [antecedentesForm, setAntecedentesForm] = useState({});
+  const [guardandoAntecedentes, setGuardandoAntecedentes] = useState(false);
 
   useEffect(() => { cargar(); }, [paciente.id]);
 
@@ -43,6 +46,36 @@ export default function Paciente360({ paciente, onVolver, onVerHistorial }) {
     if (mensajesRes.status === 'fulfilled') setMensajesWhatsApp(Array.isArray(mensajesRes.value) ? mensajesRes.value : []);
 
     setCargando(false);
+  };
+
+  const guardarAntecedentes = async () => {
+    if (!historia) return;
+    setGuardandoAntecedentes(true);
+    try {
+      const res = await api.historias.actualizar(historia.id, antecedentesForm);
+      if (res.error) { alert('Error: ' + res.error); setGuardandoAntecedentes(false); return; }
+      setDatos(prev => ({ ...prev, historia: { ...prev.historia, ...antecedentesForm } }));
+      setEditandoAntecedentes(false);
+    } catch (e) { alert('Error: ' + e.message); }
+    setGuardandoAntecedentes(false);
+  };
+
+  const iniciarEdicionAntecedentes = () => {
+    if (!historia) return;
+    setAntecedentesForm({
+      alergia_medicamentos: historia.alergia_medicamentos || '',
+      propension_hemorragias: historia.propension_hemorragias || '',
+      complicaciones_anestesia: historia.complicaciones_anestesia || '',
+      presion_arterial_medicacion: historia.presion_arterial_medicacion || '',
+      cardiopatias_personales: historia.cardiopatias_personales || '',
+      cardiopatias_familiares: historia.cardiopatias_familiares || '',
+      diabetes_personal: historia.diabetes_personal || '',
+      diabetes_familiar: historia.diabetes_familiar || '',
+      hepatitis: historia.hepatitis || '',
+      otras_enfermedades: historia.otras_enfermedades || '',
+      enfermedad_actual_medicacion: historia.enfermedad_actual_medicacion || '',
+    });
+    setEditandoAntecedentes(true);
   };
 
   if (cargando) return <div className="loading">Cargando perfil del paciente...</div>;
@@ -100,6 +133,7 @@ export default function Paciente360({ paciente, onVolver, onVerHistorial }) {
 
       <div className="paciente360-tabs">
         <button className={`tab-btn ${tab === 'general' ? 'active' : ''}`} onClick={() => setTab('general')}>Informacion</button>
+        <button className={`tab-btn ${tab === 'antecedentes' ? 'active' : ''}`} onClick={() => setTab('antecedentes')}>Antecedentes</button>
         <button className={`tab-btn ${tab === 'clinico' ? 'active' : ''}`} onClick={() => setTab('clinico')}>Clinico</button>
         <button className={`tab-btn ${tab === 'evidencias' ? 'active' : ''}`} onClick={() => setTab('evidencias')}>Evidencias</button>
         <button className={`tab-btn ${tab === 'reciente' ? 'active' : ''}`} onClick={() => setTab('reciente')}>Actividad Reciente</button>
@@ -170,6 +204,136 @@ export default function Paciente360({ paciente, onVolver, onVerHistorial }) {
               <div className="field-row"><span className="field-label">Pagado:</span><span style={{ color: 'var(--success)' }}>${resumenPagos.total_pagado.toLocaleString()}</span></div>
               <div className="field-row"><span className="field-label">Pendiente:</span><span style={{ color: 'var(--danger)' }}>${resumenPagos.total_pendiente.toLocaleString()}</span></div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {tab === 'antecedentes' && (
+        <div className="paciente360-grid">
+          {(paciente.alergias || paciente.antecedentes_personales || paciente.antecedentes_familiares) && (
+            <div className="paciente360-card full-width">
+              <h4>Datos del Paciente</h4>
+              <div className="paciente360-fields">
+                {paciente.alergias && (
+                  <div className="field-row alerta"><span className="field-label">Alergias:</span><span>{paciente.alergias}</span></div>
+                )}
+                {paciente.antecedentes_personales && (
+                  <div className="field-row"><span className="field-label">Antecedentes Personales:</span><span>{paciente.antecedentes_personales}</span></div>
+                )}
+                {paciente.antecedentes_familiares && (
+                  <div className="field-row"><span className="field-label">Antecedentes Familiares:</span><span>{paciente.antecedentes_familiares}</span></div>
+                )}
+              </div>
+            </div>
+          )}
+
+          <div className="paciente360-card full-width">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h4>Historia Clinica {historia ? `(N° ${historia.numero_historia || '-'})` : ''}</h4>
+              {historia && (
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  {!editandoAntecedentes ? (
+                    <button className="btn btn-sm btn-secondary" onClick={iniciarEdicionAntecedentes}>Editar Antecedentes</button>
+                  ) : (
+                    <>
+                      <button className="btn btn-sm btn-primary" onClick={guardarAntecedentes} disabled={guardandoAntecedentes}>
+                        {guardandoAntecedentes ? 'Guardando...' : 'Guardar'}
+                      </button>
+                      <button className="btn btn-sm btn-secondary" onClick={() => setEditandoAntecedentes(false)}>Cancelar</button>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {!historia ? (
+              <p className="empty">No tiene historia clinica registrada</p>
+            ) : editandoAntecedentes ? (
+              <div className="antecedentes-form">
+                {[
+                  { key: 'alergia_medicamentos', label: 'Alergia a medicamentos' },
+                  { key: 'propension_hemorragias', label: 'Propension a hemorragia' },
+                  { key: 'complicaciones_anestesia', label: 'Complicaciones con anestesia' },
+                  { key: 'presion_arterial_medicacion', label: 'Presion Arterial / Medicacion' },
+                  { key: 'cardiopatias_personales', label: 'Cardiopatias personales' },
+                  { key: 'cardiopatias_familiares', label: 'Cardiopatias familiares' },
+                  { key: 'diabetes_personal', label: 'Diabetes personal' },
+                  { key: 'diabetes_familiar', label: 'Diabetes familiar' },
+                  { key: 'hepatitis', label: 'Hepatitis (tipo A B C)' },
+                  { key: 'otras_enfermedades', label: 'Otras enfermedades' },
+                  { key: 'enfermedad_actual_medicacion', label: 'Enfermedad actual / Medicacion' },
+                ].map(({ key, label }) => {
+                  const valor = antecedentesForm[key] || '';
+                  const isYes = valor && valor !== 'No' && valor !== '';
+                  return (
+                    <div key={key} className="antecedente-field">
+                      <label>{label}</label>
+                      <div className="antecedente-sino">
+                        <button
+                          type="button"
+                          className={`antecedente-btn ${isYes ? 'si-activo' : ''}`}
+                          onClick={() => setAntecedentesForm({ ...antecedentesForm, [key]: isYes ? '' : 'Si' })}
+                        >
+                          Si
+                        </button>
+                        <button
+                          type="button"
+                          className={`antecedente-btn ${!isYes && valor === 'No' ? 'no-activo' : ''}`}
+                          onClick={() => setAntecedentesForm({ ...antecedentesForm, [key]: 'No' })}
+                        >
+                          No
+                        </button>
+                      </div>
+                      {isYes && (
+                        <input
+                          type="text"
+                          value={valor === 'Si' ? '' : valor}
+                          onChange={e => setAntecedentesForm({ ...antecedentesForm, [key]: e.target.value || 'Si' })}
+                          placeholder="Observaciones (opcional)"
+                          className="antecedente-obs"
+                        />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="paciente360-fields">
+                {historia.alergia_medicamentos && historia.alergia_medicamentos !== 'No' && (
+                  <div className="field-row alerta"><span className="field-label">Alergia a medicamentos:</span><span>{historia.alergia_medicamentos}</span></div>
+                )}
+                {historia.propension_hemorragias && historia.propension_hemorragias !== 'No' && (
+                  <div className="field-row"><span className="field-label">Propension a hemorragia:</span><span>{historia.propension_hemorragias}</span></div>
+                )}
+                {historia.complicaciones_anestesia && historia.complicaciones_anestesia !== 'No' && (
+                  <div className="field-row"><span className="field-label">Complicaciones con anestesia:</span><span>{historia.complicaciones_anestesia}</span></div>
+                )}
+                {historia.presion_arterial_medicacion && historia.presion_arterial_medicacion !== 'No' && (
+                  <div className="field-row"><span className="field-label">P.A. / Medicacion:</span><span>{historia.presion_arterial_medicacion}</span></div>
+                )}
+                {historia.cardiopatias_personales && historia.cardiopatias_personales !== 'No' && (
+                  <div className="field-row"><span className="field-label">Cardiopatias personales:</span><span>{historia.cardiopatias_personales}</span></div>
+                )}
+                {historia.cardiopatias_familiares && historia.cardiopatias_familiares !== 'No' && (
+                  <div className="field-row"><span className="field-label">Cardiopatias familiares:</span><span>{historia.cardiopatias_familiares}</span></div>
+                )}
+                {historia.diabetes_personal && historia.diabetes_personal !== 'No' && (
+                  <div className="field-row"><span className="field-label">Diabetes personal:</span><span>{historia.diabetes_personal}</span></div>
+                )}
+                {historia.diabetes_familiar && historia.diabetes_familiar !== 'No' && (
+                  <div className="field-row"><span className="field-label">Diabetes familiar:</span><span>{historia.diabetes_familiar}</span></div>
+                )}
+                {historia.hepatitis && historia.hepatitis !== 'No' && (
+                  <div className="field-row"><span className="field-label">Hepatitis:</span><span>{historia.hepatitis}</span></div>
+                )}
+                {historia.otras_enfermedades && (
+                  <div className="field-row"><span className="field-label">Otras enfermedades:</span><span>{historia.otras_enfermedades}</span></div>
+                )}
+                {historia.enfermedad_actual_medicacion && (
+                  <div className="field-row"><span className="field-label">Enfermedad actual / Medicacion:</span><span>{historia.enfermedad_actual_medicacion}</span></div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
