@@ -5,6 +5,8 @@ clinica.db-wal
 dist/
 dist-electron/
 uploads/
+backend/uploads/
+evidencias/
 .env
 *.log
 .wwebjs_cache/

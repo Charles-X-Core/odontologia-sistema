@@ -31,6 +31,25 @@ El sistema funciona completamente **offline**, sin necesidad de conexion a inter
 
 ---
 
+## Capturas de Pantalla
+
+<div align="center">
+
+<table>
+<tr>
+<td align="center"><strong>Login</strong></td>
+<td align="center"><strong>Dashboard</strong></td>
+</tr>
+<tr>
+<td><img src="screenshots/login.jpg" width="400" alt="Login de Clinica Dental Pro" /></td>
+<td><img src="screenshots/dashboard.jpg" width="400" alt="Dashboard de Clinica Dental Pro" /></td>
+</tr>
+</table>
+
+</div>
+
+---
+
 ## Por Que "Clinica Dental Pro"?
 
 El proyecto fue originalmente desarrollado bajo el nombre "Vita Mirabilis". Sin embargo, se descubrio que **"Vita Mirabilis" es una marca registrada perteneciente a un tercero**. Para evitar conflictos legales y respetar la propiedad intelectual, el proyecto fue renombrado a **"Clinica Dental Pro"** - un nombre descriptivo que refleja claramente la naturaleza del sistema.
