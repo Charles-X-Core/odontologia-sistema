@@ -30,6 +30,19 @@ router.get('/pagos', ctrl.pagos);
 router.get('/recetas', ctrl.recetas);
 router.get('/estadisticas', ctrl.estadisticas);
 router.get('/backup-db', ctrl.exportarBD);
-router.post('/importar-db', upload.single('archivo'), ctrl.importarBDAnterior);
+router.post('/importar-db', (req, res, next) => {
+  upload.single('archivo')(req, res, (err) => {
+    if (err) {
+      if (err instanceof multer.MulterError) {
+        return res.status(400).json({ error: 'Error al subir archivo: ' + err.message });
+      }
+      return res.status(400).json({ error: err.message || 'Error al subir archivo' });
+    }
+    if (!req.file) {
+      return res.status(400).json({ error: 'No se envio archivo .db' });
+    }
+    ctrl.importarBDAnterior(req, res, next);
+  });
+});
 
 module.exports = router;

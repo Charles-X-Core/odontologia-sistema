@@ -189,6 +189,14 @@ app.get('*', (req, res) => {
   }
 });
 
+app.use((err, req, res, next) => {
+  console.error('[INDEX] Unhandled error:', err.message);
+  if (req.path.startsWith('/api')) {
+    return res.status(500).json({ error: 'Error interno del servidor: ' + err.message });
+  }
+  next(err);
+});
+
 console.log('[INDEX] All routes registered. Starting HTTP server...');
 
 const server = http.createServer(app);
