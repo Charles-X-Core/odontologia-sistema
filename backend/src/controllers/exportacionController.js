@@ -465,11 +465,11 @@ exports.importarBDAnterior = (req, res) => {
 
     transferir();
     oldDb.close();
-    fs.unlinkSync(tmpPath);
+    try { fs.unlinkSync(tmpPath); } catch (e) { /* SQLite puede mantener el archivo bloqueado */ }
 
     res.json({ mensaje: 'Importacion de BD anterior completada', resultados });
   } catch (err) {
-    if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+    try { if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path); } catch (e) {}
     res.status(500).json({ error: 'Error al importar BD: ' + err.message });
   }
 };
