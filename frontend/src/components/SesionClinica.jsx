@@ -34,7 +34,7 @@ const NECESIDADES_DEFAULT = {
 };
 
 const SIGNOS_VITALES_DEFAULT = {
-  presion_arterial: '', pulso: '', temperatura: '', frecuencia_cardiaca: '', frecuencia_respiratoria: '', peso: '', altura: '',
+  presion_arterial: '', temperatura: '', frecuencia_cardiaca: '', frecuencia_respiratoria: '', peso: '', altura: '',
 };
 
 export default function SesionClinica({ paciente, onVolver, onCompletado }) {
@@ -71,6 +71,9 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
   const [diagnosticos, setDiagnosticos] = useState([{ texto: '', tipo: 'clinico' }]);
   const [planTratamiento, setPlanTratamiento] = useState({ descripcion: '', procedimientos: '', secuencia: '' });
 
+  // Consentimiento informado
+  const [consentimiento, setConsentimiento] = useState(false);
+
   // Paso 4: Odontograma
   const [odontograma, setOdontograma] = useState({});
   const [necesidades, setNecesidades] = useState({ ...NECESIDADES_DEFAULT });
@@ -90,7 +93,7 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
     setNecesidadesAuto(true);
   };
 
-  const handleOdontogramaChange = (dientes) => {
+  const handleOdontogramaChange = (dientes, movilidad = {}) => {
     setOdontograma(dientes);
     calcularNecesidades(dientes);
   };
@@ -341,6 +344,7 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
         evaluacion_odontoestomatologica: evaluacionOdonto,
         diagnostico_lista: diagnosticos.filter(d => d.texto.trim()),
         plan_tratamiento: planTratamiento,
+        consentimiento_informado: consentimiento ? 1 : 0,
         notas: '',
       });
 
@@ -865,10 +869,6 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
                   <input type="text" value={signosVitales.presion_arterial} onChange={e => setSignosVitales({...signosVitales, presion_arterial: e.target.value})} placeholder="Ej: 120/80" />
                 </div>
                 <div className="field">
-                  <label>Pulso</label>
-                  <input type="text" value={signosVitales.pulso} onChange={e => setSignosVitales({...signosVitales, pulso: e.target.value})} placeholder="Ej: 78" />
-                </div>
-                <div className="field">
                   <label>Temperatura</label>
                   <input type="text" value={signosVitales.temperatura} onChange={e => setSignosVitales({...signosVitales, temperatura: e.target.value})} placeholder="Ej: 36.5" />
                 </div>
@@ -893,7 +893,7 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
                 {signosVitales.peso && signosVitales.altura && (
                   <div className="field">
                     <label>IMC</label>
-                    <input type="text" readOnly className="field-readonly" value={(parseFloat(signosVitales.peso) / Math.pow(parseFloat(signosVitales.altura) / 100, 2)).toFixed(1)} />
+                    <input type="text" readOnly className="field-readonly" value={(parseFloat(signosVitales.peso) / Math.pow(parseFloat(signosVitales.altura) / 100, 2)).toFixed(2)} />
                   </div>
                 )}
               </div>
@@ -1183,6 +1183,23 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
             )}
           </div>
         )}
+
+        <div className="resumen-section" style={{ marginTop: '16px', padding: '12px', background: '#eff6ff', borderRadius: '8px', border: '1px solid #bfdbfe' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '14px' }}>
+            <input
+              type="checkbox"
+              checked={consentimiento}
+              onChange={(e) => setConsentimiento(e.target.checked)}
+              style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+            />
+            <div>
+              <strong>Consentimiento Informado</strong>
+              <div style={{ fontSize: '12px', color: 'var(--gray-500)', marginTop: '2px' }}>
+                El paciente ha sido informado y autoriza el tratamiento propuesto
+              </div>
+            </div>
+          </label>
+        </div>
       </div>
 
       <div className="sesion-footer">

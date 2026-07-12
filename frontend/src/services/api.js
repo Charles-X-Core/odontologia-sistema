@@ -87,6 +87,7 @@ export const api = {
 
   odontogramas: {
     crear: (data) => request('/odontogramas', { method: 'POST', body: JSON.stringify(data) }),
+    actualizar: (data) => request('/odontogramas', { method: 'PUT', body: JSON.stringify(data) }),
     obtener: (historiaId) => request(`/odontogramas/historia/${historiaId}`),
   },
 

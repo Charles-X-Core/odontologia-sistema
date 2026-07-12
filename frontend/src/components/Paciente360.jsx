@@ -27,6 +27,8 @@ export default function Paciente360({ paciente, onVolver, onVerHistorial }) {
   const [editandoAntecedentes, setEditandoAntecedentes] = useState(false);
   const [antecedentesForm, setAntecedentesForm] = useState({});
   const [guardandoAntecedentes, setGuardandoAntecedentes] = useState(false);
+  const [editandoOdontograma, setEditandoOdontograma] = useState(false);
+  const [odontogramaEdit, setOdontogramaEdit] = useState(null);
 
   useEffect(() => { cargar(); }, [paciente.id]);
 
@@ -344,8 +346,33 @@ export default function Paciente360({ paciente, onVolver, onVerHistorial }) {
             const ultimaConOdonto = consultas.find(c => c.odontograma);
             return ultimaConOdonto ? (
               <div className="paciente360-card full-width">
-                <h4>Odontograma Actual</h4>
-                <Odontograma datos={ultimaConOdonto.odontograma} soloLectura={true} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h4>Odontograma Actual</h4>
+                  {!editandoOdontograma ? (
+                    <button className="btn btn-sm btn-outline" onClick={() => {
+                      setOdontogramaEdit(typeof ultimaConOdonto.odontograma === 'object' ? ultimaConOdonto.odontograma : {});
+                      setEditandoOdontograma(true);
+                    }}>Editar</button>
+                  ) : (
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <button className="btn btn-sm btn-secondary" onClick={() => setEditandoOdontograma(false)}>Cancelar</button>
+                      <button className="btn btn-sm btn-primary" onClick={async () => {
+                        try {
+                          await api.odontogramas.actualizar({ consulta_id: ultimaConOdonto.id, datos_json: odontogramaEdit });
+                          setEditandoOdontograma(false);
+                          window.location.reload();
+                        } catch (e) { console.error(e); }
+                      }}>Guardar</button>
+                    </div>
+                  )}
+                </div>
+                <Odontograma
+                  datos={editandoOdontograma ? odontogramaEdit : ultimaConOdonto.odontograma}
+                  soloLectura={!editandoOdontograma}
+                  onGuardar={editandoOdontograma ? (dientes, movilidad) => {
+                    setOdontogramaEdit({ dientes, movilidad });
+                  } : undefined}
+                />
               </div>
             ) : null;
           })()}

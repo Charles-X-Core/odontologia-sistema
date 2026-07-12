@@ -17,6 +17,13 @@ const ESTADOS = {
   puente:      { label: 'Puente',      color: '#a855f7', icon: Minus,         letra: 'PU' },
 };
 
+const MOVILIDAD_OPTIONS = [
+  { key: null, label: 'Sin movilidad', color: 'transparent' },
+  { key: 'I', label: 'Grado I', color: '#f59e0b' },
+  { key: 'II', label: 'Grado II', color: '#ef4444' },
+  { key: 'III', label: 'Grado III', color: '#7c2d12' },
+];
+
 const DIENTES_PERMANENTES = {
   superior: [
     [18, 17, 16, 15, 14, 13, 12, 11],
@@ -50,15 +57,21 @@ function DienteSVG({ numero }) {
   );
 }
 
-function Diente({ numero, estado, onClick, esTemporal, sinColor }) {
+function Diente({ numero, estado, onClick, esTemporal, sinColor, movilidad }) {
   const config = ESTADOS[estado] || ESTADOS.sano;
   const Icon = config.icon;
   const isActive = estado && estado !== 'sano';
   const iconColor = sinColor ? '#000' : config.color;
+  const mobConfig = movilidad ? MOVILIDAD_OPTIONS.find(m => m.key === movilidad) : null;
 
   return (
     <div className={`diente-container ${esTemporal ? 'diente-temporal' : ''}`} onClick={() => onClick(numero)}>
       <div className={`diente-label-top ${esTemporal ? 'diente-label-temporal' : ''}`}>{numero}</div>
+      {movilidad && (
+        <div className="diente-movilidad-badge" style={{ backgroundColor: mobConfig?.color || '#f59e0b' }}>
+          {movilidad}
+        </div>
+      )}
       <div
         className={`diente-box ${esTemporal ? 'diente-box-temporal' : ''} ${isActive ? 'diente-activo' : ''}`}
         style={{ borderColor: sinColor ? (isActive ? '#000' : '#aaa') : config.color }}
@@ -80,7 +93,7 @@ function Diente({ numero, estado, onClick, esTemporal, sinColor }) {
   );
 }
 
-function DientesRow({ dientes, estados, onClick, invertido, esTemporal, sinColor }) {
+function DientesRow({ dientes, estados, onClick, invertido, esTemporal, sinColor, movilidades }) {
   const lista = invertido ? [...dientes].reverse() : dientes;
   return (
     <div className={`dientes-row ${esTemporal ? 'dientes-row-temporal' : ''}`}>
@@ -92,6 +105,7 @@ function DientesRow({ dientes, estados, onClick, invertido, esTemporal, sinColor
           onClick={onClick}
           esTemporal={esTemporal}
           sinColor={sinColor}
+          movilidad={movilidades?.[num]}
         />
       ))}
     </div>
@@ -101,18 +115,36 @@ function DientesRow({ dientes, estados, onClick, invertido, esTemporal, sinColor
 export default function Odontograma({ datos = {}, onGuardar, consultaId, soloLectura = false }) {
   const datosInit = datos?.dientes || datos;
   const [estados, setEstados] = useState(datosInit);
+  const [movilidades, setMovilidades] = useState(datos?.movilidad || {});
   const [herramienta, setHerramienta] = useState('caries');
+  const [modoMovilidad, setModoMovilidad] = useState(false);
+  const [gradoMovilidad, setGradoMovilidad] = useState('I');
   const [mostrarTemporales, setMostrarTemporales] = useState(true);
   const [sinColor, setSinColor] = useState(false);
   const [guardado, setGuardado] = useState(false);
 
   const handleClick = (num) => {
     if (soloLectura || !onGuardar) return;
+
+    if (modoMovilidad) {
+      setMovilidades(prev => {
+        const current = prev[num];
+        const next = current === gradoMovilidad ? null : gradoMovilidad;
+        const nuevos = { ...prev, [num]: next };
+        if (next === null) delete nuevos[num];
+        onGuardar(estados, nuevos);
+        setGuardado(true);
+        setTimeout(() => setGuardado(false), 1500);
+        return nuevos;
+      });
+      return;
+    }
+
     setEstados(prev => {
       const current = prev[num];
       const next = current === herramienta ? 'sano' : herramienta;
       const nuevos = { ...prev, [num]: next };
-      onGuardar(nuevos);
+      onGuardar(nuevos, movilidades);
       setGuardado(true);
       setTimeout(() => setGuardado(false), 1500);
       return nuevos;
@@ -121,7 +153,7 @@ export default function Odontograma({ datos = {}, onGuardar, consultaId, soloLec
 
   const handleGuardar = () => {
     if (!onGuardar) return;
-    onGuardar(estados);
+    onGuardar(estados, movilidades);
     setGuardado(true);
     setTimeout(() => setGuardado(false), 1500);
   };
@@ -137,12 +169,12 @@ export default function Odontograma({ datos = {}, onGuardar, consultaId, soloLec
               return (
                 <button
                   key={key}
-                  className={`tool-btn ${herramienta === key ? 'active' : ''}`}
+                  className={`tool-btn ${herramienta === key && !modoMovilidad ? 'active' : ''}`}
                   style={{
-                    borderColor: herramienta === key ? (sinColor ? '#000' : val.color) : 'transparent',
-                    backgroundColor: herramienta === key ? (sinColor ? '#0002' : val.color + '20') : undefined,
+                    borderColor: herramienta === key && !modoMovilidad ? (sinColor ? '#000' : val.color) : 'transparent',
+                    backgroundColor: herramienta === key && !modoMovilidad ? (sinColor ? '#0002' : val.color + '20') : undefined,
                   }}
-                  onClick={() => setHerramienta(key)}
+                  onClick={() => { setHerramienta(key); setModoMovilidad(false); }}
                 >
                   <Icon
                     size={16}
@@ -153,7 +185,37 @@ export default function Odontograma({ datos = {}, onGuardar, consultaId, soloLec
                 </button>
               );
             })}
+            <div className="tool-separator" />
+            <button
+              className={`tool-btn ${modoMovilidad ? 'active' : ''}`}
+              style={{
+                borderColor: modoMovilidad ? '#f59e0b' : 'transparent',
+                backgroundColor: modoMovilidad ? '#f59e0b20' : undefined,
+              }}
+              onClick={() => setModoMovilidad(!modoMovilidad)}
+            >
+              <span className="tool-label" style={{ fontWeight: 700, fontSize: 13 }}>M</span>
+              <span className="tool-label">Movilidad</span>
+            </button>
           </div>
+          {modoMovilidad && (
+            <div className="odontograma-movilidad-grades">
+              {MOVILIDAD_OPTIONS.filter(m => m.key).map(m => (
+                <button
+                  key={m.key}
+                  className={`tool-btn btn-sm ${gradoMovilidad === m.key ? 'active' : ''}`}
+                  style={{
+                    borderColor: gradoMovilidad === m.key ? m.color : 'transparent',
+                    backgroundColor: gradoMovilidad === m.key ? m.color + '20' : undefined,
+                  }}
+                  onClick={() => setGradoMovilidad(m.key)}
+                >
+                  <span className="tool-label" style={{ color: m.color }}>{m.key}</span>
+                  <span className="tool-label">{m.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -161,9 +223,9 @@ export default function Odontograma({ datos = {}, onGuardar, consultaId, soloLec
         <div className="odontograma-seccion">
           <div className="seccion-label">Denticion Permanente Superior</div>
           <div className="arcada-superior">
-            <DientesRow dientes={DIENTES_PERMANENTES.superior[0]} estados={estados} onClick={handleClick} invertido={false} sinColor={sinColor} />
+            <DientesRow dientes={DIENTES_PERMANENTES.superior[0]} estados={estados} onClick={handleClick} invertido={false} sinColor={sinColor} movilidades={movilidades} />
             <div className="separador-vertical" />
-            <DientesRow dientes={DIENTES_PERMANENTES.superior[1]} estados={estados} onClick={handleClick} invertido={false} sinColor={sinColor} />
+            <DientesRow dientes={DIENTES_PERMANENTES.superior[1]} estados={estados} onClick={handleClick} invertido={false} sinColor={sinColor} movilidades={movilidades} />
           </div>
         </div>
 
@@ -172,17 +234,17 @@ export default function Odontograma({ datos = {}, onGuardar, consultaId, soloLec
             <div className="odontograma-temporales">
               <div className="seccion-label">Denticion Temporal Superior</div>
               <div className="arcada-temporal">
-                <DientesRow dientes={DIENTES_TEMPORALES.superior[0]} estados={estados} onClick={handleClick} invertido={false} esTemporal={true} sinColor={sinColor} />
+                <DientesRow dientes={DIENTES_TEMPORALES.superior[0]} estados={estados} onClick={handleClick} invertido={false} esTemporal={true} sinColor={sinColor} movilidades={movilidades} />
                 <div className="separador-vertical" />
-                <DientesRow dientes={DIENTES_TEMPORALES.superior[1]} estados={estados} onClick={handleClick} invertido={false} esTemporal={true} sinColor={sinColor} />
+                <DientesRow dientes={DIENTES_TEMPORALES.superior[1]} estados={estados} onClick={handleClick} invertido={false} esTemporal={true} sinColor={sinColor} movilidades={movilidades} />
               </div>
             </div>
             <div className="odontograma-temporales">
               <div className="seccion-label">Denticion Temporal Inferior</div>
               <div className="arcada-temporal">
-                <DientesRow dientes={DIENTES_TEMPORALES.inferior[0]} estados={estados} onClick={handleClick} invertido={false} esTemporal={true} sinColor={sinColor} />
+                <DientesRow dientes={DIENTES_TEMPORALES.inferior[0]} estados={estados} onClick={handleClick} invertido={false} esTemporal={true} sinColor={sinColor} movilidades={movilidades} />
                 <div className="separador-vertical" />
-                <DientesRow dientes={DIENTES_TEMPORALES.inferior[1]} estados={estados} onClick={handleClick} invertido={false} esTemporal={true} sinColor={sinColor} />
+                <DientesRow dientes={DIENTES_TEMPORALES.inferior[1]} estados={estados} onClick={handleClick} invertido={false} esTemporal={true} sinColor={sinColor} movilidades={movilidades} />
               </div>
             </div>
           </>
@@ -191,9 +253,9 @@ export default function Odontograma({ datos = {}, onGuardar, consultaId, soloLec
         <div className="odontograma-seccion">
           <div className="seccion-label">Denticion Permanente Inferior</div>
           <div className="arcada-inferior">
-            <DientesRow dientes={DIENTES_PERMANENTES.inferior[0]} estados={estados} onClick={handleClick} invertido={false} sinColor={sinColor} />
+            <DientesRow dientes={DIENTES_PERMANENTES.inferior[0]} estados={estados} onClick={handleClick} invertido={false} sinColor={sinColor} movilidades={movilidades} />
             <div className="separador-vertical" />
-            <DientesRow dientes={DIENTES_PERMANENTES.inferior[1]} estados={estados} onClick={handleClick} invertido={false} sinColor={sinColor} />
+            <DientesRow dientes={DIENTES_PERMANENTES.inferior[1]} estados={estados} onClick={handleClick} invertido={false} sinColor={sinColor} movilidades={movilidades} />
           </div>
         </div>
       </div>

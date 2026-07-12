@@ -5,7 +5,7 @@ exports.crear = (req, res) => {
     historia_id, fecha, hora, motivo, tiempo_enfermedad, signos_sintomas,
     relato_cronologico, funciones_biologicas, signos_vitales,
     examen_clinico_general, evaluacion_odontoestomatologica,
-    diagnostico_lista, plan_tratamiento, notas
+    diagnostico_lista, plan_tratamiento, consentimiento_informado, notas
   } = req.body;
 
   if (!historia_id || !motivo) {
@@ -23,8 +23,8 @@ exports.crear = (req, res) => {
         historia_id, fecha, hora, motivo, tiempo_enfermedad, signos_sintomas,
         relato_cronologico, funciones_biologicas, signos_vitales,
         examen_clinico_general, evaluacion_odontoestomatologica,
-        diagnostico_lista, plan_tratamiento, notas
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        diagnostico_lista, plan_tratamiento, consentimiento_informado, notas
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const result = stmt.run(
       historia_id,
@@ -40,6 +40,7 @@ exports.crear = (req, res) => {
       evaluacion_odontoestomatologica || '',
       JSON.stringify(diagnostico_lista || []),
       JSON.stringify(plan_tratamiento || {}),
+      consentimiento_informado || 0,
       notas || ''
     );
     res.status(201).json({ id: result.lastInsertRowid, historia_id, fecha: fecha || new Date().toISOString() });

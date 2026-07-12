@@ -240,29 +240,16 @@ exports.estadisticas = (req, res) => {
 
 exports.exportarBD = (req, res) => {
   try {
-    const dbPath = path.join(__dirname, '..', '..', 'clinica.db');
+    const dbPath = process.env.DB_PATH || path.join(__dirname, '..', '..', 'clinica.db');
     if (!fs.existsSync(dbPath)) {
       return res.status(404).json({ error: 'Base de datos no encontrada' });
     }
-    const uploadsDir = path.join(__dirname, '..', '..', 'uploads');
-    const evidenciasDir = path.join(uploadsDir, 'evidencias');
     const fecha = new Date().toISOString().slice(0, 10);
-    const nombreArchivo = `clinica_backup_${fecha}.zip`;
-
-    const archiver = require('archiver');
-    const archive = archiver('zip', { zlib: { level: 5 } });
-
-    res.setHeader('Content-Type', 'application/zip');
+    const nombreArchivo = `clinica_backup_${fecha}.db`;
+    const dbBuffer = fs.readFileSync(dbPath);
+    res.setHeader('Content-Type', 'application/x-sqlite3');
     res.setHeader('Content-Disposition', `attachment; filename="${nombreArchivo}"`);
-    archive.pipe(res);
-
-    archive.file(dbPath, { name: 'clinica.db' });
-
-    if (fs.existsSync(evidenciasDir)) {
-      archive.directory(evidenciasDir, 'evidencias');
-    }
-
-    archive.finalize();
+    res.send(dbBuffer);
   } catch (err) {
     res.status(500).json({ error: 'Error al exportar BD: ' + err.message });
   }

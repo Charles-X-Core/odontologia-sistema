@@ -43,3 +43,19 @@ exports.obtenerHistorial = (req, res) => {
   odontogramas.forEach(o => { o.datos_json = JSON.parse(o.datos_json); });
   res.json(odontogramas);
 };
+
+exports.actualizar = (req, res) => {
+  const { consulta_id, datos_json } = req.body;
+
+  if (!consulta_id) {
+    return res.status(400).json({ error: 'consulta_id es obligatorio' });
+  }
+
+  const existing = db.prepare('SELECT id FROM odontogramas WHERE consulta_id = ?').get(consulta_id);
+  if (existing) {
+    db.prepare('UPDATE odontogramas SET datos_json = ? WHERE consulta_id = ?').run(JSON.stringify(datos_json || {}), consulta_id);
+  } else {
+    db.prepare('INSERT INTO odontogramas (consulta_id, datos_json) VALUES (?, ?)').run(consulta_id, JSON.stringify(datos_json || {}));
+  }
+  res.json({ ok: true, consulta_id });
+};

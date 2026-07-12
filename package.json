@@ -1,6 +1,6 @@
 {
   "name": "clinica-dental-pro",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Clinica Dental Pro - Sistema de Historial Clinico Odontologico",
   "author": "Charles-X RedFlame Systems",
   "main": "electron/main.js",

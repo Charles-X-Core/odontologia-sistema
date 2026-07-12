@@ -94,4 +94,6 @@ try {
   // Column already has correct default or ALTER not supported
 }
 
+try { db.exec("ALTER TABLE consultas ADD COLUMN consentimiento_informado INTEGER DEFAULT 0"); } catch {}
+
 module.exports = db;
