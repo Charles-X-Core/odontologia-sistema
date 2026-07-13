@@ -9,6 +9,13 @@ let mainWindow;
 const PORT = 18234;
 let serverStarted = false;
 
+// Prevenir que EPIPE crashee la app (console写作 a pipe roto cuando no hay terminal)
+process.on('uncaughtException', (err) => {
+  if (err.code === 'EPIPE') return;
+  console.error('[FATAL] Uncaught exception:', err.message);
+});
+process.on('unhandledRejection', (reason) => {});
+
 // Validar process.env con fallbacks seguros
 function safeEnv(key, fallback) {
   return process.env[key] || fallback;

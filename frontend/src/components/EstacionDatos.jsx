@@ -258,7 +258,7 @@ export default function EstacionDatos({ onVolver }) {
                     <h4>Importacion completada</h4>
                   </div>
                   <div className="result-cards">
-                    {Object.entries(resultadoBD.resultados).map(([tabla, r]) => (
+                    {Object.entries(resultadoBD.resultados || {}).map(([tabla, r]) => (
                       <div key={tabla} className="result-card">
                         <span className="result-num">{r.nuevos}</span>
                         <span className="result-label">{tabla} nuevos</span>

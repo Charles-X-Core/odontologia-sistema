@@ -213,7 +213,6 @@ async function startOpenWA(onProgress) {
       try {
         const text = d.toString();
         output += text;
-        process.stderr.write('[WA-CHILD-ERR] ' + text);
       } catch (e) {}
     });
 

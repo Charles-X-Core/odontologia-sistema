@@ -36,7 +36,9 @@ async function uploadFile(url, formData) {
     headers,
     body: formData,
   });
-  return res.json();
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Error del servidor');
+  return data;
 }
 
 export const api = {

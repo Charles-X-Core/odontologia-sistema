@@ -322,7 +322,9 @@ exports.importarBDAnterior = (req, res) => {
 
     const oldToNewPacienteId = {};
 
-    const transferir = db.transaction(() => {
+    const transferir = () => {
+      db.exec('BEGIN');
+      try {
       if (hasTable('pacientes')) {
         const oldPacientes = oldDb.prepare('SELECT * FROM pacientes').all();
         for (const p of oldPacientes) {
@@ -461,7 +463,12 @@ exports.importarBDAnterior = (req, res) => {
           }
         }
       }
-    });
+      db.exec('COMMIT');
+    } catch (txErr) {
+      try { db.exec('ROLLBACK'); } catch (e) {}
+      throw txErr;
+    }
+    };
 
     transferir();
     oldDb.close();
