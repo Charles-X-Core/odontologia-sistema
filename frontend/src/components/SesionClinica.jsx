@@ -78,6 +78,8 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
   const [odontograma, setOdontograma] = useState({});
   const [necesidades, setNecesidades] = useState({ ...NECESIDADES_DEFAULT });
   const [necesidadesAuto, setNecesidadesAuto] = useState(false);
+  const [odontogramaPrevio, setOdontogramaPrevio] = useState(null);
+  const [mostrarOdontoPrevio, setMostrarOdontoPrevio] = useState(false);
 
   const calcularNecesidades = (dientes) => {
     const nec = { cariados: 0, curados: 0, por_extraer: 0, endodoncia: 0, ortodoncia: 0, protesis: 0, extraidos: 0, destartraje: 0 };
@@ -159,6 +161,7 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
       if (data.consultas?.length > 0) {
         const ultimaConOdonto = data.consultas.find(c => c.odontograma);
         if (ultimaConOdonto) {
+          setOdontogramaPrevio(ultimaConOdonto);
           const datos = ultimaConOdonto.odontograma;
           const dientes = datos?.dientes || datos;
           if (dientes && Object.keys(dientes).length > 0) {
@@ -414,6 +417,16 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
   const totalConsultas = consultas.length;
   const ultimaConsulta = consultas.length > 0 ? consultas[0] : null;
 
+  const irAPaso = (destino) => {
+    if (destino === paso) return;
+    if (destino > paso && destino >= 3 && !motivo.trim()) {
+      setMensaje('Ingresa el motivo de la consulta antes de avanzar');
+      setTimeout(() => setMensaje(''), 3000);
+      return;
+    }
+    setPaso(destino);
+  };
+
   return (
     <div className="sesion-container">
       <div className="sesion-header">
@@ -432,7 +445,7 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
 
       <div className="sesion-progress">
         {PASOS.map((p, i) => (
-          <div key={p.id} className={`sesion-progress-step ${paso === p.id ? 'active' : ''} ${paso > p.id ? 'completed' : ''}`}>
+          <div key={p.id} className={`sesion-progress-step ${paso === p.id ? 'active' : ''} ${paso > p.id ? 'completed' : ''}`} onClick={() => irAPaso(p.id)} style={{ cursor: 'pointer' }}>
             <div className="step-circle">
               {paso > p.id ? (
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
@@ -513,9 +526,29 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
                       {paciente.antecedentes_familiares && (
                         <div className="antecedente-rapido-item">
                           <strong>Familiares:</strong> {paciente.antecedentes_familiares}
-                        </div>
-                      )}
                     </div>
+                  )}
+
+                  {odontogramaPrevio && (() => {
+                    try {
+                      const datos = typeof odontogramaPrevio.odontograma === 'string' ? JSON.parse(odontogramaPrevio.odontograma) : odontogramaPrevio.odontograma;
+                      const dientes = datos?.dientes || datos;
+                      if (!dientes || Object.keys(dientes).length === 0) return null;
+                      return (
+                        <div className="odontograma-previo-panel">
+                          <div className="odontograma-previo-header">
+                            <span className="odontograma-previo-label">Odontograma Previo</span>
+                            <span className="odontograma-previo-fecha">{new Date(odontogramaPrevio.fecha).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                          </div>
+                          <div className="odontograma-previo-body">
+                            <Odontograma datos={dientes} soloLectura={true} titulo="" />
+                          </div>
+                        </div>
+                      );
+                    } catch { return null; }
+                  })()}
+
+                </div>
                   )}
                 </div>
 
@@ -739,7 +772,29 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
                       )}
                     </div>
                   )}
+
                 </div>
+
+                {odontogramaPrevio && (() => {
+                  try {
+                    const datos = typeof odontogramaPrevio.odontograma === 'string' ? JSON.parse(odontogramaPrevio.odontograma) : odontogramaPrevio.odontograma;
+                    const dientes = datos?.dientes || datos;
+                    if (!dientes || Object.keys(dientes).length === 0) return null;
+                    return (
+                      <div className="paso-paciente-card">
+                        <div className="odontograma-previo-panel">
+                          <div className="odontograma-previo-header">
+                            <span className="odontograma-previo-label">Odontograma Previo</span>
+                            <span className="odontograma-previo-fecha">{new Date(odontogramaPrevio.fecha).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                          </div>
+                          <div className="odontograma-previo-body">
+                            <Odontograma datos={dientes} soloLectura={true} titulo="" />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  } catch { return null; }
+                })()}
               </div>
             </div>
           </div>
@@ -842,7 +897,7 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
                 </div>
                 {historia?.alergia_medicamentos && historia.alergia_medicamentos !== 'No' && (
                   <div className="motivo-alergia-alerta">
-                    <span className="motivo-alergia-icono">\u26A0</span>
+                    <span className="motivo-alergia-icono">{'⚠'}</span>
                     <span>Alergias: {historia.alergia_medicamentos}</span>
                   </div>
                 )}
@@ -852,6 +907,24 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
                     <span className="motivo-ultima-texto">{new Date(ultimaConsulta.fecha).toLocaleDateString()} - {ultimaConsulta.motivo}</span>
                   </div>
                 )}
+                {odontogramaPrevio && (() => {
+                  try {
+                    const datos = typeof odontogramaPrevio.odontograma === 'string' ? JSON.parse(odontogramaPrevio.odontograma) : odontogramaPrevio.odontograma;
+                    const dientes = datos?.dientes || datos;
+                    if (!dientes || Object.keys(dientes).length === 0) return null;
+                    return (
+                      <div className="odontograma-previo-panel">
+                        <div className="odontograma-previo-header">
+                          <span className="odontograma-previo-label">Odontograma Previo</span>
+                          <span className="odontograma-previo-fecha">{new Date(odontogramaPrevio.fecha).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                        </div>
+                        <div className="odontograma-previo-body">
+                          <Odontograma datos={dientes} soloLectura={true} titulo="" />
+                        </div>
+                      </div>
+                    );
+                  } catch { return null; }
+                })()}
               </div>
             </div>
           </div>
@@ -946,6 +1019,26 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
           <div className="sesion-card">
             <h3>Odontograma</h3>
             <p className="sesion-hint">Registra el estado actual de las piezas dentales</p>
+            {odontogramaPrevio && (() => {
+              try {
+                const datos = typeof odontogramaPrevio.odontograma === 'string' ? JSON.parse(odontogramaPrevio.odontograma) : odontogramaPrevio.odontograma;
+                const dientes = datos?.dientes || datos;
+                if (!dientes || Object.keys(dientes).length === 0) return null;
+                return (
+                  <div className="odontograma-referencia-panel">
+                    <button className="odontograma-referencia-toggle" onClick={() => setMostrarOdontoPrevio(!mostrarOdontoPrevio)}>
+                      <span>Odontograma Anterior ({new Date(odontogramaPrevio.fecha).toLocaleDateString()})</span>
+                      <span className="odontograma-referencia-arrow">{mostrarOdontoPrevio ? '▲' : '▼'}</span>
+                    </button>
+                    {mostrarOdontoPrevio && (
+                      <div className="odontograma-referencia-body">
+                        <Odontograma datos={dientes} soloLectura={true} titulo="Referencia" />
+                      </div>
+                    )}
+                  </div>
+                );
+              } catch { return null; }
+            })()}
             <Odontograma
               datos={odontograma}
               onGuardar={handleOdontogramaChange}

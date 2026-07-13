@@ -33,6 +33,7 @@ export default function Pacientes({ onVerHistorial, onVer360 }) {
   const [form, setForm] = useState({ ...FORM_DEFAULT });
   const [error, setError] = useState('');
   const [antecedentesForm, setAntecedentesForm] = useState({});
+  const [ordenarPor, setOrdenarPor] = useState('recientes');
 
   useEffect(() => { cargar(); }, []);
 
@@ -51,6 +52,17 @@ export default function Pacientes({ onVerHistorial, onVer360 }) {
     return palabras.every(palabra =>
       nombre.includes(palabra) || dni.includes(palabra) || telefono.includes(palabra)
     );
+  });
+
+  const filtradosOrdenados = [...filtrados].sort((a, b) => {
+    if (ordenarPor === 'nombre') return nombreCompleto(a).localeCompare(nombreCompleto(b), 'es');
+    if (ordenarPor === 'recientes') return new Date(b.created_at) - new Date(a.created_at);
+    if (ordenarPor === 'modificacion') {
+      const fa = a.ultima_consulta_fecha || a.created_at;
+      const fb = b.ultima_consulta_fecha || b.created_at;
+      return new Date(fb) - new Date(fa);
+    }
+    return 0;
   });
 
   const handleSubmit = async (e) => {
@@ -343,6 +355,14 @@ export default function Pacientes({ onVerHistorial, onVer360 }) {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             <input type="text" placeholder="Buscar por nombre o DNI..." value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
           </div>
+          <div className="sort-box">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M6 12h12M9 18h6"/></svg>
+            <select value={ordenarPor} onChange={e => setOrdenarPor(e.target.value)}>
+              <option value="nombre">Nombre A-Z</option>
+              <option value="recientes">Recientes</option>
+              <option value="modificacion">Ultima modificacion</option>
+            </select>
+          </div>
         </div>
 
         {cargando ? (
@@ -361,10 +381,10 @@ export default function Pacientes({ onVerHistorial, onVer360 }) {
                 </tr>
               </thead>
               <tbody>
-                {filtrados.length === 0 ? (
+                {filtradosOrdenados.length === 0 ? (
                   <tr><td colSpan="6" className="empty">No se encontraron pacientes</td></tr>
                 ) : (
-                  filtrados.map((p) => (
+                  filtradosOrdenados.map((p) => (
                     <tr key={p.id} className={isAutoDoc(p) ? 'row-auto-doc' : ''}>
                       <td><strong>{nombreCompleto(p)}</strong></td>
                       <td>

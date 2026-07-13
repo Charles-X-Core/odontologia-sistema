@@ -119,7 +119,7 @@ export default function Odontograma({ datos = {}, onGuardar, consultaId, soloLec
   const [herramienta, setHerramienta] = useState('caries');
   const [modoMovilidad, setModoMovilidad] = useState(false);
   const [gradoMovilidad, setGradoMovilidad] = useState('I');
-  const [mostrarTemporales, setMostrarTemporales] = useState(true);
+  const [mostrarTemporales, setMostrarTemporales] = useState(false);
   const [sinColor, setSinColor] = useState(false);
   const [guardado, setGuardado] = useState(false);
 

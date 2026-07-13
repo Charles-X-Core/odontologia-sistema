@@ -347,7 +347,7 @@ export default function Paciente360({ paciente, onVolver, onVerHistorial }) {
             return ultimaConOdonto ? (
               <div className="paciente360-card full-width">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h4>Odontograma Actual</h4>
+                  <h4>Odontograma Actual — {new Date(ultimaConOdonto.fecha).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}</h4>
                   {!editandoOdontograma ? (
                     <button className="btn btn-sm btn-outline" onClick={() => {
                       setOdontogramaEdit(typeof ultimaConOdonto.odontograma === 'object' ? ultimaConOdonto.odontograma : {});

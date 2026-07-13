@@ -72,7 +72,14 @@ exports.crear = (req, res) => {
 };
 
 exports.listar = (req, res) => {
-  const pacientes = db.prepare('SELECT * FROM pacientes ORDER BY created_at DESC').all();
+  const pacientes = db.prepare(`
+    SELECT p.*,
+      (SELECT MAX(c.fecha) FROM consultas c
+       INNER JOIN historias_clinicas h ON c.historia_id = h.id
+       WHERE h.paciente_id = p.id) as ultima_consulta_fecha
+    FROM pacientes p
+    ORDER BY p.created_at DESC
+  `).all();
   res.json(pacientes);
 };
 
