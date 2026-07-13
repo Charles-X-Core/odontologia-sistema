@@ -6,13 +6,16 @@
 !include "MUI2.nsh"
 !include "LogicLib.nsh"
 
-; --- Force kill lingering processes before install check ---
-!macro customInit
+; --- Skip the default "app running" check entirely ---
+; electron-builder checks if the app is running before installing.
+; This causes false positives. We override with a no-op.
+!macro customCheckAppRunning
+  ; Force kill silently — no dialog, no prompts
   nsExec::ExecToStack 'taskkill /F /IM "Clinica Dental Pro.exe" /T'
   Pop $0
   nsExec::ExecToStack 'taskkill /F /IM "node.exe" /T'
   Pop $0
-  Sleep 500
+  Sleep 300
 !macroend
 
 ; --- Branding ---
