@@ -112,7 +112,7 @@ function DientesRow({ dientes, estados, onClick, invertido, esTemporal, sinColor
   );
 }
 
-export default function Odontograma({ datos = {}, onGuardar, consultaId, soloLectura = false }) {
+export default function Odontograma({ datos = {}, onGuardar, consultaId, soloLectura = false, ocultarPermanentesInit = false }) {
   const datosInit = datos?.dientes || datos;
   const [estados, setEstados] = useState(datosInit);
   const [movilidades, setMovilidades] = useState(datos?.movilidad || {});
@@ -121,7 +121,7 @@ export default function Odontograma({ datos = {}, onGuardar, consultaId, soloLec
   const [gradoMovilidad, setGradoMovilidad] = useState('I');
   const tieneTemporales = Object.keys(datosInit).some(k => { const n = parseInt(k); return n >= 51 && n <= 85; });
   const [mostrarTemporales, setMostrarTemporales] = useState(tieneTemporales);
-  const [mostrarPermanentes, setMostrarPermanentes] = useState(true);
+  const [mostrarPermanentes, setMostrarPermanentes] = useState(!ocultarPermanentesInit);
   const [sinColor, setSinColor] = useState(false);
   const [guardado, setGuardado] = useState(false);
 

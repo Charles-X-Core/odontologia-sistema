@@ -4724,12 +4724,16 @@ body {
   padding: 6px 8px;
   max-height: 280px;
   overflow-y: auto;
-  pointer-events: none;
   opacity: 0.85;
 }
 
 .odontograma-previo-body .odontograma-toolbar,
 .odontograma-previo-body .odontograma-footer {
+  display: none !important;
+}
+
+.odontograma-previo-body .odontograma-actions .btn-primary,
+.odontograma-previo-body .odontograma-actions .btn-outline {
   display: none !important;
 }
 
@@ -4771,6 +4775,11 @@ body {
 
 .odontograma-referencia-body .odontograma-toolbar,
 .odontograma-referencia-body .odontograma-footer {
+  display: none !important;
+}
+
+.odontograma-referencia-body .odontograma-actions .btn-primary,
+.odontograma-referencia-body .odontograma-actions .btn-outline {
   display: none !important;
 }
 

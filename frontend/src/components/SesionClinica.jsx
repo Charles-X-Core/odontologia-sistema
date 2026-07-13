@@ -780,16 +780,19 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
                     const datos = typeof odontogramaPrevio.odontograma === 'string' ? JSON.parse(odontogramaPrevio.odontograma) : odontogramaPrevio.odontograma;
                     const dientes = datos?.dientes || datos;
                     if (!dientes || Object.keys(dientes).length === 0) return null;
+                    const tieneTemp = Object.keys(dientes).some(k => { const n = parseInt(k); return n >= 51 && n <= 85; });
                     return (
                       <div className="paso-paciente-card">
                         <div className="odontograma-previo-panel">
-                          <div className="odontograma-previo-header">
-                            <span className="odontograma-previo-label">Odontograma Previo</span>
-                            <span className="odontograma-previo-fecha">{new Date(odontogramaPrevio.fecha).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                          </div>
-                          <div className="odontograma-previo-body">
-                            <Odontograma datos={dientes} soloLectura={true} titulo="" />
-                          </div>
+                          <button className="odontograma-referencia-toggle" onClick={() => setMostrarOdontoPrevio(!mostrarOdontoPrevio)}>
+                            <span>Odontograma Previo ({new Date(odontogramaPrevio.fecha).toLocaleDateString()})</span>
+                            <span className="odontograma-referencia-arrow">{mostrarOdontoPrevio ? '▲' : '▼'}</span>
+                          </button>
+                          {mostrarOdontoPrevio && (
+                            <div className="odontograma-previo-body">
+                              <Odontograma datos={dientes} soloLectura={true} titulo="" ocultarPermanentesInit={tieneTemp} />
+                            </div>
+                          )}
                         </div>
                       </div>
                     );
@@ -912,6 +915,7 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
                     const datos = typeof odontogramaPrevio.odontograma === 'string' ? JSON.parse(odontogramaPrevio.odontograma) : odontogramaPrevio.odontograma;
                     const dientes = datos?.dientes || datos;
                     if (!dientes || Object.keys(dientes).length === 0) return null;
+                    const tieneTemp = Object.keys(dientes).some(k => { const n = parseInt(k); return n >= 51 && n <= 85; });
                     return (
                       <div className="odontograma-previo-panel">
                         <button className="odontograma-referencia-toggle" onClick={() => setMostrarOdontoPrevio(!mostrarOdontoPrevio)}>
@@ -920,7 +924,7 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
                         </button>
                         {mostrarOdontoPrevio && (
                           <div className="odontograma-previo-body">
-                            <Odontograma datos={dientes} soloLectura={true} titulo="" />
+                            <Odontograma datos={dientes} soloLectura={true} titulo="" ocultarPermanentesInit={tieneTemp} />
                           </div>
                         )}
                       </div>
