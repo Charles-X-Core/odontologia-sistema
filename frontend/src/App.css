@@ -4474,6 +4474,34 @@ body {
   font-size: 15px;
 }
 
+.field-row.alerta {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+
+.field-row.alerta .field-label,
+.field-row.alerta span {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.info-card.alerta {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-left: 4px solid #dc2626;
+}
+
+.info-card.alerta h4 {
+  color: #dc2626;
+}
+
+.info-card.alerta p {
+  color: #991b1b;
+  font-weight: 500;
+}
+
 .paso-sin-historia {
   color: var(--gray-400);
   font-size: 13px;

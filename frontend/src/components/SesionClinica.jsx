@@ -624,7 +624,7 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
                         {historia.alergia_medicamentos && historia.alergia_medicamentos !== 'No' && (
                           <div className="historia-dato alerta">
                             <span className="historia-dato-label">Alergias a Medicamentos</span>
-                            <span className="historia-dato-value">{historia.alergia_medicamentos}</span>
+                            <span className="historia-dato-value alerta">{historia.alergia_medicamentos}</span>
                           </div>
                         )}
                         {historia.propension_hemorragias && historia.propension_hemorragias !== 'No' && (
