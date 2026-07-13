@@ -914,13 +914,15 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
                     if (!dientes || Object.keys(dientes).length === 0) return null;
                     return (
                       <div className="odontograma-previo-panel">
-                        <div className="odontograma-previo-header">
-                          <span className="odontograma-previo-label">Odontograma Previo</span>
-                          <span className="odontograma-previo-fecha">{new Date(odontogramaPrevio.fecha).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                        </div>
-                        <div className="odontograma-previo-body">
-                          <Odontograma datos={dientes} soloLectura={true} titulo="" />
-                        </div>
+                        <button className="odontograma-referencia-toggle" onClick={() => setMostrarOdontoPrevio(!mostrarOdontoPrevio)}>
+                          <span>Odontograma Previo ({new Date(odontogramaPrevio.fecha).toLocaleDateString()})</span>
+                          <span className="odontograma-referencia-arrow">{mostrarOdontoPrevio ? '▲' : '▼'}</span>
+                        </button>
+                        {mostrarOdontoPrevio && (
+                          <div className="odontograma-previo-body">
+                            <Odontograma datos={dientes} soloLectura={true} titulo="" />
+                          </div>
+                        )}
                       </div>
                     );
                   } catch { return null; }

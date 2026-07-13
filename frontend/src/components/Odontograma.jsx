@@ -121,6 +121,7 @@ export default function Odontograma({ datos = {}, onGuardar, consultaId, soloLec
   const [gradoMovilidad, setGradoMovilidad] = useState('I');
   const tieneTemporales = Object.keys(datosInit).some(k => { const n = parseInt(k); return n >= 51 && n <= 85; });
   const [mostrarTemporales, setMostrarTemporales] = useState(tieneTemporales);
+  const [mostrarPermanentes, setMostrarPermanentes] = useState(true);
   const [sinColor, setSinColor] = useState(false);
   const [guardado, setGuardado] = useState(false);
 
@@ -221,14 +222,16 @@ export default function Odontograma({ datos = {}, onGuardar, consultaId, soloLec
       )}
 
       <div className="odontograma-grid">
-        <div className="odontograma-seccion">
-          <div className="seccion-label">Denticion Permanente Superior</div>
-          <div className="arcada-superior">
-            <DientesRow dientes={DIENTES_PERMANENTES.superior[0]} estados={estados} onClick={handleClick} invertido={false} sinColor={sinColor} movilidades={movilidades} />
-            <div className="separador-vertical" />
-            <DientesRow dientes={DIENTES_PERMANENTES.superior[1]} estados={estados} onClick={handleClick} invertido={false} sinColor={sinColor} movilidades={movilidades} />
+        {mostrarPermanentes && (
+          <div className="odontograma-seccion">
+            <div className="seccion-label">Denticion Permanente Superior</div>
+            <div className="arcada-superior">
+              <DientesRow dientes={DIENTES_PERMANENTES.superior[0]} estados={estados} onClick={handleClick} invertido={false} sinColor={sinColor} movilidades={movilidades} />
+              <div className="separador-vertical" />
+              <DientesRow dientes={DIENTES_PERMANENTES.superior[1]} estados={estados} onClick={handleClick} invertido={false} sinColor={sinColor} movilidades={movilidades} />
+            </div>
           </div>
-        </div>
+        )}
 
         {mostrarTemporales && (
           <>
@@ -251,20 +254,27 @@ export default function Odontograma({ datos = {}, onGuardar, consultaId, soloLec
           </>
         )}
 
-        <div className="odontograma-seccion">
-          <div className="seccion-label">Denticion Permanente Inferior</div>
-          <div className="arcada-inferior">
-            <DientesRow dientes={DIENTES_PERMANENTES.inferior[0]} estados={estados} onClick={handleClick} invertido={false} sinColor={sinColor} movilidades={movilidades} />
-            <div className="separador-vertical" />
-            <DientesRow dientes={DIENTES_PERMANENTES.inferior[1]} estados={estados} onClick={handleClick} invertido={false} sinColor={sinColor} movilidades={movilidades} />
+        {mostrarPermanentes && (
+          <div className="odontograma-seccion">
+            <div className="seccion-label">Denticion Permanente Inferior</div>
+            <div className="arcada-inferior">
+              <DientesRow dientes={DIENTES_PERMANENTES.inferior[0]} estados={estados} onClick={handleClick} invertido={false} sinColor={sinColor} movilidades={movilidades} />
+              <div className="separador-vertical" />
+              <DientesRow dientes={DIENTES_PERMANENTES.inferior[1]} estados={estados} onClick={handleClick} invertido={false} sinColor={sinColor} movilidades={movilidades} />
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       <div className="odontograma-actions">
           <button className="btn btn-secondary btn-sm" onClick={() => setMostrarTemporales(!mostrarTemporales)}>
             {mostrarTemporales ? 'Ocultar Temporales' : 'Mostrar Temporales'}
           </button>
+          {mostrarTemporales && (
+            <button className="btn btn-secondary btn-sm" onClick={() => setMostrarPermanentes(!mostrarPermanentes)}>
+              {mostrarPermanentes ? 'Ocultar Permanentes' : 'Mostrar Permanentes'}
+            </button>
+          )}
           {!soloLectura && (
             <>
               <button
