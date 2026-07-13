@@ -6,6 +6,15 @@
 !include "MUI2.nsh"
 !include "LogicLib.nsh"
 
+; --- Force kill lingering processes before install check ---
+!macro customInit
+  nsExec::ExecToStack 'taskkill /F /IM "Clinica Dental Pro.exe" /T'
+  Pop $0
+  nsExec::ExecToStack 'taskkill /F /IM "node.exe" /T'
+  Pop $0
+  Sleep 500
+!macroend
+
 ; --- Branding ---
 !macro customHeader
   RequestExecutionLevel admin
