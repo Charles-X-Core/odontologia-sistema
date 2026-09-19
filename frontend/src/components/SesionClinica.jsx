@@ -37,7 +37,7 @@ const SIGNOS_VITALES_DEFAULT = {
   presion_arterial: '', temperatura: '', frecuencia_cardiaca: '', frecuencia_respiratoria: '', peso: '', altura: '',
 };
 
-export default function SesionClinica({ paciente, onVolver, onCompletado }) {
+export default function SesionClinica({ paciente, citaId, motivoCita, onVolver, onCompletado }) {
   const [paso, setPaso] = useState(1);
   const [historia, setHistoria] = useState(null);
   const [consultas, setConsultas] = useState([]);
@@ -58,7 +58,7 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
   };
 
   // Paso 2: Enfermedad Actual
-  const [motivo, setMotivo] = useState('');
+  const [motivo, setMotivo] = useState(motivoCita || '');
   const [tiempoEnfermedad, setTiempoEnfermedad] = useState('');
   const [signosSintomas, setSignosSintomas] = useState('');
   const [relatoCronologico, setRelatoCronologico] = useState('');
@@ -402,6 +402,10 @@ export default function SesionClinica({ paciente, onVolver, onCompletado }) {
           estado: t.realizado ? 'realizado' : 'planificado',
           notas: t.notas || '',
         });
+      }
+
+      if (citaId && res.id) {
+        try { await api.citas.completar(citaId, res.id); } catch {}
       }
 
       setMensaje('Sesion guardada correctamente');

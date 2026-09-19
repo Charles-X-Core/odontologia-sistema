@@ -1,4 +1,4 @@
-const db = require('../database');
+const db = require('../db');
 const path = require('path');
 const fs = require('fs');
 const openWaClient = require('../services/whatsapp/openWaClient');
@@ -10,19 +10,29 @@ function nombreCompleto(p) {
   return `${p.apellido_paterno || ''} ${p.apellido_materno || ''} ${p.nombres || ''}`.trim();
 }
 
-function getConfig(clave, valorDefault) {
-  const row = db.prepare('SELECT valor FROM whatsapp_config WHERE clave = ?').get(clave);
+async function getConfig(clave, valorDefault) {
+  const row = await db.prepare('SELECT valor FROM whatsapp_config WHERE clave = ?').get(clave);
   return row ? row.valor : valorDefault;
 }
 
-function getConfigAll() {
-  const rows = db.prepare('SELECT clave, valor, descripcion FROM whatsapp_config').all();
+function getConfigSync(clave, valorDefault) {
+  try {
+    const localDb = require('../database');
+    const row = localDb.prepare('SELECT valor FROM whatsapp_config WHERE clave = ?').get(clave);
+    return row ? row.valor : valorDefault;
+  } catch {
+    return valorDefault;
+  }
+}
+
+async function getConfigAll() {
+  const rows = await db.prepare('SELECT clave, valor, descripcion FROM whatsapp_config').all();
   const config = {};
   for (const r of rows) config[r.clave] = r.valor;
   return config;
 }
 
-function registrarEnvio(pacienteId, telefono, tipo, mensaje, estado, batchId, programado, messageId) {
+async function registrarEnvio(pacienteId, telefono, tipo, mensaje, estado, batchId, programado, messageId) {
   let msgId = '';
   if (messageId) {
     if (typeof messageId === 'string') msgId = messageId;
@@ -30,15 +40,15 @@ function registrarEnvio(pacienteId, telefono, tipo, mensaje, estado, batchId, pr
     else if (messageId.id) msgId = messageId.id;
     else msgId = String(messageId);
   }
-  const result = db.prepare(
+  const result = await db.prepare(
     'INSERT INTO whatsapp_log (paciente_id, telefono, tipo, mensaje, estado, batch_id, programado, message_id, delivery_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
   ).run(pacienteId, telefono, tipo, mensaje, estado, batchId || null, programado ? 1 : 0, msgId, 'enviado');
   return result.lastInsertRowid;
 }
 
-function actualizarDeliveryStatus(messageId, deliveryStatus) {
+async function actualizarDeliveryStatus(messageId, deliveryStatus) {
   if (!messageId) return;
-  db.prepare('UPDATE whatsapp_log SET delivery_status = ? WHERE message_id = ?').run(deliveryStatus, messageId);
+  await db.prepare('UPDATE whatsapp_log SET delivery_status = ? WHERE message_id = ?').run(deliveryStatus, messageId);
 }
 
 function getTelefonoFormateado(paciente) {
@@ -58,16 +68,16 @@ function saludo() {
 // PLANTILLAS DEL SISTEMA (generacion de mensajes)
 // ============================================
 const PLANTILLAS = {
-  receta: (p, data) => {
-    const receta = data?.receta || db.prepare('SELECT * FROM recetas WHERE paciente_id = ? ORDER BY created_at DESC LIMIT 1').get(p.id);
+  receta: async (p, data) => {
+    const receta = data?.receta || await db.prepare('SELECT * FROM recetas WHERE paciente_id = ? ORDER BY created_at DESC LIMIT 1').get(p.id);
     if (!receta) return null;
     const meds = typeof receta.medicamentos === 'string' ? JSON.parse(receta.medicamentos) : receta.medicamentos;
     const medsText = meds.map(m => `  *${m.nombre}* ${m.dosis}\n    Frecuencia: ${m.frecuencia}\n    Duracion: ${m.duracion}`).join('\n\n');
     return `${saludo()} ${nombreCompleto(p)}, le comparto su receta medica:\n\n*Receta Medica*\nFecha: ${new Date(receta.created_at || Date.now()).toLocaleDateString('es-PE')}\n\n${medsText}\n\n${receta.indicaciones ? `*Indicaciones:* ${receta.indicaciones}\n\n` : ''}Si tiene alguna duda, no dude en comunicarse.\n_Clinica Dental Pro - Clinica Odontologica_`;
   },
 
-  plan: (p, data) => {
-    const tratamientos = data?.tratamientos || db.prepare('SELECT * FROM tratamientos WHERE paciente_id = ? ORDER BY fecha DESC').all(p.id);
+  plan: async (p, data) => {
+    const tratamientos = data?.tratamientos || await db.prepare('SELECT * FROM tratamientos WHERE paciente_id = ? ORDER BY fecha DESC').all(p.id);
     if (tratamientos.length === 0) return null;
     const trats = tratamientos.map(t => {
       const icon = t.estado === 'realizado' ? '✅' : '⏳';
@@ -78,13 +88,13 @@ const PLANTILLAS = {
     return `${saludo()} ${nombreCompleto(p)}, este es su plan de tratamiento:\n\n${trats}\n\n*Total:* S/ ${total.toFixed(2)}\n*Saldo pendiente:* S/ ${saldo.toFixed(2)}\n\nPara agendar su proxima cita, responda este mensaje.\n_Clinica Dental Pro - Clinica Odontologica_`;
   },
 
-  recordatorio_pago: (p, data) => {
-    const saldo = data?.saldo ?? db.prepare('SELECT COALESCE(SUM(saldo), 0) as total FROM pagos WHERE paciente_id = ?').get(p.id)?.total ?? 0;
+  recordatorio_pago: async (p, data) => {
+    const saldo = data?.saldo ?? (await db.prepare('SELECT COALESCE(SUM(saldo), 0) as total FROM pagos WHERE paciente_id = ?').get(p.id))?.total ?? 0;
     return `${saludo()} ${nombreCompleto(p)}, le recordamos que tiene un saldo pendiente de *S/ ${saldo.toFixed(2)}*.\n\nPuede realizar su pago en clinica o comunicarse para coordinar una fecha.\n\n_Clinica Dental Pro - Clinica Odontologica_`;
   },
 
-  proxima_cita: (p, data) => {
-    const c = data?.consulta || db.prepare("SELECT * FROM consultas WHERE historia_id = (SELECT id FROM historias_clinicas WHERE paciente_id = ?) ORDER BY fecha DESC LIMIT 1").get(p.id);
+  proxima_cita: async (p, data) => {
+    const c = data?.consulta || await db.prepare("SELECT * FROM consultas WHERE historia_id = (SELECT id FROM historias_clinicas WHERE paciente_id = ?) ORDER BY fecha DESC LIMIT 1").get(p.id);
     return `${saludo()} ${nombreCompleto(p)}, le recordamos su proxima cita:\n\n📅 *Fecha:* ${c?.fecha || 'Por confirmar'}\n🕐 *Hora:* ${c?.hora || 'Por confirmar'}\n🦷 *Procedimiento:* ${c?.motivo || 'Revision general'}\n\nSi necesita reprogramar, comuniquese con nosotros.\n_Clinica Dental Pro - Clinica Odontologica_`;
   },
 
@@ -92,13 +102,13 @@ const PLANTILLAS = {
     return `Hola ${nombreCompleto(p)}, bienvenido(a) a *Clinica Dental Pro - Clinica Odontologica* 🦷\n\nNos complace tenerlo como paciente. Si tiene alguna consulta o desea agendar una cita, no dude en escribirnos.\n\nTelefono: 982-890-328\n_Clinica Dental Pro - Clinica Odontologica_`;
   },
 
-  seguimiento: (p, data) => {
-    const c = data?.consulta || db.prepare("SELECT * FROM consultas WHERE historia_id = (SELECT id FROM historias_clinicas WHERE paciente_id = ?) ORDER BY fecha DESC LIMIT 1").get(p.id);
+  seguimiento: async (p, data) => {
+    const c = data?.consulta || await db.prepare("SELECT * FROM consultas WHERE historia_id = (SELECT id FROM historias_clinicas WHERE paciente_id = ?) ORDER BY fecha DESC LIMIT 1").get(p.id);
     return `${saludo()} ${nombreCompleto(p)}, esperamos que se encuentre bien despues de su tratamiento.\n\nComo se siente? Tiene alguna molestia?\n\nSi tiene alguna consulta, estamos para servirle.\n_Clinica Dental Pro - Clinica Odontologica_`;
   },
 
-  confirmacion_cita: (p, data) => {
-    const c = data?.consulta || db.prepare("SELECT * FROM consultas WHERE historia_id = (SELECT id FROM historias_clinicas WHERE paciente_id = ?) ORDER BY fecha DESC LIMIT 1").get(p.id);
+  confirmacion_cita: async (p, data) => {
+    const c = data?.consulta || await db.prepare("SELECT * FROM consultas WHERE historia_id = (SELECT id FROM historias_clinicas WHERE paciente_id = ?) ORDER BY fecha DESC LIMIT 1").get(p.id);
     return `${saludo()} ${nombreCompleto(p)}, tiene una cita programada para:\n\n📅 *Fecha:* ${c?.fecha || 'Por confirmar'}\n🕐 *Hora:* ${c?.hora || 'Por confirmar'}\n\nPor favor confirme su asistencia respondiendo SI o NO.\n_Clinica Dental Pro - Clinica Odontologica_`;
   },
 
@@ -124,17 +134,17 @@ const PLANTILLAS = {
 // ============================================
 // SUGERENCIAS INTELIGENTES (CONTEXTO CLINICO REAL)
 // ============================================
-exports.sugerencias = (req, res) => {
+exports.sugerencias = async (req, res) => {
   try {
     const pacienteId = req.params.paciente_id;
-    const paciente = db.prepare('SELECT * FROM pacientes WHERE id = ?').get(pacienteId);
+    const paciente = await db.prepare('SELECT * FROM pacientes WHERE id = ?').get(pacienteId);
     if (!paciente) return res.status(404).json({ error: 'Paciente no encontrado' });
 
     const sugerencias = [];
-    const historia = db.prepare('SELECT id FROM historias_clinicas WHERE paciente_id = ?').get(pacienteId);
+    const historia = await db.prepare('SELECT id FROM historias_clinicas WHERE paciente_id = ?').get(pacienteId);
 
     // 1. SALDO PENDIENTE (prioridad alta - mas especifico)
-    const pagosPendientes = db.prepare("SELECT COUNT(*) as count, COALESCE(SUM(saldo), 0) as total FROM pagos WHERE paciente_id = ? AND saldo > 0").get(pacienteId);
+    const pagosPendientes = await db.prepare("SELECT COUNT(*) as count, COALESCE(SUM(saldo), 0) as total FROM pagos WHERE paciente_id = ? AND saldo > 0").get(pacienteId);
     if (pagosPendientes.total > 0) {
       sugerencias.push({
         tipo: 'recordatorio_pago',
@@ -147,7 +157,7 @@ exports.sugerencias = (req, res) => {
 
     // 2. TRATAMIENTOS EN PROCESO (seguimiento real)
     if (historia) {
-      const enProceso = db.prepare("SELECT COUNT(*) as count FROM tratamientos WHERE paciente_id = ? AND estado = 'en_proceso'").get(pacienteId);
+      const enProceso = await db.prepare("SELECT COUNT(*) as count FROM tratamientos WHERE paciente_id = ? AND estado = 'en_proceso'").get(pacienteId);
       if (enProceso.count > 0) {
         sugerencias.push({
           tipo: 'seguimiento',
@@ -159,12 +169,12 @@ exports.sugerencias = (req, res) => {
       }
 
       // 3. ULTIMA CONSULTA RECIENTE (0-3 dias) - confirmar proxima cita
-      const ultimaConsulta = db.prepare('SELECT * FROM consultas WHERE historia_id = ? ORDER BY fecha DESC LIMIT 1').get(historia.id);
+      const ultimaConsulta = await db.prepare('SELECT * FROM consultas WHERE historia_id = ? ORDER BY fecha DESC LIMIT 1').get(historia.id);
       if (ultimaConsulta) {
         const diasDesde = Math.floor((Date.now() - new Date(ultimaConsulta.fecha).getTime()) / 86400000);
         if (diasDesde >= 0 && diasDesde <= 3) {
           // Verificar si ya se le envio mensaje de seguimiento
-          const yaSeguimiento = db.prepare("SELECT COUNT(*) as count FROM whatsapp_log WHERE paciente_id = ? AND tipo = 'seguimiento' AND DATE(created_at) >= DATE(ultimaConsulta.fecha)").get(pacienteId);
+          const yaSeguimiento = await db.prepare("SELECT COUNT(*) as count FROM whatsapp_log WHERE paciente_id = ? AND tipo = 'seguimiento' AND DATE(created_at) >= DATE(ultimaConsulta.fecha)").get(pacienteId);
           if (yaSeguimiento.count === 0) {
             sugerencias.push({
               tipo: 'seguimiento',
@@ -179,10 +189,10 @@ exports.sugerencias = (req, res) => {
 
       // 4. RECETA SIN ENVIAR (la ultima consulta tiene receta pero no se envio por WhatsApp)
       if (ultimaConsulta) {
-        const recetaUltima = db.prepare("SELECT r.id FROM recetas r WHERE r.consulta_id = ? ORDER BY r.id DESC LIMIT 1").get(ultimaConsulta.id);
+        const recetaUltima = await db.prepare("SELECT r.id FROM recetas r WHERE r.consulta_id = ? ORDER BY r.id DESC LIMIT 1").get(ultimaConsulta.id);
         if (recetaUltima) {
-          const yaEnviada = db.prepare("SELECT COUNT(*) as count FROM whatsapp_log WHERE paciente_id = ? AND tipo = 'receta' AND id > 0").get(pacienteId);
-          const recetaYaEnviada = db.prepare("SELECT COUNT(*) as count FROM whatsapp_log WHERE paciente_id = ? AND mensaje LIKE '%receta%' AND DATE(created_at) >= DATE(?)").get(pacienteId, ultimaConsulta.fecha);
+          const yaEnviada = await db.prepare("SELECT COUNT(*) as count FROM whatsapp_log WHERE paciente_id = ? AND tipo = 'receta' AND id > 0").get(pacienteId);
+          const recetaYaEnviada = await db.prepare("SELECT COUNT(*) as count FROM whatsapp_log WHERE paciente_id = ? AND mensaje LIKE '%receta%' AND DATE(created_at) >= DATE(?)").get(pacienteId, ultimaConsulta.fecha);
           if (recetaYaEnviada.count === 0) {
             sugerencias.push({
               tipo: 'receta',
@@ -197,7 +207,7 @@ exports.sugerencias = (req, res) => {
     }
 
     // 5. TRATAMIENTOS PENDIENTES (no iniciados)
-    const pendientes = db.prepare("SELECT COUNT(*) as count FROM tratamientos WHERE paciente_id = ? AND estado = 'planificado'").get(pacienteId);
+    const pendientes = await db.prepare("SELECT COUNT(*) as count FROM tratamientos WHERE paciente_id = ? AND estado = 'planificado'").get(pacienteId);
     if (pendientes.count > 0) {
       sugerencias.push({
         tipo: 'plan',
@@ -227,7 +237,7 @@ exports.sugerencias = (req, res) => {
     }
 
     // 7. SIN CONTACTO (ajustado: 90+ dias)
-    const ultimoEnvio = db.prepare('SELECT created_at FROM whatsapp_log WHERE paciente_id = ? ORDER BY created_at DESC LIMIT 1').get(pacienteId);
+    const ultimoEnvio = await db.prepare('SELECT created_at FROM whatsapp_log WHERE paciente_id = ? ORDER BY created_at DESC LIMIT 1').get(pacienteId);
     if (!ultimoEnvio) {
       if (historia) {
         sugerencias.push({ tipo: 'bienvenida', razon: 'Paciente activo sin mensajes enviados', prioridad: 'baja', icono: '👋' });
@@ -246,8 +256,8 @@ exports.sugerencias = (req, res) => {
     }
 
     // 8. SALDO A FAVOR
-    const totalPagado = db.prepare('SELECT COALESCE(SUM(a_cuenta), 0) as pagado FROM pagos WHERE paciente_id = ?').get(pacienteId);
-    const totalTratamientos = db.prepare('SELECT COALESCE(SUM(costo_total), 0) as total FROM tratamientos WHERE paciente_id = ?').get(pacienteId);
+    const totalPagado = await db.prepare('SELECT COALESCE(SUM(a_cuenta), 0) as pagado FROM pagos WHERE paciente_id = ?').get(pacienteId);
+    const totalTratamientos = await db.prepare('SELECT COALESCE(SUM(costo_total), 0) as total FROM tratamientos WHERE paciente_id = ?').get(pacienteId);
     const diferencia = (totalPagado.pagado || 0) - (totalTratamientos.total || 0);
     if (diferencia > 0) {
       sugerencias.push({
@@ -276,13 +286,13 @@ exports.sugerencias = (req, res) => {
 // ============================================
 // ANALYTICS
 // ============================================
-exports.analytics = (req, res) => {
+exports.analytics = async (req, res) => {
   try {
     const { fecha_inicio, fecha_fin } = req.query;
     const inicio = fecha_inicio || new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
     const fin = fecha_fin || new Date().toISOString().split('T')[0];
 
-    const metricas = db.prepare(`
+    const metricas = await db.prepare(`
       SELECT COUNT(*) as total_enviados,
         SUM(CASE WHEN estado = 'enviado' THEN 1 ELSE 0 END) as exitosos,
         SUM(CASE WHEN estado = 'fallido' THEN 1 ELSE 0 END) as fallidos,
@@ -290,21 +300,21 @@ exports.analytics = (req, res) => {
       FROM whatsapp_log WHERE DATE(created_at) BETWEEN ? AND ?
     `).get(inicio, fin);
 
-    const porTipo = db.prepare(`
+    const porTipo = await db.prepare(`
       SELECT tipo, COUNT(*) as cantidad,
         SUM(CASE WHEN estado = 'enviado' THEN 1 ELSE 0 END) as exitosos
       FROM whatsapp_log WHERE DATE(created_at) BETWEEN ? AND ?
       GROUP BY tipo ORDER BY cantidad DESC
     `).all(inicio, fin);
 
-    const tendencia = db.prepare(`
+    const tendencia = await db.prepare(`
       SELECT DATE(created_at) as fecha, COUNT(*) as total,
         SUM(CASE WHEN estado = 'enviado' THEN 1 ELSE 0 END) as exitosos
       FROM whatsapp_log WHERE DATE(created_at) BETWEEN ? AND ?
       GROUP BY DATE(created_at) ORDER BY fecha ASC
     `).all(inicio, fin);
 
-    const topPacientes = db.prepare(`
+    const topPacientes = await db.prepare(`
       SELECT p.id, p.apellido_paterno || ' ' || p.apellido_materno || ' ' || p.nombres as nombre,
         COUNT(wl.id) as mensajes, MAX(wl.created_at) as ultimo_envio
       FROM whatsapp_log wl JOIN pacientes p ON wl.paciente_id = p.id
@@ -312,7 +322,7 @@ exports.analytics = (req, res) => {
       GROUP BY wl.paciente_id ORDER BY mensajes DESC LIMIT 10
     `).all(inicio, fin);
 
-    const programados = db.prepare("SELECT COUNT(*) as total FROM whatsapp_cola WHERE estado = 'pendiente'").get();
+    const programados = await db.prepare("SELECT COUNT(*) as total FROM whatsapp_cola WHERE estado = 'pendiente'").get();
     const tasaExito = metricas.total_enviados > 0 ? ((metricas.exitosos / metricas.total_enviados) * 100).toFixed(1) : '0';
 
     res.json({
@@ -331,10 +341,10 @@ exports.analytics = (req, res) => {
 // ============================================
 // HISTORIAL POR PACIENTE
 // ============================================
-exports.historialPaciente = (req, res) => {
+exports.historialPaciente = async (req, res) => {
   try {
     const pacienteId = req.params.paciente_id;
-    const logs = db.prepare(`
+    const logs = await db.prepare(`
       SELECT l.*, p.apellido_paterno, p.apellido_materno, p.nombres
       FROM whatsapp_log l JOIN pacientes p ON p.id = l.paciente_id
       WHERE l.paciente_id = ?
@@ -349,26 +359,26 @@ exports.historialPaciente = (req, res) => {
 // ============================================
 // PROGRAMACION DE ENVIOS
 // ============================================
-exports.programarEnvio = (req, res) => {
+exports.programarEnvio = async (req, res) => {
   try {
     const { paciente_id, tipo, mensaje, programado_para, mensaje_personalizado } = req.body;
     if (!paciente_id || !programado_para) {
       return res.status(400).json({ error: 'paciente_id y programado_para son obligatorios' });
     }
 
-    const paciente = db.prepare('SELECT * FROM pacientes WHERE id = ?').get(paciente_id);
+    const paciente = await db.prepare('SELECT * FROM pacientes WHERE id = ?').get(paciente_id);
     if (!paciente) return res.status(404).json({ error: 'Paciente no encontrado' });
 
     let mensajeFinal = mensaje;
     if (!mensajeFinal && tipo) {
-      mensajeFinal = generarMensaje(tipo, paciente, {});
+      mensajeFinal = await generarMensaje(tipo, paciente, {});
     }
     if (!mensajeFinal && mensaje_personalizado) {
       mensajeFinal = PLANTILLAS.custom(paciente, mensaje_personalizado);
     }
     if (!mensajeFinal) return res.status(400).json({ error: 'Mensaje requerido' });
 
-    const resultado = db.prepare(
+    const resultado = await db.prepare(
       'INSERT INTO whatsapp_cola (paciente_id, tipo, mensaje, programado_para) VALUES (?, ?, ?, ?)'
     ).run(paciente_id, tipo || 'custom', mensajeFinal, programado_para);
 
@@ -381,9 +391,9 @@ exports.programarEnvio = (req, res) => {
   }
 };
 
-exports.cola = (req, res) => {
+exports.cola = async (req, res) => {
   try {
-    const pendientes = db.prepare(`
+    const pendientes = await db.prepare(`
       SELECT c.*, p.apellido_paterno, p.apellido_materno, p.nombres, p.telefono
       FROM whatsapp_cola c JOIN pacientes p ON c.paciente_id = p.id
       WHERE c.estado = 'pendiente' ORDER BY c.programado_para ASC
@@ -394,10 +404,10 @@ exports.cola = (req, res) => {
   }
 };
 
-exports.cancelarCola = (req, res) => {
+exports.cancelarCola = async (req, res) => {
   try {
     const { id } = req.params;
-    db.prepare("UPDATE whatsapp_cola SET estado = 'cancelado' WHERE id = ?").run(id);
+    await db.prepare("UPDATE whatsapp_cola SET estado = 'cancelado' WHERE id = ?").run(id);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -407,31 +417,31 @@ exports.cancelarCola = (req, res) => {
 // ============================================
 // CRUD PLANTILLAS
 // ============================================
-exports.listarPlantillas = (req, res) => {
+exports.listarPlantillas = async (req, res) => {
   try {
-    const plantillas = db.prepare('SELECT * FROM whatsapp_plantillas WHERE activa = 1 ORDER BY categoria, nombre').all();
+    const plantillas = await db.prepare('SELECT * FROM whatsapp_plantillas WHERE activa = 1 ORDER BY categoria, nombre').all();
     res.json(plantillas);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-exports.crearPlantilla = (req, res) => {
+exports.crearPlantilla = async (req, res) => {
   try {
     const { nombre, categoria, asunto, cuerpo } = req.body;
     if (!nombre || !cuerpo) return res.status(400).json({ error: 'nombre y cuerpo son obligatorios' });
-    const resultado = db.prepare('INSERT INTO whatsapp_plantillas (nombre, categoria, asunto, cuerpo) VALUES (?, ?, ?, ?)').run(nombre, categoria || 'otro', asunto || '', cuerpo);
+    const resultado = await db.prepare('INSERT INTO whatsapp_plantillas (nombre, categoria, asunto, cuerpo) VALUES (?, ?, ?, ?)').run(nombre, categoria || 'otro', asunto || '', cuerpo);
     res.json({ success: true, id: resultado.lastInsertRowid });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-exports.editarPlantilla = (req, res) => {
+exports.editarPlantilla = async (req, res) => {
   try {
     const { id } = req.params;
     const { nombre, categoria, asunto, cuerpo, activa } = req.body;
-    db.prepare(`
+    await db.prepare(`
       UPDATE whatsapp_plantillas SET
         nombre = COALESCE(?, nombre),
         categoria = COALESCE(?, categoria),
@@ -446,9 +456,9 @@ exports.editarPlantilla = (req, res) => {
   }
 };
 
-exports.eliminarPlantilla = (req, res) => {
+exports.eliminarPlantilla = async (req, res) => {
   try {
-    db.prepare('UPDATE whatsapp_plantillas SET activa = 0 WHERE id = ?').run(req.params.id);
+    await db.prepare('UPDATE whatsapp_plantillas SET activa = 0 WHERE id = ?').run(req.params.id);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -458,7 +468,7 @@ exports.eliminarPlantilla = (req, res) => {
 // ============================================
 // BATCH: Filtrar pacientes para envio en lote
 // ============================================
-exports.filtrarPacientes = (req, res) => {
+exports.filtrarPacientes = async (req, res) => {
   try {
     const { saldo_pendiente, sin_cita_reciente, nuevos, con_telefono } = req.query;
     let query = 'SELECT p.* FROM pacientes p WHERE 1=1';
@@ -481,7 +491,7 @@ exports.filtrarPacientes = (req, res) => {
     }
 
     query += ' ORDER BY p.apellido_paterno, p.apellido_materno, p.nombres';
-    const pacientes = db.prepare(query).all(...params);
+    const pacientes = await db.prepare(query).all(...params);
     res.json(pacientes);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -502,7 +512,7 @@ exports.enviarLote = async (req, res) => {
     if (!status.connected) return res.status(503).json({ error: 'WhatsApp no conectado' });
 
     // Crear registro batch
-    const batch = db.prepare("INSERT INTO whatsapp_batch (nombre, tipo, total_pacientes, estado) VALUES (?, ?, ?, 'procesando')").run(
+    const batch = await db.prepare("INSERT INTO whatsapp_batch (nombre, tipo, total_pacientes, estado) VALUES (?, ?, ?, 'procesando')").run(
       `Lote ${new Date().toLocaleDateString('es-PE')}`, tipo || 'custom', paciente_ids.length
     );
     const batchId = batch.lastInsertRowid;
@@ -513,24 +523,24 @@ exports.enviarLote = async (req, res) => {
 
     for (const pid of paciente_ids) {
       try {
-        const paciente = db.prepare('SELECT * FROM pacientes WHERE id = ?').get(pid);
+        const paciente = await db.prepare('SELECT * FROM pacientes WHERE id = ?').get(pid);
         if (!paciente) { resultados.push({ paciente_id: pid, success: false, error: 'No encontrado' }); fallidos++; continue; }
 
         const phone = getTelefonoFormateado(paciente);
         if (!phone) { resultados.push({ paciente_id: pid, success: false, error: 'Sin telefono' }); fallidos++; continue; }
 
         let msg = mensaje;
-        if (!msg) msg = generarMensaje(tipo || 'custom', paciente, {});
+        if (!msg) msg = await generarMensaje(tipo || 'custom', paciente, {});
         if (!msg && mensaje_personalizado) msg = PLANTILLAS.custom(paciente, mensaje_personalizado);
         if (!msg) { resultados.push({ paciente_id: pid, success: false, error: 'Sin mensaje' }); fallidos++; continue; }
 
         const result = await openWaClient.sendText(phone, msg);
-        registrarEnvio(pid, phone, tipo || 'lote', msg, 'enviado', batchId, false, result?.id);
+        await registrarEnvio(pid, phone, tipo || 'lote', msg, 'enviado', batchId, false, result?.id);
         resultados.push({ paciente_id: pid, success: true, to: nombreCompleto(paciente) });
         enviados++;
 
         if (paciente_ids.indexOf(pid) < paciente_ids.length - 1) {
-          const delayMs = parseInt(getConfig('delay_envios', '2000'));
+          const delayMs = parseInt(await getConfig('delay_envios', '2000'));
           await new Promise(r => setTimeout(r, delayMs + Math.random() * 1000));
         }
       } catch (err) {
@@ -539,7 +549,7 @@ exports.enviarLote = async (req, res) => {
       }
     }
 
-    db.prepare('UPDATE whatsapp_batch SET enviados = ?, fallidos = ?, estado = ? WHERE id = ?').run(enviados, fallidos, 'completado', batchId);
+    await db.prepare('UPDATE whatsapp_batch SET enviados = ?, fallidos = ?, estado = ? WHERE id = ?').run(enviados, fallidos, 'completado', batchId);
 
     res.json({ success: true, batch_id: batchId, enviados, fallidos, total: paciente_ids.length, resultados });
   } catch (err) {
@@ -555,7 +565,7 @@ exports.enviarImagen = async (req, res) => {
     const { paciente_id, imagen_base64, caption } = req.body;
     if (!paciente_id || !imagen_base64) return res.status(400).json({ error: 'paciente_id e imagen_base64 son obligatorios' });
 
-    const paciente = db.prepare('SELECT * FROM pacientes WHERE id = ?').get(paciente_id);
+    const paciente = await db.prepare('SELECT * FROM pacientes WHERE id = ?').get(paciente_id);
     if (!paciente) return res.status(404).json({ error: 'Paciente no encontrado' });
 
     const phone = getTelefonoFormateado(paciente);
@@ -565,7 +575,7 @@ exports.enviarImagen = async (req, res) => {
     if (!status.connected) return res.status(503).json({ error: 'WhatsApp no conectado' });
 
     const result = await openWaClient.sendImage(phone, imagen_base64, caption || '');
-    registrarEnvio(paciente_id, phone, 'imagen', caption || 'Imagen enviada', 'enviado', null, false, result?.id);
+    await registrarEnvio(paciente_id, phone, 'imagen', caption || 'Imagen enviada', 'enviado', null, false, result?.id);
 
     res.json({ success: true, to: nombreCompleto(paciente) });
   } catch (err) {
@@ -576,13 +586,13 @@ exports.enviarImagen = async (req, res) => {
 // ============================================
 // GENERAR MENSAJE (helper)
 // ============================================
-function generarMensaje(tipo, paciente, data) {
+async function generarMensaje(tipo, paciente, data) {
   const fn = PLANTILLAS[tipo];
   if (!fn) return null;
   if (['receta', 'plan', 'recordatorio_pago', 'proxima_cita', 'seguimiento', 'confirmacion_cita', 'higiene', 'credito'].includes(tipo)) {
-    return fn(paciente, data);
+    return await fn(paciente, data);
   }
-  return fn(paciente, data);
+  return await fn(paciente, data);
 }
 
 // ============================================
@@ -594,12 +604,12 @@ exports.enviar = async (req, res) => {
     if (!paciente_id || !mensaje) return res.status(400).json({ error: 'paciente_id y mensaje son obligatorios' });
 
     // Anti-bloqueo: verificar limite por hora
-    const enviadosHora = contarMensajesUltimaHora();
+    const enviadosHora = await contarMensajesUltimaHora();
     if (enviadosHora >= ANTI_BAN_MAX_POR_HORA) {
       return res.status(429).json({ error: `Limite de ${ANTI_BAN_MAX_POR_HORA} mensajes/hora alcanzado. Intente en unos minutos.` });
     }
 
-    const paciente = db.prepare('SELECT * FROM pacientes WHERE id = ?').get(paciente_id);
+    const paciente = await db.prepare('SELECT * FROM pacientes WHERE id = ?').get(paciente_id);
     if (!paciente) return res.status(404).json({ error: 'Paciente no encontrado' });
 
     const phone = getTelefonoFormateado(paciente);
@@ -609,7 +619,7 @@ exports.enviar = async (req, res) => {
     if (!status.connected) return res.status(503).json({ error: 'WhatsApp no conectado. Escanea el QR para conectar.' });
 
     const result = await openWaClient.sendText(phone, mensaje);
-    const logId = registrarEnvio(paciente_id, phone, tipo || 'custom', mensaje, 'enviado', null, false, result?.id);
+    const logId = await registrarEnvio(paciente_id, phone, tipo || 'custom', mensaje, 'enviado', null, false, result?.id);
 
     // Anti-bloqueo: delay post-envio
     await new Promise(r => setTimeout(r, ANTI_BAN_DELAY_MS + Math.floor(Math.random() * 1500)));
@@ -629,7 +639,7 @@ exports.enviarSmart = async (req, res) => {
     const { paciente_id, tipo, mensaje_personalizado, receta_id } = req.body;
     if (!paciente_id) return res.status(400).json({ error: 'paciente_id es obligatorio' });
 
-    const paciente = db.prepare('SELECT * FROM pacientes WHERE id = ?').get(paciente_id);
+    const paciente = await db.prepare('SELECT * FROM pacientes WHERE id = ?').get(paciente_id);
     if (!paciente) return res.status(404).json({ error: 'Paciente no encontrado' });
 
     const phone = getTelefonoFormateado(paciente);
@@ -648,14 +658,14 @@ exports.enviarSmart = async (req, res) => {
       mensaje = PLANTILLAS.cumpleanos(paciente);
     } else {
       const ctx = {};
-      if (receta_id) ctx.receta = db.prepare('SELECT * FROM recetas WHERE id = ?').get(receta_id);
-      mensaje = generarMensaje(tipo, paciente, ctx);
+      if (receta_id) ctx.receta = await db.prepare('SELECT * FROM recetas WHERE id = ?').get(receta_id);
+      mensaje = await generarMensaje(tipo, paciente, ctx);
     }
 
     if (!mensaje) return res.status(400).json({ error: `No se pudo generar el mensaje para tipo: ${tipo}` });
 
     const result = await openWaClient.sendText(phone, mensaje);
-    const logId = registrarEnvio(paciente_id, phone, tipoFinal, mensaje, 'enviado', null, false, result?.id);
+    const logId = await registrarEnvio(paciente_id, phone, tipoFinal, mensaje, 'enviado', null, false, result?.id);
 
     res.json({ success: true, message: 'Mensaje enviado', to: nombreCompleto(paciente), phone, tipo: tipoFinal, logId });
   } catch (err) {
@@ -701,7 +711,7 @@ exports.enviarPdf = async (req, res) => {
     if (!paciente_id) return res.status(400).json({ error: 'paciente_id es obligatorio' });
     if (!tipo) return res.status(400).json({ error: 'tipo es obligatorio (receta, plan, pago, tratamientos)' });
 
-    const paciente = db.prepare('SELECT * FROM pacientes WHERE id = ?').get(paciente_id);
+    const paciente = await db.prepare('SELECT * FROM pacientes WHERE id = ?').get(paciente_id);
     if (!paciente) return res.status(404).json({ error: 'Paciente no encontrado' });
 
     const phone = getTelefonoFormateado(paciente);
@@ -722,16 +732,16 @@ exports.enviarPdf = async (req, res) => {
     switch (tipo) {
       case 'receta': {
         const receta = receta_id
-          ? db.prepare('SELECT * FROM recetas WHERE id = ?').get(receta_id)
-          : db.prepare('SELECT * FROM recetas WHERE paciente_id = ? ORDER BY created_at DESC LIMIT 1').get(paciente_id);
+          ? await db.prepare('SELECT * FROM recetas WHERE id = ?').get(receta_id)
+          : await db.prepare('SELECT * FROM recetas WHERE paciente_id = ? ORDER BY created_at DESC LIMIT 1').get(paciente_id);
         if (!receta) return res.status(404).json({ error: 'Receta no encontrada' });
-        const doctor = db.prepare("SELECT nombre, titulo, cmp, firma_imagen FROM usuarios WHERE firma_imagen IS NOT NULL AND firma_imagen != '' LIMIT 1").get();
+        const doctor = await db.prepare("SELECT nombre, titulo, cmp, firma_imagen FROM usuarios WHERE firma_imagen IS NOT NULL AND firma_imagen != '' LIMIT 1").get();
         html = generateRecetaHtml(paciente, receta, doctor);
         filename = `Receta_${nombreCompleto(paciente).replace(/\s+/g, '_')}.pdf`;
         break;
       }
       case 'pago': {
-        const pago = db.prepare('SELECT * FROM pagos WHERE paciente_id = ? ORDER BY created_at DESC LIMIT 1').get(paciente_id);
+        const pago = await db.prepare('SELECT * FROM pagos WHERE paciente_id = ? ORDER BY created_at DESC LIMIT 1').get(paciente_id);
         if (!pago) return res.status(404).json({ error: 'Pago no encontrado' });
         html = generatePagoHtml(paciente, pago);
         filename = `Comprobante_${nombreCompleto(paciente).replace(/\s+/g, '_')}.pdf`;
@@ -739,16 +749,16 @@ exports.enviarPdf = async (req, res) => {
       }
       case 'plan':
       case 'tratamientos': {
-        const pagos = db.prepare('SELECT * FROM pagos WHERE paciente_id = ? ORDER BY created_at DESC').all(paciente_id);
-        const tratamientos = db.prepare('SELECT * FROM tratamientos WHERE paciente_id = ? ORDER BY fecha DESC').all(paciente_id);
+        const pagos = await db.prepare('SELECT * FROM pagos WHERE paciente_id = ? ORDER BY created_at DESC').all(paciente_id);
+        const tratamientos = await db.prepare('SELECT * FROM tratamientos WHERE paciente_id = ? ORDER BY fecha DESC').all(paciente_id);
         html = generateTratamientosHtml(paciente, tratamientos, []);
         filename = `Plan_${nombreCompleto(paciente).replace(/\s+/g, '_')}.pdf`;
         break;
       }
       case 'historia': {
-        const historia = db.prepare('SELECT * FROM historias_clinicas WHERE paciente_id = ? ORDER BY id DESC LIMIT 1').get(paciente_id) || {};
-        const consultas = db.prepare('SELECT c.*, o.datos_json as odontograma FROM consultas c LEFT JOIN odontogramas o ON o.consulta_id = c.id WHERE c.historia_id = ? ORDER BY c.fecha DESC').all(historia.id || 0);
-        const pagosHistoria = db.prepare('SELECT * FROM pagos WHERE paciente_id = ? ORDER BY fecha DESC').all(paciente_id);
+        const historia = await db.prepare('SELECT * FROM historias_clinicas WHERE paciente_id = ? ORDER BY id DESC LIMIT 1').get(paciente_id) || {};
+        const consultas = await db.prepare('SELECT c.*, o.datos_json as odontograma FROM consultas c LEFT JOIN odontogramas o ON o.consulta_id = c.id WHERE c.historia_id = ? ORDER BY c.fecha DESC').all(historia.id || 0);
+        const pagosHistoria = await db.prepare('SELECT * FROM pagos WHERE paciente_id = ? ORDER BY fecha DESC').all(paciente_id);
         html = await generateHistoriaHtml(paciente, historia, consultas, pagosHistoria);
         filename = `Historia_${nombreCompleto(paciente).replace(/\s+/g, '_')}.pdf`;
         break;
@@ -773,7 +783,7 @@ exports.enviarPdf = async (req, res) => {
     // Clean up temp file
     try { fs.unlinkSync(tmpFile); } catch {}
 
-    const logId = registrarEnvio(paciente_id, phone, tipo, caption || `PDF: ${filename}`, 'enviado', null, true, result?.id);
+    const logId = await registrarEnvio(paciente_id, phone, tipo, caption || `PDF: ${filename}`, 'enviado', null, true, result?.id);
 
     res.json({ success: true, message: 'PDF enviado', to: nombreCompleto(paciente), phone, tipo, filename, logId });
   } catch (err) {
@@ -794,7 +804,7 @@ exports.estado = async (req, res) => {
   try {
     const status = await openWaClient.getStatus();
     const hoy = new Date().toISOString().split('T')[0];
-    const enviadosHoy = db.prepare("SELECT COUNT(*) as total FROM whatsapp_log WHERE created_at >= ? AND estado = 'enviado'").get(hoy)?.total || 0;
+    const enviadosHoy = (await db.prepare("SELECT COUNT(*) as total FROM whatsapp_log WHERE created_at >= ? AND estado = 'enviado'").get(hoy))?.total || 0;
     res.json({ connected: status.connected, enviadosHoy, info: status.info || null });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -822,9 +832,9 @@ exports.restart = async (req, res) => {
 // ============================================
 // CONFIGURACION
 // ============================================
-exports.getConfig = (req, res) => {
+exports.getConfig = async (req, res) => {
   try {
-    const rows = db.prepare('SELECT clave, valor, descripcion FROM whatsapp_config ORDER BY id').all();
+    const rows = await db.prepare('SELECT clave, valor, descripcion FROM whatsapp_config ORDER BY id').all();
     const config = {};
     for (const r of rows) config[r.clave] = { valor: r.valor, descripcion: r.descripcion };
     res.json(config);
@@ -833,13 +843,13 @@ exports.getConfig = (req, res) => {
   }
 };
 
-exports.saveConfig = (req, res) => {
+exports.saveConfig = async (req, res) => {
   try {
     const updates = req.body;
     const stmt = db.prepare('UPDATE whatsapp_config SET valor = ?, datetime("now") = updated_at WHERE clave = ?');
     const upsert = db.prepare('INSERT OR REPLACE INTO whatsapp_config (clave, valor, updated_at) VALUES (?, ?, datetime("now"))');
     for (const [clave, valor] of Object.entries(updates)) {
-      upsert.run(clave, String(valor));
+      await upsert.run(clave, String(valor));
     }
     res.json({ success: true, message: 'Configuracion guardada' });
   } catch (err) {
@@ -849,12 +859,12 @@ exports.saveConfig = (req, res) => {
 
 // Iniciar scheduler - usar intervalo de config
 console.log('[WhatsApp Scheduler] Iniciando scheduler de mensajes programados...');
-let schedulerIntervalMs = parseInt(getConfig('scheduler_interval', '60')) * 1000;
+let schedulerIntervalMs = parseInt(getConfigSync('scheduler_interval', '60')) * 1000;
 let schedulerTimer = setInterval(() => {
   console.log('[WhatsApp Scheduler] Verificando cola...');
   exports._procesarCola();
   // Re-read interval from config every cycle
-  const newInterval = parseInt(getConfig('scheduler_interval', '60')) * 1000;
+  const newInterval = parseInt(getConfigSync('scheduler_interval', '60')) * 1000;
   if (newInterval !== schedulerIntervalMs) {
     schedulerIntervalMs = newInterval;
     clearInterval(schedulerTimer);
@@ -869,9 +879,9 @@ let schedulerTimer = setInterval(() => {
 // ============================================
 // HISTORIAL GLOBAL
 // ============================================
-exports.historial = (req, res) => {
+exports.historial = async (req, res) => {
   try {
-    const logs = db.prepare(`
+    const logs = await db.prepare(`
       SELECT l.*, p.apellido_paterno, p.apellido_materno, p.nombres
       FROM whatsapp_log l JOIN pacientes p ON p.id = l.paciente_id
       ORDER BY l.created_at DESC LIMIT 200
@@ -885,10 +895,10 @@ exports.historial = (req, res) => {
 // ============================================
 // PREVIEW
 // ============================================
-exports.preview = (req, res) => {
+exports.preview = async (req, res) => {
   try {
     const { paciente_id, tipo, receta_id } = req.body;
-    const paciente = db.prepare('SELECT * FROM pacientes WHERE id = ?').get(paciente_id);
+    const paciente = await db.prepare('SELECT * FROM pacientes WHERE id = ?').get(paciente_id);
     if (!paciente) return res.status(404).json({ error: 'Paciente no encontrado' });
 
     let mensaje = '';
@@ -898,8 +908,8 @@ exports.preview = (req, res) => {
       mensaje = '';
     } else {
       const ctx = {};
-      if (receta_id) ctx.receta = db.prepare('SELECT * FROM recetas WHERE id = ?').get(receta_id);
-      mensaje = generarMensaje(tipo, paciente, ctx);
+      if (receta_id) ctx.receta = await db.prepare('SELECT * FROM recetas WHERE id = ?').get(receta_id);
+      mensaje = await generarMensaje(tipo, paciente, ctx);
     }
 
     res.json({ paciente: nombreCompleto(paciente), telefono: paciente.telefono, mensaje: mensaje || '' });
@@ -936,9 +946,9 @@ exports.plantillas = (req, res) => {
 const ANTI_BAN_MAX_POR_HORA = 20;
 const ANTI_BAN_DELAY_MS = 2000;
 
-function contarMensajesUltimaHora() {
+async function contarMensajesUltimaHora() {
   try {
-    const row = db.prepare(`
+    const row = await db.prepare(`
       SELECT COUNT(*) as total FROM whatsapp_envios
       WHERE estado = 'enviado' AND fecha > datetime('now', '-1 hour')
     `).get();
@@ -948,8 +958,8 @@ function contarMensajesUltimaHora() {
 
 exports._procesarCola = async () => {
   try {
-    const maxRetries = parseInt(getConfig('max_reintentos', '3'));
-    const pendientes = db.prepare(`
+    const maxRetries = parseInt(await getConfig('max_reintentos', '3'));
+    const pendientes = await db.prepare(`
       SELECT c.*, p.telefono
       FROM whatsapp_cola c JOIN pacientes p ON c.paciente_id = p.id
       WHERE c.estado = 'pendiente' AND c.intentos < ?
@@ -958,7 +968,7 @@ exports._procesarCola = async () => {
     if (pendientes.length === 0) return;
 
     const now = new Date();
-    const enviadosHora = contarMensajesUltimaHora();
+    const enviadosHora = await contarMensajesUltimaHora();
     const restante = Math.max(0, ANTI_BAN_MAX_POR_HORA - enviadosHora);
 
     if (restante === 0) {
@@ -984,8 +994,8 @@ exports._procesarCola = async () => {
         if (!status.connected) throw new Error('WhatsApp no conectado');
 
         const result = await openWaClient.sendText(phone, msg.mensaje);
-        db.prepare("UPDATE whatsapp_cola SET estado = 'enviado' WHERE id = ?").run(msg.id);
-        registrarEnvio(msg.paciente_id, phone, msg.tipo, msg.mensaje, 'enviado', null, true, result?.id);
+        await db.prepare("UPDATE whatsapp_cola SET estado = 'enviado' WHERE id = ?").run(msg.id);
+        await registrarEnvio(msg.paciente_id, phone, msg.tipo, msg.mensaje, 'enviado', null, true, result?.id);
         console.log(`[Scheduler] Msg #${msg.id}: ENVIADO a ${phone}`);
 
         // Anti-bloqueo: delay entre mensajes
@@ -993,9 +1003,9 @@ exports._procesarCola = async () => {
         await new Promise(r => setTimeout(r, delay));
       } catch (error) {
         console.error(`[Scheduler] Msg #${msg.id}: ERROR - ${error.message}`);
-        db.prepare('UPDATE whatsapp_cola SET intentos = intentos + 1, error = ? WHERE id = ?').run(error.message, msg.id);
+        await db.prepare('UPDATE whatsapp_cola SET intentos = intentos + 1, error = ? WHERE id = ?').run(error.message, msg.id);
         if (msg.intentos + 1 >= maxRetries) {
-          db.prepare("UPDATE whatsapp_cola SET estado = 'fallido' WHERE id = ?").run(msg.id);
+          await db.prepare("UPDATE whatsapp_cola SET estado = 'fallido' WHERE id = ?").run(msg.id);
         }
       }
     }
@@ -1007,7 +1017,7 @@ exports._procesarCola = async () => {
 // ============================================
 // ACK: Actualizar estado de entrega/lectura
 // ============================================
-exports.ack = (req, res) => {
+exports.ack = async (req, res) => {
   try {
     const { messageId, ack } = req.body;
     if (!messageId) return res.status(400).json({ error: 'messageId requerido' });
@@ -1016,7 +1026,7 @@ exports.ack = (req, res) => {
     const statusMap = { 0: 'pendiente', 1: 'enviado', 2: 'entregado', 3: 'leido', 4: 'leido' };
     const deliveryStatus = statusMap[ack] || 'enviado';
 
-    db.prepare('UPDATE whatsapp_log SET delivery_status = ? WHERE message_id = ?').run(deliveryStatus, messageId);
+    await db.prepare('UPDATE whatsapp_log SET delivery_status = ? WHERE message_id = ?').run(deliveryStatus, messageId);
 
     res.json({ success: true, deliveryStatus });
   } catch (err) {
@@ -1027,10 +1037,10 @@ exports.ack = (req, res) => {
 // ============================================
 // STATUS: Obtener estado de entrega de un mensaje
 // ============================================
-exports.deliveryStatus = (req, res) => {
+exports.deliveryStatus = async (req, res) => {
   try {
     const { logId } = req.params;
-    const log = db.prepare('SELECT delivery_status, message_id FROM whatsapp_log WHERE id = ?').get(logId);
+    const log = await db.prepare('SELECT delivery_status, message_id FROM whatsapp_log WHERE id = ?').get(logId);
     if (!log) return res.status(404).json({ error: 'Mensaje no encontrado' });
     res.json({ delivery_status: log.delivery_status, message_id: log.message_id });
   } catch (err) {
@@ -1041,7 +1051,7 @@ exports.deliveryStatus = (req, res) => {
 // ============================================
 // INGEST: Recibir imagenes entrantes de WhatsApp
 // ============================================
-exports.ingestImage = (req, res) => {
+exports.ingestImage = async (req, res) => {
   try {
     const { phone, base64, filename, mimetype, caption, timestamp, fromMe, chatId } = req.body;
 
@@ -1059,7 +1069,7 @@ exports.ingestImage = (req, res) => {
     if (!phoneNorm.startsWith('51')) phoneNorm = '51' + phoneNorm.slice(-9);
 
     // Buscar paciente por telefono
-    const paciente = db.prepare(
+    const paciente = await db.prepare(
       "SELECT id, dni, nombres, apellido_paterno, apellido_materno FROM pacientes WHERE REPLACE(REPLACE(telefono, ' ', ''), '-', '') LIKE ? OR telefono LIKE ?"
     ).get(`%${phoneNorm.slice(-9)}%`, `%${phoneNorm}%`);
 
@@ -1094,7 +1104,7 @@ exports.ingestImage = (req, res) => {
 
     // Guardar en base de datos
     const archivoNombre = `evidencias/${paciente.id}/${readableName}`;
-    const result = db.prepare(
+    const result = await db.prepare(
       'INSERT INTO imagenes (paciente_id, archivo_nombre, archivo_original, tipo, descripcion, hash_sha256) VALUES (?, ?, ?, ?, ?, ?)'
     ).run(paciente.id, archivoNombre, filename || readableName, 'foto_whatsapp', caption || `Imagen de WhatsApp - ${phoneNorm}`, hash);
 

@@ -31,6 +31,8 @@ export default function EstacionDatos({ onVolver }) {
   const [resultadoBD, setResultadoBD] = useState(null);
   const [errorBD, setErrorBD] = useState('');
   const [isDraggingBD, setIsDraggingBD] = useState(false);
+  const [previewBD, setPreviewBD] = useState(null);
+  const [fileBD, setFileBD] = useState(null);
 
   useEffect(() => {
     api.exportacion.estadisticas().then(setStats).catch(() => {});
@@ -66,17 +68,37 @@ export default function EstacionDatos({ onVolver }) {
   };
 
   const handleImportarBD = async (file) => {
+    setFileBD(file);
     setImportandoBD(true);
     setErrorBD('');
     setResultadoBD(null);
+    setPreviewBD(null);
     try {
       const formData = new FormData();
-      formData.append('archivo', file);
-      const result = await api.exportacion.importarBD(formData);
+      formData.append('database', file);
+      const preview = await api.backup.previewDb(formData);
+      setPreviewBD(preview);
+    } catch (err) {
+      setErrorBD(err.message || 'Error al leer el archivo');
+    } finally {
+      setImportandoBD(false);
+    }
+  };
+
+  const handleConfirmarImportBD = async () => {
+    if (!fileBD) return;
+    setImportandoBD(true);
+    setErrorBD('');
+    try {
+      const formData = new FormData();
+      formData.append('database', fileBD);
+      const result = await api.backup.importDb(formData);
       setResultadoBD(result);
+      setPreviewBD(null);
+      setFileBD(null);
       api.exportacion.estadisticas().then(setStats).catch(() => {});
     } catch (err) {
-      setErrorBD(err.message || 'Error al importar BD');
+      setErrorBD(err.message || 'Error al importar');
     } finally {
       setImportandoBD(false);
     }
@@ -225,29 +247,75 @@ export default function EstacionDatos({ onVolver }) {
             <div className="sub-tab-content">
               <p className="import-bd-desc">Importa una base de datos de una version anterior del sistema. Los datos se fusionan sin sobrescribir existentes.</p>
 
-              <div
-                className={`drop-zone-bd ${isDraggingBD ? 'dragging' : ''}`}
-                onDragOver={(e) => { e.preventDefault(); setIsDraggingBD(true); }}
-                onDragLeave={() => setIsDraggingBD(false)}
-                onDrop={handleDropBD}
-              >
-                {importandoBD ? (
-                  <div className="importando-bd">
-                    <div className="spinner"></div>
-                    <p>Importando base de datos...</p>
-                    <div className="ed-progress-bar" style={{ width: '200px', marginTop: '12px' }}><div className="ed-progress-fill loading"></div></div>
-                  </div>
-                ) : (
-                  <>
-                    <div className="ed-drop-icon">
-                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--gray-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+              {!previewBD ? (
+                <div
+                  className={`drop-zone-bd ${isDraggingBD ? 'dragging' : ''}`}
+                  onDragOver={(e) => { e.preventDefault(); setIsDraggingBD(true); }}
+                  onDragLeave={() => setIsDraggingBD(false)}
+                  onDrop={handleDropBD}
+                >
+                  {importandoBD ? (
+                    <div className="importando-bd">
+                      <div className="spinner"></div>
+                      <p>Leyendo base de datos...</p>
                     </div>
-                    <p>Arrastra un archivo <strong>.db</strong> aqui</p>
-                    <p className="drop-subtitle">o haz clic para seleccionar</p>
-                    <input type="file" accept=".db,.sqlite,.sqlite3" onChange={handleFileSelectBD} className="file-input-hidden" />
-                  </>
-                )}
-              </div>
+                  ) : (
+                    <>
+                      <div className="ed-drop-icon">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--gray-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+                      </div>
+                      <p>Arrastra un archivo <strong>.db</strong> aqui</p>
+                      <p className="drop-subtitle">o haz clic para seleccionar</p>
+                      <input type="file" accept=".db,.sqlite,.sqlite3" onChange={handleFileSelectBD} className="file-input-hidden" />
+                    </>
+                  )}
+                </div>
+              ) : (
+                <div className="preview-bd-container">
+                  <div className="preview-bd-header">
+                    <h4>Vista previa: {previewBD.filename}</h4>
+                    <p className="preview-bd-size">{(previewBD.size / 1024).toFixed(1)} KB | {previewBD.totalTables} tablas encontradas</p>
+                  </div>
+                  
+                  <div className="preview-bd-table">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Tabla</th>
+                          <th>Columnas</th>
+                          <th>Registros</th>
+                          <th>Mapeo</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {previewBD.tables.map((table) => (
+                          <tr key={table.name}>
+                            <td className="font-medium">{table.name}</td>
+                            <td>{table.columns}</td>
+                            <td>{table.records}</td>
+                            <td>
+                              {table.hasMapping ? (
+                                <span className="text-green-600">✓ {table.mappedTo}</span>
+                              ) : (
+                                <span className="text-gray-400">Sin mapeo</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="preview-bd-actions">
+                    <button className="btn btn-secondary" onClick={() => { setPreviewBD(null); setFileBD(null); }}>
+                      Cancelar
+                    </button>
+                    <button className="btn btn-primary" onClick={handleConfirmarImportBD} disabled={importandoBD}>
+                      {importandoBD ? 'Importando...' : 'Confirmar Importacion'}
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {errorBD && <div className="error-bd">{errorBD}</div>}
 
@@ -257,15 +325,21 @@ export default function EstacionDatos({ onVolver }) {
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
                     <h4>Importacion completada</h4>
                   </div>
-                  <div className="result-cards">
-                    {Object.entries(resultadoBD.resultados || {}).map(([tabla, r]) => (
-                      <div key={tabla} className="result-card">
-                        <span className="result-num">{r.nuevos}</span>
-                        <span className="result-label">{tabla} nuevos</span>
-                        {r.duplicados > 0 && <span className="result-dup">({r.duplicados} existentes)</span>}
-                      </div>
-                    ))}
+                  <div className="result-summary">
+                    <p><strong>Importados:</strong> {resultadoBD.summary?.totalImported || 0}</p>
+                    <p><strong>Omitidos (duplicados):</strong> {resultadoBD.summary?.totalSkipped || 0}</p>
+                    <p><strong>Errores:</strong> {resultadoBD.summary?.totalErrors || 0}</p>
                   </div>
+                  {resultadoBD.verification && (
+                    <div className="result-cards">
+                      {Object.entries(resultadoBD.verification).map(([tabla, count]) => (
+                        <div key={tabla} className="result-card">
+                          <span className="result-num">{count}</span>
+                          <span className="result-label">{tabla}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

@@ -64,6 +64,7 @@ export default function Dashboard({ onNavigate }) {
   const [cargando, setCargando] = useState(true);
   const [filtroFecha, setFiltroFecha] = useState('todo');
   const [waConnected, setWaConnected] = useState(false);
+  const [citasPorProcesar, setCitasPorProcesar] = useState([]);
 
   useEffect(() => {
     cargarDatos();
@@ -82,6 +83,10 @@ export default function Dashboard({ onNavigate }) {
         ultimasConsultas: [], ingresosMensuales: [], saldosPendientes: [],
       });
     }
+    try {
+      const citas = await api.citas.pendientesProcesar();
+      setCitasPorProcesar(Array.isArray(citas) ? citas : []);
+    } catch {}
     setCargando(false);
   };
 
@@ -321,6 +326,37 @@ export default function Dashboard({ onNavigate }) {
           </div>
         </div>
       </div>
+
+      {/* CITAS POR PROCESAR */}
+      {citasPorProcesar.length > 0 && (
+        <div className="dashboard-grid-2col" style={{ marginBottom: '20px' }}>
+          <div className="dashboard-chart-card" style={{ gridColumn: '1 / -1' }}>
+            <div className="dashboard-chart-header">
+              <h3>Citas por Procesar</h3>
+              <span className="dashboard-chart-badge" style={{ background: '#dcfce7', color: '#166534' }}>{citasPorProcesar.length} cita{citasPorProcesar.length !== 1 ? 's' : ''}</span>
+            </div>
+            <div style={{ padding: '14px' }}>
+              {citasPorProcesar.slice(0, 5).map(cita => (
+                <div key={cita.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderBottom: '1px solid var(--gray-100)', fontSize: '13px' }}>
+                  <div>
+                    <span style={{ fontWeight: 700, marginRight: '8px' }}>{cita.hora}</span>
+                    <span style={{ fontWeight: 600 }}>{cita.paciente_nombre}</span>
+                    {cita.motivo_usar && <span style={{ color: 'var(--gray-500)', marginLeft: '8px' }}>- {cita.motivo_usar}</span>}
+                  </div>
+                  <button className="btn btn-sm btn-primary" onClick={() => onNavigate('citas')} style={{ fontSize: '11px', padding: '4px 10px' }}>
+                    Abrir Sesion
+                  </button>
+                </div>
+              ))}
+              <div style={{ textAlign: 'right', marginTop: '8px' }}>
+                <button onClick={() => onNavigate('citas')} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}>
+                  Ver todas las citas →
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 4 GRÁFICOS: Consultas/Mes + Ingresos/Mes + Estado Tratamientos + Saldos Pendientes */}
       <div className="dashboard-grid-2col">

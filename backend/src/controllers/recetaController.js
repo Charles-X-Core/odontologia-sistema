@@ -1,12 +1,12 @@
-const db = require('../database');
+const db = require('../db');
 
-exports.crear = (req, res) => {
+exports.crear = async (req, res) => {
   const { consulta_id, paciente_id, medicamentos, indicaciones } = req.body;
   if (!consulta_id || !paciente_id || !medicamentos) {
     return res.status(400).json({ error: 'consulta_id, paciente_id y medicamentos son obligatorios' });
   }
   try {
-    const result = db.prepare(`
+    const result = await db.prepare(`
       INSERT INTO recetas (consulta_id, paciente_id, medicamentos, indicaciones)
       VALUES (?, ?, ?, ?)
     `).run(consulta_id, paciente_id, JSON.stringify(medicamentos), indicaciones || '');
@@ -16,14 +16,14 @@ exports.crear = (req, res) => {
   }
 };
 
-exports.porConsulta = (req, res) => {
-  const recetas = db.prepare('SELECT * FROM recetas WHERE consulta_id = ?').all(req.params.consultaId);
+exports.porConsulta = async (req, res) => {
+  const recetas = await db.prepare('SELECT * FROM recetas WHERE consulta_id = ?').all(req.params.consultaId);
   recetas.forEach(r => { r.medicamentos = JSON.parse(r.medicamentos); });
   res.json(recetas);
 };
 
-exports.porPaciente = (req, res) => {
-  const recetas = db.prepare(`
+exports.porPaciente = async (req, res) => {
+  const recetas = await db.prepare(`
     SELECT r.*, c.fecha as consulta_fecha, c.motivo as consulta_motivo
     FROM recetas r
     JOIN consultas c ON c.id = r.consulta_id
@@ -34,8 +34,8 @@ exports.porPaciente = (req, res) => {
   res.json(recetas);
 };
 
-exports.obtener = (req, res) => {
-  const receta = db.prepare(`
+exports.obtener = async (req, res) => {
+  const receta = await db.prepare(`
     SELECT r.*, p.nombres as paciente_nombre, p.apellido_paterno, p.apellido_materno, p.dni as paciente_dni, c.fecha as consulta_fecha
     FROM recetas r
     JOIN pacientes p ON p.id = r.paciente_id
@@ -47,9 +47,9 @@ exports.obtener = (req, res) => {
   res.json(receta);
 };
 
-exports.eliminar = (req, res) => {
+exports.eliminar = async (req, res) => {
   try {
-    db.prepare('DELETE FROM recetas WHERE id = ?').run(req.params.id);
+    await db.prepare('DELETE FROM recetas WHERE id = ?').run(req.params.id);
     res.json({ message: 'Receta eliminada' });
   } catch (err) {
     res.status(500).json({ error: err.message });

@@ -1,3 +1,5 @@
+require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
+
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -128,6 +130,11 @@ try {
 } catch(e) { console.error('[INDEX] /api/pagos error:', e.message); }
 
 try {
+  app.use('/api/citas', auth, require('./routes/citas'));
+  console.log('[INDEX] /api/citas OK');
+} catch(e) { console.error('[INDEX] /api/citas error:', e.message); }
+
+try {
   app.use('/api/dashboard', auth, require('./routes/dashboard'));
   console.log('[INDEX] /api/dashboard OK');
 } catch(e) { console.error('[INDEX] /api/dashboard error:', e.message); }
@@ -136,6 +143,11 @@ try {
   app.use('/api/importacion', auth, require('./routes/importacion'));
   console.log('[INDEX] /api/importacion OK');
 } catch(e) { console.error('[INDEX] /api/importacion error:', e.message); }
+
+try {
+  app.use('/api/backup', require('./routes/backup'));
+  console.log('[INDEX] /api/backup OK');
+} catch(e) { console.error('[INDEX] /api/backup error:', e.message); }
 
 try {
   app.use('/api/exportacion', auth, require('./routes/exportacion'));
@@ -151,6 +163,11 @@ try {
   app.use('/api/whatsapp', auth, require('./routes/whatsapp'));
   console.log('[INDEX] /api/whatsapp OK');
 } catch(e) { console.error('[INDEX] /api/whatsapp error:', e.message); }
+
+try {
+  app.use('/api/sync', require('./sync/syncRoutes'));
+  console.log('[INDEX] /api/sync OK');
+} catch(e) { console.error('[INDEX] /api/sync error:', e.message); }
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

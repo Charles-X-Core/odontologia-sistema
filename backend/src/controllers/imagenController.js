@@ -1,4 +1,4 @@
-const db = require('../database');
+const db = require('../db');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
@@ -40,7 +40,7 @@ function buildImagePath(pacienteId, consultaId, filename) {
   return path.join(BASE_DIR, ...parts, filename);
 }
 
-exports.subir = (req, res) => {
+exports.subir = async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No se envio archivo' });
   }
@@ -68,7 +68,7 @@ exports.subir = (req, res) => {
     const hash = computeHash(finalPath);
     const archivoNombre = path.relative(BASE_DIR, finalPath).replace(/\\/g, '/');
 
-    const result = db.prepare(`
+    const result = await db.prepare(`
       INSERT INTO imagenes (paciente_id, consulta_id, archivo_nombre, archivo_original, tipo, descripcion, hash_sha256)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `).run(paciente_id, consulta_id || null, archivoNombre, req.file.originalname, tipoStr, descripcion || '', hash);
@@ -79,37 +79,37 @@ exports.subir = (req, res) => {
   }
 };
 
-exports.porPaciente = (req, res) => {
-  const imagenes = db.prepare('SELECT * FROM imagenes WHERE paciente_id = ? ORDER BY created_at DESC').all(req.params.pacienteId);
+exports.porPaciente = async (req, res) => {
+  const imagenes = await db.prepare('SELECT * FROM imagenes WHERE paciente_id = ? ORDER BY created_at DESC').all(req.params.pacienteId);
   res.json(imagenes);
 };
 
-exports.porConsulta = (req, res) => {
-  const imagenes = db.prepare('SELECT * FROM imagenes WHERE consulta_id = ? ORDER BY created_at DESC').all(req.params.consultaId);
+exports.porConsulta = async (req, res) => {
+  const imagenes = await db.prepare('SELECT * FROM imagenes WHERE consulta_id = ? ORDER BY created_at DESC').all(req.params.consultaId);
   res.json(imagenes);
 };
 
-exports.eliminar = (req, res) => {
-  const img = db.prepare('SELECT * FROM imagenes WHERE id = ?').get(req.params.id);
+exports.eliminar = async (req, res) => {
+  const img = await db.prepare('SELECT * FROM imagenes WHERE id = ?').get(req.params.id);
   if (!img) return res.status(404).json({ error: 'Imagen no encontrada' });
   try {
     const filePath = path.join(BASE_DIR, img.archivo_nombre);
     if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-    db.prepare('DELETE FROM imagenes WHERE id = ?').run(req.params.id);
+    await db.prepare('DELETE FROM imagenes WHERE id = ?').run(req.params.id);
     res.json({ message: 'Imagen eliminada' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-exports.servir = (req, res) => {
+exports.servir = async (req, res) => {
   const filename = req.params.filename;
   const filePath = path.join(BASE_DIR, filename);
   if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Imagen no encontrada' });
   res.sendFile(filePath);
 };
 
-exports.verificarTokenMovil = (req, res) => {
+exports.verificarTokenMovil = async (req, res) => {
   try {
     const { token } = req.body;
     if (!token) return res.status(400).json({ error: 'token es obligatorio' });
@@ -122,7 +122,7 @@ exports.verificarTokenMovil = (req, res) => {
       return res.status(401).json({ error: 'Token ya utilizado. Solicite uno nuevo.' });
     }
 
-    const paciente = db.prepare('SELECT id, nombres, apellido_paterno, apellido_materno FROM pacientes WHERE id = ?').get(decoded.paciente_id);
+    const paciente = await db.prepare('SELECT id, nombres, apellido_paterno, apellido_materno FROM pacientes WHERE id = ?').get(decoded.paciente_id);
     if (!paciente) return res.status(404).json({ error: 'Paciente no encontrado' });
 
     const nombre = `${paciente.apellido_paterno || ''} ${paciente.apellido_materno || ''} ${paciente.nombres || ''}`.trim();
@@ -143,7 +143,7 @@ exports.generarQR = async (req, res) => {
     const { paciente_id } = req.body;
     if (!paciente_id) return res.status(400).json({ error: 'paciente_id es obligatorio' });
 
-    const paciente = db.prepare('SELECT id, nombres, apellido_paterno, apellido_materno FROM pacientes WHERE id = ?').get(paciente_id);
+    const paciente = await db.prepare('SELECT id, nombres, apellido_paterno, apellido_materno FROM pacientes WHERE id = ?').get(paciente_id);
     if (!paciente) return res.status(404).json({ error: 'Paciente no encontrado' });
 
     const token = jwt.sign(
@@ -172,7 +172,7 @@ exports.generarQR = async (req, res) => {
   }
 };
 
-exports.subirMovil = (req, res) => {
+exports.subirMovil = async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No se envio archivo' });
 
   const { token, tipo, descripcion } = req.body;
@@ -203,7 +203,7 @@ exports.subirMovil = (req, res) => {
     const hash = computeHash(finalPath);
     const archivoNombre = path.relative(BASE_DIR, finalPath).replace(/\\/g, '/');
 
-    const result = db.prepare(`
+    const result = await db.prepare(`
       INSERT INTO imagenes (paciente_id, consulta_id, archivo_nombre, archivo_original, tipo, descripcion, hash_sha256)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `).run(decoded.paciente_id, null, archivoNombre, req.file.originalname, tipoStr, descripcion || '', hash);

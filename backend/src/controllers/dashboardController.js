@@ -1,14 +1,14 @@
-const db = require('../database');
+const db = require('../db');
 
-exports.stats = (req, res) => {
+exports.stats = async (req, res) => {
   try {
-    const totalPacientes = db.prepare('SELECT COUNT(*) as total FROM pacientes').get().total;
-    const totalConsultas = db.prepare('SELECT COUNT(*) as total FROM consultas').get().total;
-    const totalTratamientos = db.prepare('SELECT COUNT(*) as total FROM tratamientos').get().total;
-    const tratamientosRealizados = db.prepare("SELECT COUNT(*) as total FROM tratamientos WHERE estado = 'realizado'").get().total;
-    const tratamientosPlanificados = db.prepare("SELECT COUNT(*) as total FROM tratamientos WHERE estado = 'planificado'").get().total;
+    const totalPacientes = (await db.prepare('SELECT COUNT(*) as total FROM pacientes').get()).total;
+    const totalConsultas = (await db.prepare('SELECT COUNT(*) as total FROM consultas').get()).total;
+    const totalTratamientos = (await db.prepare('SELECT COUNT(*) as total FROM tratamientos').get()).total;
+    const tratamientosRealizados = (await db.prepare("SELECT COUNT(*) as total FROM tratamientos WHERE estado = 'realizado'").get()).total;
+    const tratamientosPlanificados = (await db.prepare("SELECT COUNT(*) as total FROM tratamientos WHERE estado = 'planificado'").get()).total;
 
-    const resultadoPagos = db.prepare(`
+    const resultadoPagos = await db.prepare(`
       SELECT
         COALESCE(SUM(total), 0) as total_general,
         COALESCE(SUM(a_cuenta), 0) as total_pagado,
@@ -16,7 +16,7 @@ exports.stats = (req, res) => {
       FROM pagos
     `).get();
 
-    const ultimasConsultas = db.prepare(`
+    const ultimasConsultas = await db.prepare(`
       SELECT c.*,
         (p.apellido_paterno || ' ' || p.apellido_materno || ' ' || p.nombres) as paciente_nombre
       FROM consultas c
@@ -36,7 +36,7 @@ exports.stats = (req, res) => {
     });
 
     // INGRESOS MENSUALES (últimos 12 meses)
-    const ingresosMensuales = db.prepare(`
+    const ingresosMensuales = await db.prepare(`
       SELECT strftime('%Y-%m', fecha) as mes,
         COALESCE(SUM(a_cuenta), 0) as total
       FROM pagos
@@ -46,7 +46,7 @@ exports.stats = (req, res) => {
     `).all();
 
     // SALDOS PENDIENTES
-    const saldosPendientes = db.prepare(`
+    const saldosPendientes = await db.prepare(`
       SELECT p.id, p.apellido_paterno, p.apellido_materno, p.nombres, p.dni,
         SUM(pg.saldo) as pendiente
       FROM pagos pg
@@ -56,6 +56,24 @@ exports.stats = (req, res) => {
       ORDER BY pendiente DESC
       LIMIT 8
     `).all();
+
+    // PROXIMAS CITAS
+    const hoy = new Date().toISOString().split('T')[0];
+    const proximasCitas = await db.prepare(`
+      SELECT c.id, c.fecha, c.hora, c.motivo, c.tipo, c.estado, c.duracion_minutos,
+        (p.apellido_paterno || ' ' || p.apellido_materno || ' ' || p.nombres) as paciente_nombre,
+        p.dni as paciente_dni
+      FROM citas c
+      JOIN pacientes p ON p.id = c.paciente_id
+      WHERE c.fecha >= ? AND c.estado IN ('pendiente', 'confirmada')
+      ORDER BY c.fecha ASC, c.hora ASC
+      LIMIT 8
+    `).all(hoy);
+
+    // CITAS DE HOY
+    const totalCitasHoy = (await db.prepare(
+      "SELECT COUNT(*) as total FROM citas WHERE fecha = ? AND estado IN ('pendiente', 'confirmada', 'completada')"
+    ).get(hoy)).total;
 
     res.json({
       pacientes: totalPacientes,
@@ -67,6 +85,8 @@ exports.stats = (req, res) => {
       ultimasConsultas,
       ingresosMensuales,
       saldosPendientes,
+      proximasCitas,
+      totalCitasHoy,
     });
   } catch (err) {
     console.error('[Dashboard] stats error:', err.message);
@@ -75,6 +95,7 @@ exports.stats = (req, res) => {
       tratamientosRealizados: 0, tratamientosPlanificados: 0,
       pagos: { total_general: 0, total_pagado: 0, total_pendiente: 0 },
       ultimasConsultas: [], ingresosMensuales: [], saldosPendientes: [],
+      proximasCitas: [], totalCitasHoy: 0,
     });
   }
 };

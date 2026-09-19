@@ -1,13 +1,13 @@
-const db = require('../database');
+const db = require('../db');
 
-exports.crear = (req, res) => {
+exports.crear = async (req, res) => {
   const { consulta_id, datos_json } = req.body;
 
   if (!consulta_id) {
     return res.status(400).json({ error: 'consulta_id es obligatorio' });
   }
 
-  const consulta = db.prepare('SELECT id FROM consultas WHERE id = ?').get(consulta_id);
+  const consulta = await db.prepare('SELECT id FROM consultas WHERE id = ?').get(consulta_id);
   if (!consulta) {
     return res.status(404).json({ error: 'Consulta no encontrada' });
   }
@@ -17,22 +17,22 @@ exports.crear = (req, res) => {
       INSERT INTO odontogramas (consulta_id, datos_json)
       VALUES (?, ?)
     `);
-    const result = stmt.run(consulta_id, JSON.stringify(datos_json || {}));
+    const result = await stmt.run(consulta_id, JSON.stringify(datos_json || {}));
     res.status(201).json({ id: result.lastInsertRowid, consulta_id });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-exports.obtenerPorConsulta = (req, res) => {
-  const odontograma = db.prepare('SELECT * FROM odontogramas WHERE consulta_id = ?').get(req.params.consultaId);
+exports.obtenerPorConsulta = async (req, res) => {
+  const odontograma = await db.prepare('SELECT * FROM odontogramas WHERE consulta_id = ?').get(req.params.consultaId);
   if (!odontograma) return res.status(404).json({ error: 'Odontograma no encontrado' });
   odontograma.datos_json = JSON.parse(odontograma.datos_json);
   res.json(odontograma);
 };
 
-exports.obtenerHistorial = (req, res) => {
-  const odontogramas = db.prepare(`
+exports.obtenerHistorial = async (req, res) => {
+  const odontogramas = await db.prepare(`
     SELECT o.*, c.fecha as consulta_fecha
     FROM odontogramas o
     JOIN consultas c ON c.id = o.consulta_id
@@ -44,18 +44,18 @@ exports.obtenerHistorial = (req, res) => {
   res.json(odontogramas);
 };
 
-exports.actualizar = (req, res) => {
+exports.actualizar = async (req, res) => {
   const { consulta_id, datos_json } = req.body;
 
   if (!consulta_id) {
     return res.status(400).json({ error: 'consulta_id es obligatorio' });
   }
 
-  const existing = db.prepare('SELECT id FROM odontogramas WHERE consulta_id = ?').get(consulta_id);
+  const existing = await db.prepare('SELECT id FROM odontogramas WHERE consulta_id = ?').get(consulta_id);
   if (existing) {
-    db.prepare('UPDATE odontogramas SET datos_json = ? WHERE consulta_id = ?').run(JSON.stringify(datos_json || {}), consulta_id);
+    await db.prepare('UPDATE odontogramas SET datos_json = ? WHERE consulta_id = ?').run(JSON.stringify(datos_json || {}), consulta_id);
   } else {
-    db.prepare('INSERT INTO odontogramas (consulta_id, datos_json) VALUES (?, ?)').run(consulta_id, JSON.stringify(datos_json || {}));
+    await db.prepare('INSERT INTO odontogramas (consulta_id, datos_json) VALUES (?, ?)').run(consulta_id, JSON.stringify(datos_json || {}));
   }
   res.json({ ok: true, consulta_id });
 };

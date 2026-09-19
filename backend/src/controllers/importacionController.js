@@ -1,4 +1,4 @@
-const db = require('../database');
+const db = require('../db');
 const XLSX = require('xlsx');
 const crypto = require('crypto');
 const {
@@ -27,7 +27,7 @@ exports.preview = (req, res) => {
   }
 };
 
-exports.previewCompleto = (req, res) => {
+exports.previewCompleto = async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No se envio archivo' });
   try {
     const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
@@ -41,13 +41,13 @@ exports.previewCompleto = (req, res) => {
       hojas[name] = { nombre: name, tipoDetectado: detectedType, totalFilas: data.length, headers, autoMapping, preview: data.slice(0, 5) };
     }
     const fileHash = crypto.createHash('sha256').update(req.file.buffer).digest('hex');
-    const historial = db.prepare('SELECT * FROM importaciones_historial WHERE archivo_hash = ?').all(fileHash);
+    const historial = await db.prepare('SELECT * FROM importaciones_historial WHERE archivo_hash = ?').all(fileHash);
     const stats = {
-      totalPacientes: db.prepare('SELECT COUNT(*) as t FROM pacientes').get().t,
-      totalConsultas: db.prepare('SELECT COUNT(*) as t FROM consultas').get().t,
-      totalTratamientos: db.prepare('SELECT COUNT(*) as t FROM tratamientos').get().t,
-      totalPagos: db.prepare('SELECT COUNT(*) as t FROM pagos').get().t,
-      totalHistorias: db.prepare('SELECT COUNT(*) as t FROM historias_clinicas').get().t,
+      totalPacientes: (await db.prepare('SELECT COUNT(*) as t FROM pacientes').get()).t,
+      totalConsultas: (await db.prepare('SELECT COUNT(*) as t FROM consultas').get()).t,
+      totalTratamientos: (await db.prepare('SELECT COUNT(*) as t FROM tratamientos').get()).t,
+      totalPagos: (await db.prepare('SELECT COUNT(*) as t FROM pagos').get()).t,
+      totalHistorias: (await db.prepare('SELECT COUNT(*) as t FROM historias_clinicas').get()).t,
     };
     res.json({ hojas, fileHash, yaImportado: historial.length > 0, historialImportaciones: historial, estadisticasDB: stats });
   } catch (err) {
@@ -55,18 +55,18 @@ exports.previewCompleto = (req, res) => {
   }
 };
 
-exports.analisis = (req, res) => {
+exports.analisis = async (req, res) => {
   try {
     const stats = {
-      totalPacientes: db.prepare('SELECT COUNT(*) as t FROM pacientes').get().t,
-      totalConsultas: db.prepare('SELECT COUNT(*) as t FROM consultas').get().t,
-      totalTratamientos: db.prepare('SELECT COUNT(*) as t FROM tratamientos').get().t,
-      totalPagos: db.prepare('SELECT COUNT(*) as t FROM pagos').get().t,
-      totalHistorias: db.prepare('SELECT COUNT(*) as t FROM historias_clinicas').get().t,
-      totalNecesidades: db.prepare('SELECT COUNT(*) as t FROM necesidades_odontologicas').get().t,
-      totalRecetas: db.prepare('SELECT COUNT(*) as t FROM recetas').get().t,
-      pacientesPorTipoDoc: db.prepare('SELECT tipo_documento, COUNT(*) as t FROM pacientes GROUP BY tipo_documento').all(),
-      ultimasImportaciones: db.prepare('SELECT * FROM importaciones_historial ORDER BY fecha_importacion DESC LIMIT 10').all(),
+      totalPacientes: (await db.prepare('SELECT COUNT(*) as t FROM pacientes').get()).t,
+      totalConsultas: (await db.prepare('SELECT COUNT(*) as t FROM consultas').get()).t,
+      totalTratamientos: (await db.prepare('SELECT COUNT(*) as t FROM tratamientos').get()).t,
+      totalPagos: (await db.prepare('SELECT COUNT(*) as t FROM pagos').get()).t,
+      totalHistorias: (await db.prepare('SELECT COUNT(*) as t FROM historias_clinicas').get()).t,
+      totalNecesidades: (await db.prepare('SELECT COUNT(*) as t FROM necesidades_odontologicas').get()).t,
+      totalRecetas: (await db.prepare('SELECT COUNT(*) as t FROM recetas').get()).t,
+      pacientesPorTipoDoc: await db.prepare('SELECT tipo_documento, COUNT(*) as t FROM pacientes GROUP BY tipo_documento').all(),
+      ultimasImportaciones: await db.prepare('SELECT * FROM importaciones_historial ORDER BY fecha_importacion DESC LIMIT 10').all(),
     };
     res.json(stats);
   } catch (err) {
@@ -74,7 +74,7 @@ exports.analisis = (req, res) => {
   }
 };
 
-exports.importarPacientes = (req, res) => {
+exports.importarPacientes = async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No se envio archivo' });
   try {
     const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
@@ -92,7 +92,7 @@ exports.importarPacientes = (req, res) => {
         const missing = PACIENTE_REQUIRED.filter(f => !mapped[f]);
         if (missing.length > 0) throw new Error(`Campos requeridos faltantes: ${missing.join(', ')}`);
         const transformed = applyTransforms(mapped, PACIENTE_TRANSFORMS);
-        const r = stmt.run(transformed.apellido_paterno || '', transformed.apellido_materno || '', transformed.nombres || '', transformed.dni || '', 'dni', transformed.telefono || null, transformed.email || null, transformed.fecha_nacimiento || null, transformed.sexo || null, transformed.estado_civil || '', transformed.direccion || null, transformed.lugar_nacimiento || '', transformed.lugar_procedencia || '', transformed.grado_instruccion || '', transformed.ocupacion || null, transformed.nombre_acompanante || '', transformed.contacto_emergencia || null, transformed.telefono_emergencia || null);
+        const r = await stmt.run(transformed.apellido_paterno || '', transformed.apellido_materno || '', transformed.nombres || '', transformed.dni || '', 'dni', transformed.telefono || null, transformed.email || null, transformed.fecha_nacimiento || null, transformed.sexo || null, transformed.estado_civil || '', transformed.direccion || null, transformed.lugar_nacimiento || '', transformed.lugar_procedencia || '', transformed.grado_instruccion || '', transformed.ocupacion || null, transformed.nombre_acompanante || '', transformed.contacto_emergencia || null, transformed.telefono_emergencia || null);
         if (r.changes > 0) results.exitosos++;
         else results.duplicados++;
       } catch (err) {
@@ -106,7 +106,7 @@ exports.importarPacientes = (req, res) => {
   }
 };
 
-exports.importarTratamientos = (req, res) => {
+exports.importarTratamientos = async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No se envio archivo' });
   try {
     const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
@@ -122,12 +122,12 @@ exports.importarTratamientos = (req, res) => {
         }
         const missing = TRATAMIENTO_REQUIRED.filter(f => !mapped[f]);
         if (missing.length > 0) throw new Error(`Campos requeridos faltantes: ${missing.join(', ')}`);
-        const paciente = findPatient.get(String(mapped.paciente_dni));
+        const paciente = await findPatient.get(String(mapped.paciente_dni));
         if (!paciente) throw new Error(`Paciente con DNI ${mapped.paciente_dni} no encontrado`);
         const transformed = applyTransforms(mapped, TRATAMIENTO_TRANSFORMS);
         const costo = transformed.costo_total || 0;
         const monto = transformed.monto_a_cuenta || 0;
-        db.prepare('INSERT INTO tratamientos (paciente_id, fecha, pieza_dental, procedimiento_realizado, costo_total, monto_a_cuenta, saldo_pendiente, notas) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(paciente.id, transformed.fecha, transformed.pieza_dental || '', transformed.procedimiento_realizado, costo, monto, costo - monto, transformed.notas || '');
+        await db.prepare('INSERT INTO tratamientos (paciente_id, fecha, pieza_dental, procedimiento_realizado, costo_total, monto_a_cuenta, saldo_pendiente, notas) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(paciente.id, transformed.fecha, transformed.pieza_dental || '', transformed.procedimiento_realizado, costo, monto, costo - monto, transformed.notas || '');
         results.exitosos++;
       } catch (err) {
         results.fallidos++;
@@ -140,7 +140,7 @@ exports.importarTratamientos = (req, res) => {
   }
 };
 
-exports.importarConsultas = (req, res) => {
+exports.importarConsultas = async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No se envio archivo' });
   try {
     const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
@@ -157,18 +157,18 @@ exports.importarConsultas = (req, res) => {
         }
         const missing = CONSULTA_REQUIRED.filter(f => !mapped[f]);
         if (missing.length > 0) throw new Error(`Campos requeridos faltantes: ${missing.join(', ')}`);
-        const paciente = findPatient.get(String(mapped.paciente_dni));
+        const paciente = await findPatient.get(String(mapped.paciente_dni));
         if (!paciente) throw new Error(`Paciente con DNI ${mapped.paciente_dni} no encontrado`);
-        let historia = findHistoria.get(paciente.id);
+        let historia = await findHistoria.get(paciente.id);
         if (!historia) {
-          const ultimo = db.prepare('SELECT MAX(CAST(numero_historia AS INTEGER)) as max_num FROM historias_clinicas WHERE numero_historia IS NOT NULL AND numero_historia != ""').get();
+          const ultimo = await db.prepare('SELECT MAX(CAST(numero_historia AS INTEGER)) as max_num FROM historias_clinicas WHERE numero_historia IS NOT NULL AND numero_historia != ""').get();
           const num = (ultimo?.max_num || 0) + 1;
-          const r = db.prepare('INSERT INTO historias_clinicas (paciente_id, numero_historia) VALUES (?, ?)').run(paciente.id, String(num));
+          const r = await db.prepare('INSERT INTO historias_clinicas (paciente_id, numero_historia) VALUES (?, ?)').run(paciente.id, String(num));
           historia = { id: r.lastInsertRowid };
         }
         const transformed = applyTransforms(mapped, CONSULTA_TRANSFORMS);
         const diagLista = mapped.diagnostico ? [{ texto: mapped.diagnostico, tipo: 'clinico' }] : [];
-        db.prepare('INSERT INTO consultas (historia_id, fecha, motivo, diagnostico_lista, notas) VALUES (?, ?, ?, ?, ?)').run(historia.id, transformed.fecha || new Date().toISOString(), transformed.motivo, JSON.stringify(diagLista), transformed.notas || '');
+        await db.prepare('INSERT INTO consultas (historia_id, fecha, motivo, diagnostico_lista, notas) VALUES (?, ?, ?, ?, ?)').run(historia.id, transformed.fecha || new Date().toISOString(), transformed.motivo, JSON.stringify(diagLista), transformed.notas || '');
         results.exitosos++;
       } catch (err) {
         results.fallidos++;
@@ -181,7 +181,7 @@ exports.importarConsultas = (req, res) => {
   }
 };
 
-exports.importarPagos = (req, res) => {
+exports.importarPagos = async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No se envio archivo' });
   try {
     const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
@@ -197,12 +197,12 @@ exports.importarPagos = (req, res) => {
         }
         const missing = PAGO_REQUIRED.filter(f => !mapped[f]);
         if (missing.length > 0) throw new Error(`Campos requeridos faltantes: ${missing.join(', ')}`);
-        const paciente = findPatient.get(String(mapped.paciente_dni));
+        const paciente = await findPatient.get(String(mapped.paciente_dni));
         if (!paciente) throw new Error(`Paciente con DNI ${mapped.paciente_dni} no encontrado`);
         const transformed = applyTransforms(mapped, PAGO_TRANSFORMS);
         const total = transformed.total || 0;
         const aCuenta = transformed.a_cuenta || 0;
-        db.prepare('INSERT INTO pagos (paciente_id, fecha, procedimiento, total, a_cuenta, saldo, metodo_pago, notas) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(paciente.id, transformed.fecha, transformed.procedimiento || '', total, aCuenta, total - aCuenta, transformed.metodo_pago || 'efectivo', transformed.notas || '');
+        await db.prepare('INSERT INTO pagos (paciente_id, fecha, procedimiento, total, a_cuenta, saldo, metodo_pago, notas) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(paciente.id, transformed.fecha, transformed.procedimiento || '', total, aCuenta, total - aCuenta, transformed.metodo_pago || 'efectivo', transformed.notas || '');
         results.exitosos++;
       } catch (err) {
         results.fallidos++;
@@ -215,7 +215,7 @@ exports.importarPagos = (req, res) => {
   }
 };
 
-exports.importarCompleto = (req, res) => {
+exports.importarCompleto = async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No se envio archivo' });
 
   try {
@@ -273,19 +273,19 @@ exports.importarCompleto = (req, res) => {
       return '';
     }
 
-    function findOrCreatePaciente(apellidoP, nombres, dni, tipoDoc, telefono, fechaNac, sheetOrigin) {
+    async function findOrCreatePaciente(apellidoP, nombres, dni, tipoDoc, telefono, fechaNac, sheetOrigin) {
       let paciente = null;
 
       if (dni) {
-        paciente = findPatientByDni.get(dni);
+        paciente = await findPatientByDni.get(dni);
         if (paciente) return { id: paciente.id, existing: true };
       }
 
       if (apellidoP && nombres) {
-        paciente = findPatientByName.get(apellidoP, nombres);
+        paciente = await findPatientByName.get(apellidoP, nombres);
         if (paciente) {
           if (dni && paciente.dni !== dni && (!paciente.dni || paciente.dni.startsWith('AUTO_'))) {
-            try { db.prepare('UPDATE pacientes SET dni = ?, tipo_documento = ? WHERE id = ?').run(dni, tipoDoc || 'dni', paciente.id); } catch (e) {}
+            try { await db.prepare('UPDATE pacientes SET dni = ?, tipo_documento = ? WHERE id = ?').run(dni, tipoDoc || 'dni', paciente.id); } catch (e) {}
           }
           return { id: paciente.id, existing: true };
         }
@@ -294,7 +294,7 @@ exports.importarCompleto = (req, res) => {
       if (!dni && apellidoP) {
         autoDniCounter++;
         const autoDni = `AUTO_${Date.now()}_${autoDniCounter}`;
-        const r = insertPaciente.run(apellidoP, '', nombres || apellidoP, autoDni, 'sin_doc', telefono || null, fechaNac || null);
+        const r = await insertPaciente.run(apellidoP, '', nombres || apellidoP, autoDni, 'sin_doc', telefono || null, fechaNac || null);
         if (r.changes > 0) {
           const newId = Number(r.lastInsertRowid);
           resultados.pacientes.exitosos++;
@@ -304,47 +304,47 @@ exports.importarCompleto = (req, res) => {
       }
 
       if (dni) {
-        const r = insertPaciente.run(apellidoP || '', '', nombres || apellidoP || '', dni, tipoDoc || 'dni', telefono || null, fechaNac || null);
+        const r = await insertPaciente.run(apellidoP || '', '', nombres || apellidoP || '', dni, tipoDoc || 'dni', telefono || null, fechaNac || null);
         if (r.changes > 0) {
           const newId = Number(r.lastInsertRowid);
           resultados.pacientes.exitosos++;
           resultados.pacientesCreadosAutomaticamente.push({ id: newId, nombre: `${apellidoP || ''} ${nombres || ''}`.trim(), origen: sheetOrigin });
           return { id: newId, existing: false };
         }
-        paciente = findPatientByDni.get(dni);
+        paciente = await findPatientByDni.get(dni);
         if (paciente) return { id: paciente.id, existing: true };
       }
 
       return null;
     }
 
-    function ensureHistoria(pacienteId, hclx) {
+    async function ensureHistoria(pacienteId, hclx) {
       let historia = historiaByPacienteId.get(pacienteId);
       if (historia) return historia;
 
-      historia = findHistoriaByPaciente.get(pacienteId);
+      historia = await findHistoriaByPaciente.get(pacienteId);
       if (historia) {
         historiaByPacienteId.set(pacienteId, historia);
         return historia;
       }
 
-      const r = stmtHistoria.run(pacienteId, hclx || null, null, null);
+      const r = await stmtHistoria.run(pacienteId, hclx || null, null, null);
       historia = { id: Number(r.lastInsertRowid) };
       historiaByPacienteId.set(pacienteId, historia);
       return historia;
     }
 
-    function ensureConsulta(historiaId, motivo, fecha) {
+    async function ensureConsulta(historiaId, motivo, fecha) {
       let existing = ultimaConsultaByHistoriaId.get(historiaId);
       if (existing) return existing;
 
-      const fromDb = findConsulta.get(historiaId);
+      const fromDb = await findConsulta.get(historiaId);
       if (fromDb) {
         ultimaConsultaByHistoriaId.set(historiaId, fromDb.id);
         return fromDb.id;
       }
 
-      const r = stmtConsulta.run(historiaId, fecha || new Date().toISOString().split('T')[0], motivo || 'Consulta importada', null);
+      const r = await stmtConsulta.run(historiaId, fecha || new Date().toISOString().split('T')[0], motivo || 'Consulta importada', null);
       const consultaId = Number(r.lastInsertRowid);
       ultimaConsultaByHistoriaId.set(historiaId, consultaId);
       return consultaId;
@@ -377,7 +377,7 @@ exports.importarCompleto = (req, res) => {
 
           if (!dni && !apellidoP) throw new Error(`Falta nombre o documento del paciente`);
 
-          const result = findOrCreatePaciente(apellidoP, nombres, dni, tipoDoc, telefono, fechaNac, 'historia_clinica');
+          const result = await findOrCreatePaciente(apellidoP, nombres, dni, tipoDoc, telefono, fechaNac, 'historia_clinica');
           if (!result) throw new Error(`No se pudo crear/encontrar paciente: ${apellidoP} ${nombres}`);
 
           const paciente = { id: result.id };
@@ -388,13 +388,13 @@ exports.importarCompleto = (req, res) => {
             pacienteByHclx.set(hclx, paciente);
           }
 
-          let historia = findHistoriaByPaciente.get(paciente.id);
+          let historia = await findHistoriaByPaciente.get(paciente.id);
           if (!historia) {
-            const rHistoria = stmtHistoria.run(paciente.id, hclx || null, alergias, antecedentes);
+            const rHistoria = await stmtHistoria.run(paciente.id, hclx || null, alergias, antecedentes);
             historia = { id: Number(rHistoria.lastInsertRowid) };
           } else {
             if (alergias || antecedentes) {
-              try { db.prepare('UPDATE historias_clinicas SET alergia_medicamentos = COALESCE(?, alergia_medicamentos), otras_enfermedades = COALESCE(?, otras_enfermedades) WHERE id = ?').run(alergias, antecedentes, historia.id); } catch (e) {}
+              try { await db.prepare('UPDATE historias_clinicas SET alergia_medicamentos = COALESCE(?, alergia_medicamentos), otras_enfermedades = COALESCE(?, otras_enfermedades) WHERE id = ?').run(alergias, antecedentes, historia.id); } catch (e) {}
             }
             resultados.consultas.duplicados++;
           }
@@ -406,7 +406,7 @@ exports.importarCompleto = (req, res) => {
             resultados.consultas.fallidos++;
             resultados.consultas.errores.push({ fila: i + 2, error: `Fecha futura ignorada: ${fecha}` });
           } else {
-            const rConsulta = stmtConsulta.run(historia.id, fecha, 'Historia clinica importada', null);
+            const rConsulta = await stmtConsulta.run(historia.id, fecha, 'Historia clinica importada', null);
             const consultaId = Number(rConsulta.lastInsertRowid);
             ultimaConsultaByHistoriaId.set(historia.id, consultaId);
 
@@ -422,7 +422,7 @@ exports.importarCompleto = (req, res) => {
 
             if (cariados || curados || porExtraer || endodoncia || orto || protesis || extraidos || destartraje) {
               try {
-                stmtNecesidades.run(consultaId, cariados ? String(cariados) : null, curados ? String(curados) : null, porExtraer ? String(porExtraer) : null, endodoncia ? String(endodoncia) : null, orto ? String(orto) : null, protesis ? String(protesis) : null, extraidos ? String(extraidos) : null, destartraje ? String(destartraje) : null);
+                await stmtNecesidades.run(consultaId, cariados ? String(cariados) : null, curados ? String(curados) : null, porExtraer ? String(porExtraer) : null, endodoncia ? String(endodoncia) : null, orto ? String(orto) : null, protesis ? String(protesis) : null, extraidos ? String(extraidos) : null, destartraje ? String(destartraje) : null);
                 resultados.necesidades.exitosos++;
               } catch (e) {
                 resultados.necesidades.fallidos++;
@@ -450,8 +450,8 @@ exports.importarCompleto = (req, res) => {
           const hclx = resolveHclx(row);
 
           if (hclx) {
-            const hist = findHistoriaByHclx.get(hclx);
-            if (hist) paciente = findPatientById.get(hist.paciente_id);
+            const hist = await findHistoriaByHclx.get(hclx);
+            if (hist) paciente = await findPatientById.get(hist.paciente_id);
             if (!paciente) {
               const byHclx = pacienteByHclx.get(hclx);
               if (byHclx) paciente = byHclx;
@@ -463,7 +463,7 @@ exports.importarCompleto = (req, res) => {
             const parts = clean.split(/\s+/);
             const apellido = parts[0] || '';
             const nombresArr = parts.slice(1).join(' ');
-            const result = findOrCreatePaciente(apellido, nombresArr, null, 'sin_doc', null, null, 'antecedentes');
+            const result = await findOrCreatePaciente(apellido, nombresArr, null, 'sin_doc', null, null, 'antecedentes');
             if (result) paciente = { id: result.id };
           }
 
@@ -471,8 +471,8 @@ exports.importarCompleto = (req, res) => {
 
           pacienteById.set(paciente.id, paciente);
 
-          const historia = ensureHistoria(paciente.id, hclx);
-          const consultaId = ensureConsulta(historia.id, 'Consulta desde antecedentes', new Date().toISOString().split('T')[0]);
+          const historia = await ensureHistoria(paciente.id, hclx);
+          const consultaId = await ensureConsulta(historia.id, 'Consulta desde antecedentes', new Date().toISOString().split('T')[0]);
 
           const diagnostico = mapped.diagnostico_lista || '';
           const tratamiento = mapped.tratamiento || '';
@@ -484,7 +484,7 @@ exports.importarCompleto = (req, res) => {
           if (planTrabajo) notasParts.push(`Plan: ${planTrabajo}`);
           const notas = notasParts.join(' | ');
 
-          stmtTratamiento.run(paciente.id, consultaId, new Date().toISOString().split('T')[0], tratamiento, notas, costoTotal, 0, costoTotal);
+          await stmtTratamiento.run(paciente.id, consultaId, new Date().toISOString().split('T')[0], tratamiento, notas, costoTotal, 0, costoTotal);
           resultados.tratamientos.exitosos++;
         } catch (err) {
           resultados.tratamientos.fallidos++;
@@ -509,8 +509,8 @@ exports.importarCompleto = (req, res) => {
           const hclx = resolveHclx(row);
 
           if (hclx) {
-            const hist = findHistoriaByHclx.get(hclx);
-            if (hist) paciente = findPatientById.get(hist.paciente_id);
+            const hist = await findHistoriaByHclx.get(hclx);
+            if (hist) paciente = await findPatientById.get(hist.paciente_id);
             if (!paciente) {
               const byHclx = pacienteByHclx.get(hclx);
               if (byHclx) paciente = byHclx;
@@ -522,13 +522,13 @@ exports.importarCompleto = (req, res) => {
             const parts = clean.split(/\s+/);
             const apellido = parts[0] || '';
             const nombresArr = parts.slice(1).join(' ');
-            const result = findOrCreatePaciente(apellido, nombresArr, null, 'sin_doc', null, null, 'saldos');
+            const result = await findOrCreatePaciente(apellido, nombresArr, null, 'sin_doc', null, null, 'saldos');
             if (result) paciente = { id: result.id };
           }
 
           if (!paciente) throw new Error(`Paciente no encontrado (N°HCLX: ${hclx || 'N/A'}, Nombre: ${mapped.paciente_nombre || 'N/A'})`);
 
-          const historia = ensureHistoria(paciente.id, hclx);
+          const historia = await ensureHistoria(paciente.id, hclx);
           const consultaId = ultimaConsultaByHistoriaId.get(historia.id) || null;
 
           const transformed = applyTransforms(mapped, SALDO_TRANSFORMS);
@@ -541,7 +541,7 @@ exports.importarCompleto = (req, res) => {
             resultados.pagos.fallidos++;
             resultados.pagos.errores.push({ fila: i + 2, error: `Fecha futura ignorada: ${fechaPago}` });
           } else {
-            stmtPago.run(paciente.id, consultaId, fechaPago, transformed.procedimiento || '', total, aCuenta, saldo, 'efectivo');
+            await stmtPago.run(paciente.id, consultaId, fechaPago, transformed.procedimiento || '', total, aCuenta, saldo, 'efectivo');
             resultados.pagos.exitosos++;
           }
         } catch (err) {
@@ -552,7 +552,7 @@ exports.importarCompleto = (req, res) => {
     }
 
     try {
-      db.prepare('INSERT INTO importaciones_historial (archivo_nombre, archivo_hash, pacientes_creados, pacientes_duplicados, consultas_creadas, tratamientos_creados, pagos_creados, total_errores) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(
+      await db.prepare('INSERT INTO importaciones_historial (archivo_nombre, archivo_hash, pacientes_creados, pacientes_duplicados, consultas_creadas, tratamientos_creados, pagos_creados, total_errores) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(
         req.file.originalname || 'desconocido',
         fileHash,
         resultados.pacientes.exitosos,
@@ -570,7 +570,7 @@ exports.importarCompleto = (req, res) => {
   }
 };
 
-exports.devReset = (req, res) => {
+exports.devReset = async (req, res) => {
   if (req.body.confirmation !== 'BORRAR TODO') {
     return res.status(400).json({ error: 'Confirmacion incorrecta' });
   }
@@ -582,14 +582,14 @@ exports.devReset = (req, res) => {
       'pacientes'
     ];
     for (const table of tables) {
-      try { db.prepare(`DELETE FROM ${table}`).run(); } catch (e) {}
+      try { await db.prepare(`DELETE FROM ${table}`).run(); } catch (e) {}
     }
-    try { db.prepare("DELETE FROM sqlite_sequence WHERE name IN ('" + tables.join("','") + "')").run(); } catch (e) {}
+    try { await db.prepare("DELETE FROM sqlite_sequence WHERE name IN ('" + tables.join("','") + "')").run(); } catch (e) {}
 
     const bcrypt = require('bcryptjs');
     const insertUsuario = db.prepare('INSERT OR IGNORE INTO usuarios (nombre, email, password, rol) VALUES (?, ?, ?, ?)');
-    insertUsuario.run('Admin', 'admin', bcrypt.hashSync('admin', 10), 'admin');
-    insertUsuario.run('Dr. Carlos Alonso', 'doctor', bcrypt.hashSync('doctor', 10), 'odontologo');
+    await insertUsuario.run('Admin', 'admin', bcrypt.hashSync('admin', 10), 'admin');
+    await insertUsuario.run('Dr. Carlos Alonso', 'doctor', bcrypt.hashSync('doctor', 10), 'odontologo');
 
     res.json({ mensaje: 'Base de datos reiniciada correctamente. Credenciales: admin/admin, doctor/doctor' });
   } catch (err) {

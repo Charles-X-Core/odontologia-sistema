@@ -1,22 +1,22 @@
-const db = require('../database');
+const db = require('../db');
 
-exports.crear = (req, res) => {
+exports.crear = async (req, res) => {
   const { consulta_id, cariados, curados, por_extraer, endodoncia, ortodoncia, protesis, extraidos, destartraje } = req.body;
 
   if (!consulta_id) {
     return res.status(400).json({ error: 'consulta_id es obligatorio' });
   }
 
-  const consulta = db.prepare('SELECT id FROM consultas WHERE id = ?').get(consulta_id);
+  const consulta = await db.prepare('SELECT id FROM consultas WHERE id = ?').get(consulta_id);
   if (!consulta) {
     return res.status(404).json({ error: 'Consulta no encontrada' });
   }
 
   try {
-    const existente = db.prepare('SELECT id FROM necesidades_odontologicas WHERE consulta_id = ?').get(consulta_id);
+    const existente = await db.prepare('SELECT id FROM necesidades_odontologicas WHERE consulta_id = ?').get(consulta_id);
 
     if (existente) {
-      db.prepare(`
+      await db.prepare(`
         UPDATE necesidades_odontologicas SET cariados = ?, curados = ?, por_extraer = ?,
         endodoncia = ?, ortodoncia = ?, protesis = ?, extraidos = ?, destartraje = ?
         WHERE consulta_id = ?
@@ -32,7 +32,7 @@ exports.crear = (req, res) => {
       INSERT INTO necesidades_odontologicas (consulta_id, cariados, curados, por_extraer, endodoncia, ortodoncia, protesis, extraidos, destartraje)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
-    const result = stmt.run(
+    const result = await stmt.run(
       consulta_id,
       cariados || 0, curados || 0, por_extraer || 0,
       endodoncia || 0, ortodoncia || 0, protesis || 0,
@@ -44,14 +44,14 @@ exports.crear = (req, res) => {
   }
 };
 
-exports.obtenerPorConsulta = (req, res) => {
-  const necesidades = db.prepare('SELECT * FROM necesidades_odontologicas WHERE consulta_id = ?').get(req.params.consultaId);
+exports.obtenerPorConsulta = async (req, res) => {
+  const necesidades = await db.prepare('SELECT * FROM necesidades_odontologicas WHERE consulta_id = ?').get(req.params.consultaId);
   if (!necesidades) return res.json(null);
   res.json(necesidades);
 };
 
-exports.obtenerPorPaciente = (req, res) => {
-  const necesidades = db.prepare(`
+exports.obtenerPorPaciente = async (req, res) => {
+  const necesidades = await db.prepare(`
     SELECT n.*, c.fecha as consulta_fecha
     FROM necesidades_odontologicas n
     JOIN consultas c ON c.id = n.consulta_id

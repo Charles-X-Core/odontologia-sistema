@@ -46,3 +46,13 @@ electron/logo.ico.exe
 # Archivos viejos que fueron movidos a electron/
 /openwa-runner.js
 /openwaSetup.js
+
+# Capacitor / Android
+frontend/android/
+frontend/.gradle/
+*.apk
+*.aab
+build-android.bat
+
+# CodeGraph
+.codegraph/

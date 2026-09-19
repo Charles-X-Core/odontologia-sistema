@@ -1,4 +1,4 @@
-const db = require('../database');
+const db = require('../db');
 
 function validarDocumento(tipo, numero) {
   if (!numero || numero.trim() === '') return tipo === 'sin_doc' || !tipo;
@@ -20,7 +20,7 @@ function mensajeValidacionDoc(tipo) {
   }
 }
 
-exports.crear = (req, res) => {
+exports.crear = async (req, res) => {
   const {
     apellido_paterno, apellido_materno, nombres, dni, tipo_documento, telefono, email,
     fecha_nacimiento, sexo, estado_civil, direccion, lugar_nacimiento,
@@ -54,7 +54,7 @@ exports.crear = (req, res) => {
         alergias, antecedentes_personales, antecedentes_familiares
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
-    const result = stmt.run(
+    const result = await stmt.run(
       apellido_paterno, apellido_materno || '', nombres, docNumero || null, docTipo,
       telefono || null, email || null, fecha_nacimiento || null, sexo || null,
       estado_civil || '', direccion || null, lugar_nacimiento || '',
@@ -71,8 +71,8 @@ exports.crear = (req, res) => {
   }
 };
 
-exports.listar = (req, res) => {
-  const pacientes = db.prepare(`
+exports.listar = async (req, res) => {
+  const pacientes = await db.prepare(`
     SELECT p.*,
       (SELECT MAX(c.fecha) FROM consultas c
        INNER JOIN historias_clinicas h ON c.historia_id = h.id
@@ -83,7 +83,7 @@ exports.listar = (req, res) => {
   res.json(pacientes);
 };
 
-exports.buscar = (req, res) => {
+exports.buscar = async (req, res) => {
   const q = req.query.q;
   if (!q || q.trim().length < 1) {
     return res.json([]);
@@ -95,7 +95,7 @@ exports.buscar = (req, res) => {
 
   if (palabras.length === 1) {
     const term = `%${palabras[0]}%`;
-    const pacientes = db.prepare(`
+    const pacientes = await db.prepare(`
       SELECT * FROM pacientes
       WHERE nombres LIKE ? OR apellido_paterno LIKE ? OR apellido_materno LIKE ?
          OR dni LIKE ? OR telefono LIKE ?
@@ -117,7 +117,7 @@ exports.buscar = (req, res) => {
   }
 
   const where = andBlocks.join(' AND ');
-  const pacientes = db.prepare(`
+  const pacientes = await db.prepare(`
     SELECT * FROM pacientes
     WHERE ${where}
     ORDER BY apellido_paterno ASC
@@ -127,13 +127,13 @@ exports.buscar = (req, res) => {
   res.json(pacientes);
 };
 
-exports.obtenerPorId = (req, res) => {
-  const paciente = db.prepare('SELECT * FROM pacientes WHERE id = ?').get(req.params.id);
+exports.obtenerPorId = async (req, res) => {
+  const paciente = await db.prepare('SELECT * FROM pacientes WHERE id = ?').get(req.params.id);
   if (!paciente) return res.status(404).json({ error: 'Paciente no encontrado' });
   res.json(paciente);
 };
 
-exports.actualizar = (req, res) => {
+exports.actualizar = async (req, res) => {
   const {
     apellido_paterno, apellido_materno, nombres, dni, tipo_documento, telefono, email,
     fecha_nacimiento, sexo, estado_civil, direccion, lugar_nacimiento,
@@ -162,7 +162,7 @@ exports.actualizar = (req, res) => {
         alergias = ?, antecedentes_personales = ?, antecedentes_familiares = ?
       WHERE id = ?
     `);
-    stmt.run(
+    await stmt.run(
       apellido_paterno || '', apellido_materno || '', nombres || '',
       dni || '', tipo_documento || 'dni',
       telefono || null, email || null, fecha_nacimiento || null, sexo || null,
@@ -182,7 +182,7 @@ exports.actualizar = (req, res) => {
   }
 };
 
-exports.actualizarDni = (req, res) => {
+exports.actualizarDni = async (req, res) => {
   const { dni, tipo_documento } = req.body;
   const { id } = req.params;
 
@@ -196,36 +196,36 @@ exports.actualizarDni = (req, res) => {
   }
 
   try {
-    const existing = db.prepare('SELECT id FROM pacientes WHERE dni = ? AND id != ?').get(dni.trim(), id);
+    const existing = await db.prepare('SELECT id FROM pacientes WHERE dni = ? AND id != ?').get(dni.trim(), id);
     if (existing) {
       return res.status(409).json({ error: 'Ya existe otro paciente con ese documento' });
     }
 
-    db.prepare('UPDATE pacientes SET dni = ?, tipo_documento = ? WHERE id = ?').run(dni.trim(), docTipo, id);
-    const paciente = db.prepare('SELECT * FROM pacientes WHERE id = ?').get(id);
+    await db.prepare('UPDATE pacientes SET dni = ?, tipo_documento = ? WHERE id = ?').run(dni.trim(), docTipo, id);
+    const paciente = await db.prepare('SELECT * FROM pacientes WHERE id = ?').get(id);
     res.json({ message: 'Documento actualizado', paciente });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-exports.eliminar = (req, res) => {
+exports.eliminar = async (req, res) => {
   try {
-    db.prepare('DELETE FROM pacientes WHERE id = ?').run(req.params.id);
+    await db.prepare('DELETE FROM pacientes WHERE id = ?').run(req.params.id);
     res.json({ message: 'Paciente eliminado' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-exports.obtenerHistorial = (req, res) => {
-  const paciente = db.prepare('SELECT * FROM pacientes WHERE id = ?').get(req.params.id);
+exports.obtenerHistorial = async (req, res) => {
+  const paciente = await db.prepare('SELECT * FROM pacientes WHERE id = ?').get(req.params.id);
   if (!paciente) return res.status(404).json({ error: 'Paciente no encontrado' });
 
-  const historia = db.prepare('SELECT * FROM historias_clinicas WHERE paciente_id = ?').get(req.params.id);
+  const historia = await db.prepare('SELECT * FROM historias_clinicas WHERE paciente_id = ?').get(req.params.id);
   if (!historia) return res.json({ paciente, historia: null, consultas: [], resumen: {} });
 
-  const consultas = db.prepare(`
+  const consultas = await db.prepare(`
     SELECT c.*, o.datos_json as odontograma
     FROM consultas c
     LEFT JOIN odontogramas o ON o.consulta_id = c.id
@@ -233,18 +233,18 @@ exports.obtenerHistorial = (req, res) => {
     ORDER BY c.fecha DESC
   `).all(historia.id);
 
-  consultas.forEach(c => {
+  for (const c of consultas) {
     if (c.odontograma) {
       try { c.odontograma = JSON.parse(c.odontograma); } catch {}
     }
-    c.tratamientos = db.prepare('SELECT * FROM tratamientos WHERE consulta_id = ? ORDER BY created_at DESC').all(c.id);
-    c.recetas = db.prepare('SELECT id, medicamentos, indicaciones, created_at FROM recetas WHERE consulta_id = ? ORDER BY created_at DESC').all(c.id);
+    c.tratamientos = await db.prepare('SELECT * FROM tratamientos WHERE consulta_id = ? ORDER BY created_at DESC').all(c.id);
+    c.recetas = await db.prepare('SELECT id, medicamentos, indicaciones, created_at FROM recetas WHERE consulta_id = ? ORDER BY created_at DESC').all(c.id);
     c.recetas.forEach(r => {
       try { r.medicamentos = JSON.parse(r.medicamentos); } catch {}
     });
-    c.pagos = db.prepare('SELECT * FROM pagos WHERE consulta_id = ? ORDER BY fecha DESC').all(c.id);
-    c.necesidades = db.prepare('SELECT * FROM necesidades_odontologicas WHERE consulta_id = ?').get(c.id) || null;
-  });
+    c.pagos = await db.prepare('SELECT * FROM pagos WHERE consulta_id = ? ORDER BY fecha DESC').all(c.id);
+    c.necesidades = await db.prepare('SELECT * FROM necesidades_odontologicas WHERE consulta_id = ?').get(c.id) || null;
+  }
 
   const ultimaConsulta = consultas.length > 0 ? consultas[0] : null;
   let necesidades = null;
@@ -254,13 +254,13 @@ exports.obtenerHistorial = (req, res) => {
 
   const resumen = {};
   resumen.total_consultas = consultas.length;
-  resumen.total_tratamientos = db.prepare('SELECT COUNT(*) as n FROM tratamientos WHERE paciente_id = ?').get(req.params.id).n;
-  resumen.tratamientos_pendientes = db.prepare("SELECT COUNT(*) as n FROM tratamientos WHERE paciente_id = ? AND estado != 'realizado'").get(req.params.id).n;
-  resumen.total_recetas = db.prepare('SELECT COUNT(*) as n FROM recetas WHERE paciente_id = ?').get(req.params.id).n;
-  const pagosRes = db.prepare('SELECT COALESCE(SUM(total),0) as total, COALESCE(SUM(a_cuenta),0) as pagado, COALESCE(SUM(saldo),0) as pendiente FROM pagos WHERE paciente_id = ?').get(req.params.id);
+  resumen.total_tratamientos = (await db.prepare('SELECT COUNT(*) as n FROM tratamientos WHERE paciente_id = ?').get(req.params.id)).n;
+  resumen.tratamientos_pendientes = (await db.prepare("SELECT COUNT(*) as n FROM tratamientos WHERE paciente_id = ? AND estado != 'realizado'").get(req.params.id)).n;
+  resumen.total_recetas = (await db.prepare('SELECT COUNT(*) as n FROM recetas WHERE paciente_id = ?').get(req.params.id)).n;
+  const pagosRes = await db.prepare('SELECT COALESCE(SUM(total),0) as total, COALESCE(SUM(a_cuenta),0) as pagado, COALESCE(SUM(saldo),0) as pendiente FROM pagos WHERE paciente_id = ?').get(req.params.id);
   resumen.total_pagado = pagosRes.pagado;
   resumen.total_pendiente = pagosRes.pendiente;
-  resumen.total_tratamiento_costo = db.prepare('SELECT COALESCE(SUM(costo_total),0) as total FROM tratamientos WHERE paciente_id = ?').get(req.params.id).total;
+  resumen.total_tratamiento_costo = (await db.prepare('SELECT COALESCE(SUM(costo_total),0) as total FROM tratamientos WHERE paciente_id = ?').get(req.params.id)).total;
 
   res.json({ paciente, historia, consultas, necesidades, resumen });
 };

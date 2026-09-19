@@ -1,6 +1,6 @@
-const db = require('../database');
+const db = require('../db');
 
-exports.crear = (req, res) => {
+exports.crear = async (req, res) => {
   const {
     historia_id, fecha, hora, motivo, tiempo_enfermedad, signos_sintomas,
     relato_cronologico, funciones_biologicas, signos_vitales,
@@ -12,7 +12,7 @@ exports.crear = (req, res) => {
     return res.status(400).json({ error: 'historia_id y motivo son obligatorios' });
   }
 
-  const historia = db.prepare('SELECT id FROM historias_clinicas WHERE id = ?').get(historia_id);
+  const historia = await db.prepare('SELECT id FROM historias_clinicas WHERE id = ?').get(historia_id);
   if (!historia) {
     return res.status(404).json({ error: 'Historia clinica no encontrada' });
   }
@@ -26,7 +26,7 @@ exports.crear = (req, res) => {
         diagnostico_lista, plan_tratamiento, consentimiento_informado, notas
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
-    const result = stmt.run(
+    const result = await stmt.run(
       historia_id,
       fecha || new Date().toISOString(),
       hora || '',
@@ -49,8 +49,8 @@ exports.crear = (req, res) => {
   }
 };
 
-exports.obtenerPorHistoria = (req, res) => {
-  const consultas = db.prepare(`
+exports.obtenerPorHistoria = async (req, res) => {
+  const consultas = await db.prepare(`
     SELECT c.*, o.datos_json as odontograma
     FROM consultas c
     LEFT JOIN odontogramas o ON o.consulta_id = c.id
@@ -67,8 +67,8 @@ exports.obtenerPorHistoria = (req, res) => {
   res.json(consultas);
 };
 
-exports.obtenerPorId = (req, res) => {
-  const consulta = db.prepare(`
+exports.obtenerPorId = async (req, res) => {
+  const consulta = await db.prepare(`
     SELECT c.*, o.datos_json as odontograma
     FROM consultas c
     LEFT JOIN odontogramas o ON o.consulta_id = c.id
@@ -83,7 +83,7 @@ exports.obtenerPorId = (req, res) => {
   res.json(consulta);
 };
 
-exports.actualizar = (req, res) => {
+exports.actualizar = async (req, res) => {
   const {
     fecha, hora, motivo, tiempo_enfermedad, signos_sintomas,
     relato_cronologico, funciones_biologicas, signos_vitales,
@@ -91,7 +91,7 @@ exports.actualizar = (req, res) => {
     diagnostico_lista, plan_tratamiento, notas
   } = req.body;
   try {
-    db.prepare(`
+    await db.prepare(`
       UPDATE consultas SET
         fecha = ?, hora = ?, motivo = ?, tiempo_enfermedad = ?,
         signos_sintomas = ?, relato_cronologico = ?, funciones_biologicas = ?,
@@ -117,9 +117,9 @@ exports.actualizar = (req, res) => {
   }
 };
 
-exports.eliminar = (req, res) => {
+exports.eliminar = async (req, res) => {
   try {
-    db.prepare('DELETE FROM consultas WHERE id = ?').run(req.params.id);
+    await db.prepare('DELETE FROM consultas WHERE id = ?').run(req.params.id);
     res.json({ message: 'Consulta eliminada' });
   } catch (err) {
     res.status(500).json({ error: err.message });

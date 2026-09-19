@@ -1,7 +1,7 @@
 const { DatabaseSync } = require('node:sqlite');
 const path = require('path');
 
-const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', 'clinica.db');
+const DB_PATH = process.env.LOCAL_DB_PATH || process.env.DB_PATH || path.join(__dirname, '..', 'clinica.db');
 
 const db = new DatabaseSync(DB_PATH);
 
@@ -66,6 +66,11 @@ try { db.exec("ALTER TABLE imagenes ADD COLUMN hash_sha256 TEXT DEFAULT ''"); } 
 try { db.exec("ALTER TABLE pacientes ADD COLUMN alergias TEXT DEFAULT ''"); } catch {}
 try { db.exec("ALTER TABLE pacientes ADD COLUMN antecedentes_personales TEXT DEFAULT ''"); } catch {}
 try { db.exec("ALTER TABLE pacientes ADD COLUMN antecedentes_familiares TEXT DEFAULT ''"); } catch {}
+
+db.exec("CREATE TABLE IF NOT EXISTS citas (id INTEGER PRIMARY KEY AUTOINCREMENT, paciente_id INTEGER NOT NULL, usuario_id INTEGER, fecha TEXT NOT NULL, hora TEXT NOT NULL, duracion_minutos INTEGER DEFAULT 30, tipo TEXT DEFAULT 'consulta', motivo TEXT NOT NULL DEFAULT '', motivo_editado TEXT DEFAULT '', estado TEXT DEFAULT 'pendiente', notas TEXT DEFAULT '', recordatorio_enviado INTEGER DEFAULT 0, consulta_id INTEGER, asistio_confirmed_at TEXT, created_at TEXT DEFAULT (datetime('now')), updated_at TEXT DEFAULT (datetime('now')), FOREIGN KEY (paciente_id) REFERENCES pacientes(id) ON DELETE CASCADE, FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL, FOREIGN KEY (consulta_id) REFERENCES consultas(id) ON DELETE SET NULL)");
+
+try { db.exec("ALTER TABLE citas ADD COLUMN motivo_editado TEXT DEFAULT ''"); } catch {}
+try { db.exec("ALTER TABLE citas ADD COLUMN asistio_confirmed_at TEXT"); } catch {}
 
 db.exec("CREATE TABLE IF NOT EXISTS importaciones_historial (id INTEGER PRIMARY KEY AUTOINCREMENT, archivo_nombre TEXT, archivo_hash TEXT, fecha_importacion TEXT DEFAULT (datetime('now')), pacientes_creados INTEGER DEFAULT 0, pacientes_duplicados INTEGER DEFAULT 0, consultas_creadas INTEGER DEFAULT 0, tratamientos_creados INTEGER DEFAULT 0, pagos_creados INTEGER DEFAULT 0, total_errores INTEGER DEFAULT 0, usuario_id INTEGER)");
 

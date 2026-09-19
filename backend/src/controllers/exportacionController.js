@@ -1,11 +1,11 @@
-const db = require('../database');
+const db = require('../db');
 const XLSX = require('xlsx');
 const path = require('path');
 const fs = require('fs');
 const { DatabaseSync } = require('node:sqlite');
 
-function queryAll(sql, params = []) {
-  return db.prepare(sql).all(...params);
+async function queryAll(sql, params = []) {
+  return await db.prepare(sql).all(...params);
 }
 
 function buildExcelWorkbook(hojas) {
@@ -42,20 +42,20 @@ function sendCsv(res, data, nombreArchivo) {
   res.send(csv);
 }
 
-exports.completo = (req, res) => {
+exports.completo = async (req, res) => {
   try {
     const formato = req.query.formato || 'xlsx';
 
-    const pacientes = queryAll(`
+    const pacientes = await queryAll(`
       SELECT p.*, hc.numero_historia
       FROM pacientes p
       LEFT JOIN historias_clinicas hc ON hc.paciente_id = p.id
       ORDER BY p.id
     `);
 
-    const historias = queryAll('SELECT * FROM historias_clinicas ORDER BY id');
+    const historias = await queryAll('SELECT * FROM historias_clinicas ORDER BY id');
 
-    const consultas = queryAll(`
+    const consultas = await queryAll(`
       SELECT c.*, hc.numero_historia, p.dni, p.nombres, p.apellido_paterno, p.apellido_materno
       FROM consultas c
       JOIN historias_clinicas hc ON c.historia_id = hc.id
@@ -63,7 +63,7 @@ exports.completo = (req, res) => {
       ORDER BY c.id
     `);
 
-    const odontogramas = queryAll(`
+    const odontogramas = await queryAll(`
       SELECT o.*, c.fecha as consulta_fecha, p.dni
       FROM odontogramas o
       JOIN consultas c ON o.consulta_id = c.id
@@ -72,28 +72,28 @@ exports.completo = (req, res) => {
       ORDER BY o.id
     `);
 
-    const tratamientos = queryAll(`
+    const tratamientos = await queryAll(`
       SELECT t.*, p.dni, p.nombres, p.apellido_paterno
       FROM tratamientos t
       JOIN pacientes p ON t.paciente_id = p.id
       ORDER BY t.id
     `);
 
-    const pagos = queryAll(`
+    const pagos = await queryAll(`
       SELECT pg.*, p.dni, p.nombres, p.apellido_paterno
       FROM pagos pg
       JOIN pacientes p ON pg.paciente_id = p.id
       ORDER BY pg.id
     `);
 
-    const recetas = queryAll(`
+    const recetas = await queryAll(`
       SELECT r.*, p.dni, p.nombres, p.apellido_paterno
       FROM recetas r
       JOIN pacientes p ON r.paciente_id = p.id
       ORDER BY r.id
     `);
 
-    const imagenes = queryAll(`
+    const imagenes = await queryAll(`
       SELECT i.*, p.dni, p.nombres, p.apellido_paterno
       FROM imagenes i
       JOIN pacientes p ON i.paciente_id = p.id
@@ -125,10 +125,10 @@ exports.completo = (req, res) => {
   }
 };
 
-exports.pacientes = (req, res) => {
+exports.pacientes = async (req, res) => {
   try {
     const formato = req.query.formato || 'xlsx';
-    const data = queryAll(`
+    const data = await queryAll(`
       SELECT p.*, hc.numero_historia
       FROM pacientes p
       LEFT JOIN historias_clinicas hc ON hc.paciente_id = p.id
@@ -144,10 +144,10 @@ exports.pacientes = (req, res) => {
   }
 };
 
-exports.consultas = (req, res) => {
+exports.consultas = async (req, res) => {
   try {
     const formato = req.query.formato || 'xlsx';
-    const data = queryAll(`
+    const data = await queryAll(`
       SELECT c.*, hc.numero_historia, p.dni, p.nombres, p.apellido_paterno, p.apellido_materno
       FROM consultas c
       JOIN historias_clinicas hc ON c.historia_id = hc.id
@@ -164,10 +164,10 @@ exports.consultas = (req, res) => {
   }
 };
 
-exports.tratamientos = (req, res) => {
+exports.tratamientos = async (req, res) => {
   try {
     const formato = req.query.formato || 'xlsx';
-    const data = queryAll(`
+    const data = await queryAll(`
       SELECT t.*, p.dni, p.nombres, p.apellido_paterno
       FROM tratamientos t
       JOIN pacientes p ON t.paciente_id = p.id
@@ -183,10 +183,10 @@ exports.tratamientos = (req, res) => {
   }
 };
 
-exports.pagos = (req, res) => {
+exports.pagos = async (req, res) => {
   try {
     const formato = req.query.formato || 'xlsx';
-    const data = queryAll(`
+    const data = await queryAll(`
       SELECT pg.*, p.dni, p.nombres, p.apellido_paterno
       FROM pagos pg
       JOIN pacientes p ON pg.paciente_id = p.id
@@ -202,10 +202,10 @@ exports.pagos = (req, res) => {
   }
 };
 
-exports.recetas = (req, res) => {
+exports.recetas = async (req, res) => {
   try {
     const formato = req.query.formato || 'xlsx';
-    const data = queryAll(`
+    const data = await queryAll(`
       SELECT r.*, p.dni, p.nombres, p.apellido_paterno
       FROM recetas r
       JOIN pacientes p ON r.paciente_id = p.id
@@ -221,16 +221,16 @@ exports.recetas = (req, res) => {
   }
 };
 
-exports.estadisticas = (req, res) => {
+exports.estadisticas = async (req, res) => {
   try {
     const stats = {
-      pacientes: db.prepare('SELECT COUNT(*) as t FROM pacientes').get().t,
-      historias: db.prepare('SELECT COUNT(*) as t FROM historias_clinicas').get().t,
-      consultas: db.prepare('SELECT COUNT(*) as t FROM consultas').get().t,
-      odontogramas: db.prepare('SELECT COUNT(*) as t FROM odontogramas').get().t,
-      tratamientos: db.prepare('SELECT COUNT(*) as t FROM tratamientos').get().t,
-      pagos: db.prepare('SELECT COUNT(*) as t FROM pagos').get().t,
-      recetas: db.prepare('SELECT COUNT(*) as t FROM recetas').get().t,
+      pacientes: (await db.prepare('SELECT COUNT(*) as t FROM pacientes').get()).t,
+      historias: (await db.prepare('SELECT COUNT(*) as t FROM historias_clinicas').get()).t,
+      consultas: (await db.prepare('SELECT COUNT(*) as t FROM consultas').get()).t,
+      odontogramas: (await db.prepare('SELECT COUNT(*) as t FROM odontogramas').get()).t,
+      tratamientos: (await db.prepare('SELECT COUNT(*) as t FROM tratamientos').get()).t,
+      pagos: (await db.prepare('SELECT COUNT(*) as t FROM pagos').get()).t,
+      recetas: (await db.prepare('SELECT COUNT(*) as t FROM recetas').get()).t,
     };
     res.json(stats);
   } catch (err) {
@@ -381,7 +381,7 @@ exports.importarBDAnterior = (req, res) => {
         const oldConsultas = oldDb.prepare('SELECT * FROM consultas').all();
         for (const c of oldConsultas) {
           try {
-            const newHistoriaId = oldToNewHistoriaId[c.historia_id];
+            const newHistoriaId = oldToNewConsultaId[c.historia_id];
             if (!newHistoriaId) continue;
             const info = insertConsulta.run(
               newHistoriaId, c.fecha || '', c.hora || '', c.motivo || '',

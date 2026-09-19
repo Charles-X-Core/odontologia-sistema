@@ -135,6 +135,24 @@ export const api = {
     stats: () => request('/dashboard/stats'),
   },
 
+  citas: {
+    listar: (params) => {
+      const qs = params ? '?' + new URLSearchParams(params) : '';
+      return request(`/citas${qs}`);
+    },
+    obtener: (id) => request(`/citas/${id}`),
+    crear: (data) => request('/citas', { method: 'POST', body: JSON.stringify(data) }),
+    actualizar: (id, data) => request(`/citas/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    eliminar: (id) => request(`/citas/${id}`, { method: 'DELETE' }),
+    hoy: () => request('/citas/hoy'),
+    proximas: () => request('/citas/proximas'),
+    pendientesProcesar: () => request('/citas/pendientes-procesar'),
+    confirmar: (id, data) => request(`/citas/${id}/confirmar`, { method: 'PUT', body: JSON.stringify(data || {}) }),
+    asistio: (id, data) => request(`/citas/${id}/asistio`, { method: 'POST', body: JSON.stringify(data || {}) }),
+    prepararSesion: (id) => request(`/citas/${id}/preparar-sesion`),
+    completar: (id, consulta_id) => request(`/citas/${id}/completar`, { method: 'POST', body: JSON.stringify({ consulta_id }) }),
+  },
+
   importacion: {
     preview: (formData) => uploadFile('/importacion/preview', formData),
     previewCompleto: (formData) => uploadFile('/importacion/preview-completo', formData),
@@ -157,6 +175,13 @@ export const api = {
     estadisticas: () => request('/exportacion/estadisticas'),
     backupBD: () => `${API_URL}/exportacion/backup-db?token=${getToken()}`,
     importarBD: (formData) => uploadFile('/exportacion/importar-db', formData),
+  },
+
+  backup: {
+    previewDb: (formData) => uploadFile('/backup/preview-db', formData),
+    importDb: (formData) => uploadFile('/backup/import-db', formData),
+    export: () => request('/backup/export'),
+    clean: (confirmation) => request('/backup/clean', { method: 'POST', body: JSON.stringify({ confirmation }) }),
   },
 
   pdf: {
@@ -199,5 +224,13 @@ export const api = {
     restart: () => request('/whatsapp/restart', { method: 'POST' }),
     getConfig: () => request('/whatsapp/config'),
     saveConfig: (data) => request('/whatsapp/config', { method: 'PUT', body: JSON.stringify(data) }),
+  },
+
+  sync: {
+    status: () => request('/sync/status'),
+    push: (since) => request('/sync/push', { method: 'POST', body: JSON.stringify({ since }) }),
+    pull: (since) => request('/sync/pull', { method: 'POST', body: JSON.stringify({ since }) }),
+    fullSync: () => request('/sync/full', { method: 'POST' }),
+    clean: (tables) => request('/sync/clean', { method: 'POST', body: JSON.stringify({ tables }) }),
   },
 };

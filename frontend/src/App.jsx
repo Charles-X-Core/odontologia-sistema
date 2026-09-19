@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from './context/AuthContext';
+import { syncService } from './services/syncService';
 import Login from './components/Login';
 import TitleBar from './components/TitleBar';
 import Sidebar from './components/Sidebar';
@@ -12,6 +13,7 @@ import Paciente360 from './components/Paciente360';
 import Configuracion from './components/Configuracion';
 import EstacionDatos from './components/EstacionDatos';
 import WhatsAppPanel from './components/WhatsAppPanel';
+import Citas from './components/Citas';
 import './App.css';
 
 function App() {
@@ -26,6 +28,13 @@ function App() {
 function LayoutAuth() {
   const [view, setView] = useState('dashboard');
   const [pacienteSeleccionado, setPacienteSeleccionado] = useState(null);
+  const [citaId, setCitaId] = useState(null);
+  const [motivoCita, setMotivoCita] = useState(null);
+
+  useEffect(() => {
+    syncService.startAutoSync(300000);
+    return () => syncService.stopAutoSync();
+  }, []);
 
   const verHistorial = (paciente) => {
     setPacienteSeleccionado(paciente);
@@ -44,12 +53,23 @@ function LayoutAuth() {
 
   const iniciarSesion = (paciente) => {
     setPacienteSeleccionado(paciente);
+    setCitaId(null);
+    setMotivoCita(null);
     setView('sesion');
   };
 
   const sesionCompletada = () => {
     setPacienteSeleccionado(null);
+    setCitaId(null);
+    setMotivoCita(null);
     setView('dashboard');
+  };
+
+  const abrirSesionDesdeCita = (data) => {
+    setPacienteSeleccionado(data.paciente);
+    setCitaId(data.cita_id);
+    setMotivoCita(data.motivo_usar);
+    setView('sesion');
   };
 
   return (
@@ -63,7 +83,16 @@ function LayoutAuth() {
           <Recepcion onVolver={() => setView('dashboard')} onStartSesion={iniciarSesion} />
         )}
         {view === 'sesion' && pacienteSeleccionado && (
-          <SesionClinica paciente={pacienteSeleccionado} onVolver={() => setView('recepcion')} onCompletado={sesionCompletada} />
+          <SesionClinica
+            paciente={pacienteSeleccionado}
+            citaId={citaId}
+            motivoCita={motivoCita}
+            onVolver={() => setView(citaId ? 'citas' : 'recepcion')}
+            onCompletado={sesionCompletada}
+          />
+        )}
+        {view === 'citas' && (
+          <Citas onAbrirSesion={abrirSesionDesdeCita} />
         )}
         {view === 'pacientes' && <Pacientes onVerHistorial={verHistorial} onVer360={verPaciente360} />}
         {view === 'historial' && pacienteSeleccionado && (

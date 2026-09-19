@@ -1,6 +1,6 @@
-const db = require('../database');
+const db = require('../db');
 
-exports.crear = (req, res) => {
+exports.crear = async (req, res) => {
   const {
     paciente_id, consulta_id, fecha, pieza_dental,
     procedimiento_realizado, costo_total, monto_a_cuenta, estado, notas
@@ -16,7 +16,7 @@ exports.crear = (req, res) => {
   const estadoFinal = (estado === 'realizado' || estado === 'planificado') ? estado : 'planificado';
 
   try {
-    const result = db.prepare(`
+    const result = await db.prepare(`
       INSERT INTO tratamientos (
         paciente_id, consulta_id, fecha, pieza_dental,
         procedimiento_realizado, costo_total, monto_a_cuenta, saldo_pendiente, estado, notas
@@ -33,8 +33,8 @@ exports.crear = (req, res) => {
   }
 };
 
-exports.listarPorPaciente = (req, res) => {
-  const tratamientos = db.prepare(`
+exports.listarPorPaciente = async (req, res) => {
+  const tratamientos = await db.prepare(`
     SELECT t.*, c.fecha as consulta_fecha
     FROM tratamientos t
     LEFT JOIN consultas c ON c.id = t.consulta_id
@@ -44,7 +44,7 @@ exports.listarPorPaciente = (req, res) => {
   res.json(tratamientos);
 };
 
-exports.actualizar = (req, res) => {
+exports.actualizar = async (req, res) => {
   const {
     consulta_id, fecha, pieza_dental, procedimiento_realizado,
     costo_total, monto_a_cuenta, estado, notas
@@ -65,7 +65,7 @@ exports.actualizar = (req, res) => {
 
     // Recalcular saldo si cambió costo o monto
     if (costo_total !== undefined || monto_a_cuenta !== undefined) {
-      const actual = db.prepare('SELECT costo_total, monto_a_cuenta FROM tratamientos WHERE id = ?').get(req.params.id);
+      const actual = await db.prepare('SELECT costo_total, monto_a_cuenta FROM tratamientos WHERE id = ?').get(req.params.id);
       if (actual) {
         const nuevoCosto = costo_total !== undefined ? (parseFloat(costo_total) || 0) : actual.costo_total;
         const nuevoMonto = monto_a_cuenta !== undefined ? (parseFloat(monto_a_cuenta) || 0) : actual.monto_a_cuenta;
@@ -79,16 +79,16 @@ exports.actualizar = (req, res) => {
     }
 
     valores.push(req.params.id);
-    db.prepare(`UPDATE tratamientos SET ${campos.join(', ')} WHERE id = ?`).run(...valores);
+    await db.prepare(`UPDATE tratamientos SET ${campos.join(', ')} WHERE id = ?`).run(...valores);
     res.json({ message: 'Tratamiento actualizado' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-exports.eliminar = (req, res) => {
+exports.eliminar = async (req, res) => {
   try {
-    db.prepare('DELETE FROM tratamientos WHERE id = ?').run(req.params.id);
+    await db.prepare('DELETE FROM tratamientos WHERE id = ?').run(req.params.id);
     res.json({ message: 'Tratamiento eliminado' });
   } catch (err) {
     res.status(500).json({ error: err.message });

@@ -1,4 +1,4 @@
-const db = require('../database');
+const db = require('../db');
 const PDFDocument = require('pdfkit');
 
 function nombreCompleto(p) {
@@ -55,9 +55,9 @@ function drawTable(doc, headers, rows, startX, startY, colWidths) {
   return y;
 }
 
-exports.receta = (req, res) => {
+exports.receta = async (req, res) => {
   try {
-    const receta = db.prepare(`
+    const receta = await db.prepare(`
       SELECT r.*, p.apellido_paterno, p.apellido_materno, p.nombres, p.dni, p.telefono,
              u.nombre as doctor_nombre, u.titulo as doctor_titulo, u.cmp as doctor_cmp, u.firma_imagen as doctor_firma
       FROM recetas r
@@ -69,7 +69,7 @@ exports.receta = (req, res) => {
 
     // Fallback: si el usuario logueado no tiene firma, usar la de cualquier usuario con firma
     if (!receta.doctor_firma) {
-      const doctorConFirma = db.prepare("SELECT nombre, titulo, cmp, firma_imagen FROM usuarios WHERE firma_imagen IS NOT NULL AND firma_imagen != '' LIMIT 1").get();
+      const doctorConFirma = await db.prepare("SELECT nombre, titulo, cmp, firma_imagen FROM usuarios WHERE firma_imagen IS NOT NULL AND firma_imagen != '' LIMIT 1").get();
       if (doctorConFirma) {
         receta.doctor_firma = doctorConFirma.firma_imagen;
         if (!receta.doctor_nombre || receta.doctor_nombre === 'Doctor') receta.doctor_nombre = doctorConFirma.nombre;
@@ -130,16 +130,16 @@ exports.receta = (req, res) => {
   }
 };
 
-exports.historia = (req, res) => {
+exports.historia = async (req, res) => {
   try {
-    const paciente = db.prepare('SELECT * FROM pacientes WHERE id = ?').get(req.params.id);
+    const paciente = await db.prepare('SELECT * FROM pacientes WHERE id = ?').get(req.params.id);
     if (!paciente) return res.status(404).json({ error: 'Paciente no encontrado' });
 
-    const historia = db.prepare('SELECT * FROM historias_clinicas WHERE paciente_id = ?').get(paciente.id);
-    const consultas = historia ? db.prepare(`
+    const historia = await db.prepare('SELECT * FROM historias_clinicas WHERE paciente_id = ?').get(paciente.id);
+    const consultas = historia ? await db.prepare(`
       SELECT c.* FROM consultas c WHERE c.historia_id = ? ORDER BY c.fecha DESC
     `).all(historia.id) : [];
-    const pagos = db.prepare('SELECT * FROM pagos WHERE paciente_id = ? ORDER BY fecha DESC').all(paciente.id);
+    const pagos = await db.prepare('SELECT * FROM pagos WHERE paciente_id = ? ORDER BY fecha DESC').all(paciente.id);
 
     const { generateHistoriaHtml } = require('../services/pdfTemplates/historiaHtmlPdf');
     const html = generateHistoriaHtml(paciente, historia, consultas, pagos, req.usuario.id);
@@ -152,7 +152,7 @@ exports.historia = (req, res) => {
   }
 };
 
-exports.historiaConsulta = (req, res) => {
+exports.historiaConsulta = async (req, res) => {
   try {
     const { pacienteId, consultaId } = req.params;
     const { generateHistoriaConsultaHtml } = require('../services/pdfTemplates/historiaHtmlPdf');
@@ -164,15 +164,15 @@ exports.historiaConsulta = (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
-exports.pago = (req, res) => {
+exports.pago = async (req, res) => {
   try {
-    const pago = db.prepare('SELECT * FROM pagos WHERE id = ?').get(req.params.id);
+    const pago = await db.prepare('SELECT * FROM pagos WHERE id = ?').get(req.params.id);
     if (!pago) return res.status(404).json({ error: 'Pago no encontrado' });
 
-    const paciente = db.prepare('SELECT * FROM pacientes WHERE id = ?').get(pago.paciente_id);
+    const paciente = await db.prepare('SELECT * FROM pacientes WHERE id = ?').get(pago.paciente_id);
     if (!paciente) return res.status(404).json({ error: 'Paciente no encontrado' });
 
-    const doctor = db.prepare('SELECT * FROM usuarios WHERE id = ?').get(req.usuario.id);
+    const doctor = await db.prepare('SELECT * FROM usuarios WHERE id = ?').get(req.usuario.id);
 
     const doc = new PDFDocument({ size: 'LETTER', margin: 50 });
     res.setHeader('Content-Type', 'application/pdf');
@@ -223,14 +223,14 @@ exports.pago = (req, res) => {
   }
 };
 
-exports.tratamientos = (req, res) => {
+exports.tratamientos = async (req, res) => {
   try {
-    const paciente = db.prepare('SELECT * FROM pacientes WHERE id = ?').get(req.params.id);
+    const paciente = await db.prepare('SELECT * FROM pacientes WHERE id = ?').get(req.params.id);
     if (!paciente) return res.status(404).json({ error: 'Paciente no encontrado' });
 
-    const doctor = db.prepare('SELECT * FROM usuarios WHERE id = ?').get(req.usuario.id);
+    const doctor = await db.prepare('SELECT * FROM usuarios WHERE id = ?').get(req.usuario.id);
 
-    const tratamientos = db.prepare(`
+    const tratamientos = await db.prepare(`
       SELECT t.*, c.fecha as consulta_fecha, c.motivo as consulta_motivo, c.hora as consulta_hora
       FROM tratamientos t
       LEFT JOIN consultas c ON c.id = t.consulta_id
