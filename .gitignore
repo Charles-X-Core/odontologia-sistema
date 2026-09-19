@@ -56,3 +56,4 @@ build-android.bat
 
 # CodeGraph
 .codegraph/
+.vercel

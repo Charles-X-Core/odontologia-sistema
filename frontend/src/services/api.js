@@ -1,8 +1,16 @@
 const isElectron = window.location.protocol === 'file:' || window.electronAPI?.isElectron;
+const isCapacitor = window.__CAPACITOR__ !== undefined;
 const ELECTRON_PORT = 18234;
-const API_URL = isElectron
-  ? `http://localhost:${ELECTRON_PORT}/api`
-  : (import.meta.env.VITE_API_URL || `http://localhost:${ELECTRON_PORT}/api`).replace(/\/+$/, '');
+const VERCEL_URL = 'https://clinica-dental-pro-one.vercel.app';
+
+let API_URL;
+if (isElectron) {
+  API_URL = `http://localhost:${ELECTRON_PORT}/api`;
+} else if (isCapacitor) {
+  API_URL = `${VERCEL_URL}/api`;
+} else {
+  API_URL = (import.meta.env.VITE_API_URL || `http://localhost:${ELECTRON_PORT}/api`).replace(/\/+$/, '');
+}
 
 function getToken() {
   return localStorage.getItem('token');

@@ -4,7 +4,7 @@
   "webDir": "dist",
   "server": {
     "androidScheme": "https",
-    "allowNavigation": ["*"],
+    "url": "https://clinica-dental-pro-one.vercel.app",
     "cleartext": true
   },
   "android": {

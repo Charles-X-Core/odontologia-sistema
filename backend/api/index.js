@@ -2,6 +2,7 @@
  * Vercel Serverless Function — Express API
  * 
  * This file wraps the Express app for Vercel's serverless runtime.
+ * In production, uses ONLY Turso (no local SQLite).
  */
 
 const express = require('express');
@@ -9,8 +10,11 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 
-// Load environment variables
-require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
+// Force Turso mode in Vercel production
+process.env.DB_MODE = 'turso';
+
+// Try loading .env locally (won't exist on Vercel - env vars set in dashboard)
+try { require('dotenv').config({ path: path.join(__dirname, '..', '.env') }); } catch {}
 
 const app = express();
 

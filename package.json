@@ -1,112 +1,11 @@
 {
   "name": "clinica-dental-pro",
   "version": "1.2.1",
-  "description": "Clinica Dental Pro - Sistema de Historial Clinico Odontologico",
-  "author": "Charles-X RedFlame Systems",
-  "main": "electron/main.js",
+  "private": true,
   "scripts": {
-    "start": "electron .",
-    "dev": "concurrently \"npm run dev:backend\" \"sleep 3 && electron .\"",
-    "dev:backend": "cd backend && node src/index.js",
-    "build": "npm run build:frontend && electron-builder --win --x64 && npm run postbuild",
-    "build:frontend": "cd frontend && npm run build",
-    "build:installer": "npm run build:frontend && electron-builder --win nsis --x64",
-    "build:portable": "npm run build:frontend && electron-builder --win portable --x64 && node scripts/package-portable.js",
-    "pack": "npm run build:frontend && electron-builder --dir && npm run postbuild",
-    "postbuild": "node scripts/copy-portable.js",
-    "postinstall": "patch-package",
-    "seed": "cd backend && node src/seed.js",
-    "install:all": "cd backend && npm install && cd ../frontend && npm install && cd .. && npm install",
-    "release": "npm run build:installer && npx electron-builder --publish always"
-  },
-  "build": {
-    "appId": "com.charlesx.clinicadentalpro",
-    "productName": "Clinica Dental Pro",
-    "directories": {
-      "output": "dist-electron"
-    },
-    "files": [
-      "electron/**/*",
-      "backend/src/**/*",
-      "backend/package.json",
-      "backend/node_modules/**/*",
-      "frontend/dist/**/*",
-      "frontend/public/**/*",
-      "node_modules/**/*",
-      "portable/**/*",
-      "package.json"
-    ],
-    "asarUnpack": [
-      "**/node_modules/**",
-      "**/electron/**"
-    ],
-    "extraFiles": [
-      {
-        "from": "portable/Iniciar Clinica Dental Pro.bat",
-        "to": "Iniciar Clinica Dental Pro.bat"
-      },
-      {
-        "from": "portable/VERIFICAR.bat",
-        "to": "VERIFICAR.bat"
-      },
-      {
-        "from": "portable/README.txt",
-        "to": "LEEME.txt"
-      }
-    ],
-    "win": {
-      "target": [
-        { "target": "nsis", "arch": ["x64"] }
-      ],
-      "icon": "electron/logo.ico"
-    },
-    "nsis": {
-      "oneClick": false,
-      "perMachine": false,
-      "allowElevation": true,
-      "allowToChangeInstallationDirectory": true,
-      "runAfterFinish": false,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "menuCategory": "Clinica Dental Pro",
-      "shortcutName": "Clinica Dental Pro",
-      "installerIcon": "electron/logo.ico",
-      "uninstallerIcon": "electron/logo.ico",
-      "installerHeader": "build/installerHeader.bmp",
-      "installerSidebar": "build/installerSidebar.bmp",
-      "uninstallerSidebar": "build/installerSidebar.bmp",
-      "include": "build/installer.nsh",
-      "unicode": true,
-      "deleteAppDataOnUninstall": false,
-      "artifactName": "Clinica Dental Pro Setup ${version}.${ext}"
-    },
-    "publish": {
-      "provider": "github",
-      "owner": "Charles-X-Core",
-      "repo": "odontologia-sistema"
-    }
-  },
-  "dependencies": {
-    "@puppeteer/browsers": "^2.10.0",
-    "bcryptjs": "^2.4.3",
-    "concurrently": "^9.0.0",
-    "cors": "^2.8.5",
-    "csv-parse": "^6.2.1",
-    "express": "^4.21.0",
-    "fs-extra": "^11.3.5",
-    "jsonfile": "^6.2.1",
-    "jsonwebtoken": "^9.0.2",
-    "multer": "^2.1.1",
-    "pdfmake": "^0.3.9",
-    "puppeteer-core": "^25.1.0",
-    "qrcode": "^1.5.4",
-    "universalify": "^2.0.1",
-    "whatsapp-web.js": "^1.34.7",
-    "xlsx": "^0.18.5"
-  },
-  "devDependencies": {
-    "electron": "^35.0.0",
-    "electron-builder": "^26.0.0",
-    "patch-package": "^8.0.1"
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "build": "cd frontend && npm run build",
+    "vercel-build": "cd frontend && npm run vercel-build"
   }
 }
