@@ -4,26 +4,41 @@ import { AuthProvider } from './context/AuthContext'
 import './index.css'
 
 function isCapacitor() {
-  return typeof window !== 'undefined' && window.__CAPACITOR__ !== undefined;
+  return typeof window !== 'undefined' && !!(window.Capacitor && window.Capacitor.isNativePlatform);
 }
 
 async function initApp() {
   if (isCapacitor()) {
-    const { Capacitor } = await import('@capacitor/core');
-    const { default: MobileApp } = await import('./mobile/MobileApp.jsx');
-    await import('./mobile/MobileApp.css');
+    try {
+      const { default: MobileApp } = await import('./mobile/MobileApp.jsx');
+      await import('./mobile/MobileApp.css');
 
-    const { StatusBar, Style } = await import('@capacitor/status-bar');
-    StatusBar.setStyle({ style: Style.Dark });
-    StatusBar.setBackgroundColor({ color: '#4361ee' });
+      try {
+        const { StatusBar, Style } = await import('@capacitor/status-bar');
+        await StatusBar.setStyle({ style: Style.Dark });
+        await StatusBar.setBackgroundColor({ color: '#4361ee' });
+      } catch (e) {
+        console.warn('[APP] StatusBar plugin no disponible:', e.message);
+      }
 
-    createRoot(document.getElementById('root')).render(
-      <StrictMode>
-        <AuthProvider>
-          <MobileApp />
-        </AuthProvider>
-      </StrictMode>,
-    );
+      createRoot(document.getElementById('root')).render(
+        <StrictMode>
+          <AuthProvider>
+            <MobileApp />
+          </AuthProvider>
+        </StrictMode>,
+      );
+    } catch (e) {
+      console.error('[APP] Error al inicializar Capacitor, usando desktop:', e);
+      const { default: App } = await import('./App.jsx');
+      createRoot(document.getElementById('root')).render(
+        <StrictMode>
+          <AuthProvider>
+            <App />
+          </AuthProvider>
+        </StrictMode>,
+      );
+    }
   } else {
     const { default: App } = await import('./App.jsx');
     createRoot(document.getElementById('root')).render(

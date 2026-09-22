@@ -1,5 +1,5 @@
 const isElectron = window.location.protocol === 'file:' || window.electronAPI?.isElectron;
-const isCapacitor = window.__CAPACITOR__ !== undefined;
+const isCapacitor = !!(window.Capacitor && window.Capacitor.isNativePlatform);
 const ELECTRON_PORT = 18234;
 const VERCEL_URL = 'https://clinica-dental-pro-one.vercel.app';
 
@@ -9,7 +9,7 @@ if (isElectron) {
 } else if (isCapacitor) {
   API_URL = `${VERCEL_URL}/api`;
 } else {
-  API_URL = (import.meta.env.VITE_API_URL || `http://localhost:${ELECTRON_PORT}/api`).replace(/\/+$/, '');
+  API_URL = (import.meta.env.VITE_API_URL || `${VERCEL_URL}/api`).replace(/\/+$/, '');
 }
 
 function getToken() {
@@ -21,17 +21,22 @@ async function request(url, options = {}) {
   const headers = { 'Content-Type': 'application/json', ...options.headers };
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const res = await fetch(`${API_URL}${url}`, { ...options, headers });
-  const data = await res.json();
+  try {
+    const res = await fetch(`${API_URL}${url}`, { ...options, headers });
+    const data = await res.json();
 
-  if (res.status === 401) {
-    localStorage.removeItem('token');
-    localStorage.removeItem('usuario');
-    window.location.reload();
-    return;
+    if (res.status === 401 && url !== '/auth/login') {
+      localStorage.removeItem('token');
+      localStorage.removeItem('usuario');
+      window.location.reload();
+      return;
+    }
+
+    return data;
+  } catch (e) {
+    console.error('[API] Error de red:', e.message);
+    return { error: 'Error de conexion. Verifica tu internet.' };
   }
-
-  return data;
 }
 
 async function uploadFile(url, formData) {
