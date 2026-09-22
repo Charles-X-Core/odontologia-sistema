@@ -101,4 +101,71 @@ try {
 
 try { db.exec("ALTER TABLE consultas ADD COLUMN consentimiento_informado INTEGER DEFAULT 0"); } catch {}
 
+// ============================================================
+// FASE 2A: updated_at para sincronizacion
+// ============================================================
+
+const SYNC_TABLES_COLS = [
+  'pacientes', 'historias_clinicas', 'consultas', 'odontogramas',
+  'tratamientos', 'recetas', 'pagos', 'necesidades_odontologicas', 'imagenes'
+];
+
+for (const table of SYNC_TABLES_COLS) {
+  try { db.exec(`ALTER TABLE ${table} ADD COLUMN updated_at TEXT DEFAULT NULL`); } catch {}
+}
+
+// ============================================================
+// FASE 2A: sync_state — estado local del dispositivo
+// ============================================================
+
+db.exec("CREATE TABLE IF NOT EXISTS sync_state (id INTEGER PRIMARY KEY CHECK (id = 1), last_sync_at TEXT, last_push_at TEXT, last_pull_at TEXT, device_id TEXT, created_at TEXT DEFAULT (datetime('now')), updated_at TEXT DEFAULT (datetime('now')))");
+
+const syncStateExists = db.prepare("SELECT id FROM sync_state WHERE id = 1").get();
+if (!syncStateExists) {
+  db.prepare("INSERT INTO sync_state (id, last_sync_at) VALUES (1, strftime('%Y-%m-%dT%H:%M:%S', 'now'))").run();
+}
+
+// ============================================================
+// FASE 2A: Migrar citas.updated_at a formato ISO sin milisegundos
+// ============================================================
+
+try {
+  // Formato space "YYYY-MM-DD HH:mm:ss" → ISO "YYYY-MM-DDTHH:mm:ss"
+  db.exec("UPDATE citas SET updated_at = REPLACE(updated_at, ' ', 'T') WHERE updated_at LIKE '____-__-__ __:__:__'");
+  // Formato ISO con milisegundos y Z → ISO sin milisegundos
+  db.exec("UPDATE citas SET updated_at = REPLACE(REPLACE(updated_at, '.000Z', ''), 'Z', '') WHERE updated_at LIKE '%.000Z' OR updated_at LIKE '%Z'");
+} catch {}
+
+// ============================================================
+// FASE 2A: Triggers para updated_at automático
+// Formato: strftime('%Y-%m-%dT%H:%M:%S', 'now') → "YYYY-MM-DDTHH:mm:ss"
+// ============================================================
+
+const TRIGGER_TABLES = [
+  'pacientes', 'historias_clinicas', 'consultas', 'odontogramas',
+  'tratamientos', 'recetas', 'citas', 'pagos', 'necesidades_odontologicas', 'imagenes'
+];
+
+for (const table of TRIGGER_TABLES) {
+  try {
+    db.exec(`
+      CREATE TRIGGER IF NOT EXISTS trg_${table}_insert
+      AFTER INSERT ON ${table}
+      BEGIN
+        UPDATE ${table} SET updated_at = strftime('%Y-%m-%dT%H:%M:%S', 'now') WHERE id = NEW.id;
+      END;
+    `);
+  } catch {}
+  try {
+    db.exec(`
+      CREATE TRIGGER IF NOT EXISTS trg_${table}_update
+      AFTER UPDATE ON ${table}
+      WHEN NEW.updated_at = OLD.updated_at OR NEW.updated_at IS NULL
+      BEGIN
+        UPDATE ${table} SET updated_at = strftime('%Y-%m-%dT%H:%M:%S', 'now') WHERE id = NEW.id;
+      END;
+    `);
+  } catch {}
+}
+
 module.exports = db;

@@ -63,4 +63,23 @@ function exec(sql) {
   return Promise.resolve(client.exec(sql));
 }
 
-module.exports = { prepare, exec, getClient, isTurso: () => _isTurso };
+async function execute({ sql, args = [] }) {
+  const client = getClient();
+  if (_isTurso) {
+    const result = await client.execute({ sql, args });
+    return {
+      rows: result.rows,
+      rowsAffected: result.rowsAffected,
+      lastInsertRowid: Number(result.lastInsertRowid),
+    };
+  }
+  const stmt = client.prepare(sql);
+  const result = stmt.run(...args);
+  return {
+    rows: [],
+    rowsAffected: result.changes,
+    lastInsertRowid: Number(result.lastInsertRowid),
+  };
+}
+
+module.exports = { prepare, exec, getClient, isTurso: () => _isTurso, execute };

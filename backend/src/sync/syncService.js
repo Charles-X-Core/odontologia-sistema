@@ -1,59 +1,56 @@
 /**
  * Sync Service — Local SQLite ↔ Turso
- * 
+ *
  * Strategy:
- * - Local SQLite is primary (all reads + writes)
- * - Turso is cloud backup (async push/pull)
+ * - Local SQLite via database.js (all local reads + writes)
+ * - Turso via db.js adapter (cloud reads + writes)
  * - Conflict resolution: last-write-wins (updated_at)
- * - Queue: tracks dirty records for efficient sync
+ * - Incremental sync: WHERE updated_at > lastSync
+ * - Format: YYYY-MM-DDTHH:mm:ss (ISO 8601 sin milisegundos)
  */
 
 const db = require('../database');
 const TursoClient = require('../db');
 
 const SYNC_TABLES = [
-  'pacientes', 'historias_clinicas', 'consultas', 'tratamientos',
-  'odontograma', ' radiografias', 'presupuestos', 'presupuesto_items',
-  'facturas', 'citas', 'recetas', 'indicaciones',
-  'seguimiento_whatsapp', 'configuracion', 'notas_seguimiento'
+  'pacientes', 'historias_clinicas', 'consultas', 'odontogramas',
+  'tratamientos', 'recetas', 'citas', 'pagos',
+  'necesidades_odontologicas', 'imagenes'
 ];
 
 const CLEAN_TABLES = [
-  'usuarios', 'configuracion', 'pacientes', 'historias_clinicas',
-  'consultas', 'tratamientos', 'odontograma', 'radiografias',
-  'presupuestos', 'presupuesto_items', 'facturas', 'citas',
-  'recetas', 'indicaciones', 'seguimiento_whatsapp', 'notas_seguimiento'
+  'pacientes', 'historias_clinicas', 'consultas', 'odontogramas',
+  'tratamientos', 'recetas', 'citas', 'pagos',
+  'necesidades_odontologicas', 'imagenes'
 ];
 
 const BATCH_SIZE = 50;
 
-/**
- * Get timestamp of last sync
- */
+function formatSyncTimestamp(date) {
+  return date.toISOString().replace(/\.\d{3}Z$/, '');
+}
+
 function getLastSyncTime() {
   try {
-    const row = db.prepare("SELECT valor FROM configuracion WHERE clave = 'last_sync_at'").get();
-    return row ? row.valor : null;
+    const row = db.prepare('SELECT last_sync_at FROM sync_state WHERE id = 1').get();
+    return row ? row.last_sync_at : null;
   } catch {
     return null;
   }
 }
 
-/**
- * Set last sync timestamp
- */
 function setLastSyncTime(timestamp) {
   try {
-    db.prepare("INSERT OR REPLACE INTO configuracion (clave, valor) VALUES ('last_sync_at', ?)").run(timestamp);
+    const ts = timestamp || formatSyncTimestamp(new Date());
+    db.prepare(
+      "INSERT INTO sync_state (id, last_sync_at, updated_at) VALUES (1, ?, strftime('%Y-%m-%dT%H:%M:%S', 'now')) " +
+      'ON CONFLICT(id) DO UPDATE SET last_sync_at = excluded.last_sync_at, updated_at = excluded.updated_at'
+    ).run(ts);
   } catch (e) {
     console.error('Error setting last sync time:', e.message);
   }
 }
 
-/**
- * Push local changes to Turso
- * Finds records newer than last sync and uploads them
- */
 async function pushToTurso(since = null) {
   if (!TursoClient.isTurso()) {
     return { success: false, error: 'Turso not configured' };
@@ -84,7 +81,7 @@ async function pushToTurso(since = null) {
 
             const sql = `INSERT INTO ${table} (${keys.join(', ')}) VALUES (${placeholders})
               ON CONFLICT(id) DO UPDATE SET ${updatePlaceholders}`;
-            
+
             await TursoClient.execute({
               sql,
               args: Object.values(row)
@@ -102,14 +99,10 @@ async function pushToTurso(since = null) {
     }
   }
 
-  setLastSyncTime(new Date().toISOString());
+  setLastSyncTime(formatSyncTimestamp(new Date()));
   return { success: true, ...results };
 }
 
-/**
- * Pull remote changes from Turso to local
- * Downloads records newer than last sync
- */
 async function pullFromTurso(since = null) {
   if (!TursoClient.isTurso()) {
     return { success: false, error: 'Turso not configured' };
@@ -141,7 +134,7 @@ async function pullFromTurso(since = null) {
 
           const sql = `INSERT INTO ${table} (${keys.join(', ')}) VALUES (${placeholders})
             ON CONFLICT(id) DO UPDATE SET ${updatePlaceholders}`;
-          
+
           db.prepare(sql).run(...Object.values(row));
           pulledCount++;
         } catch (e) {
@@ -155,17 +148,13 @@ async function pullFromTurso(since = null) {
     }
   }
 
-  setLastSyncTime(new Date().toISOString());
+  setLastSyncTime(formatSyncTimestamp(new Date()));
   return { success: true, ...results };
 }
 
-/**
- * Full bidirectional sync
- * Push local first, then pull remote
- */
 async function fullSync() {
   const startTime = Date.now();
-  
+
   const pushResult = await pushToTurso();
   const pullResult = await pullFromTurso();
 
@@ -174,17 +163,14 @@ async function fullSync() {
     push: pushResult,
     pull: pullResult,
     duration: Date.now() - startTime,
-    timestamp: new Date().toISOString()
+    timestamp: formatSyncTimestamp(new Date())
   };
 }
 
-/**
- * Get sync status
- */
 function getSyncStatus() {
   const lastSync = getLastSyncTime();
   const isTurso = TursoClient.isTurso();
-  
+
   let pendingChanges = 0;
   if (lastSync) {
     for (const table of SYNC_TABLES) {
@@ -203,13 +189,10 @@ function getSyncStatus() {
   };
 }
 
-/**
- * Clean data from local database (for fresh import)
- */
 function cleanLocalData(tables = null) {
   const targetTables = tables || CLEAN_TABLES;
   const results = {};
-  
+
   for (const table of targetTables) {
     try {
       const count = db.prepare(`SELECT COUNT(*) as count FROM ${table}`).get().count;
@@ -219,7 +202,7 @@ function cleanLocalData(tables = null) {
       results[table] = `error: ${e.message}`;
     }
   }
-  
+
   return results;
 }
 
@@ -231,5 +214,8 @@ module.exports = {
   cleanLocalData,
   getLastSyncTime,
   setLastSyncTime,
-  SYNC_TABLES
+  formatSyncTimestamp,
+  SYNC_TABLES,
+  CLEAN_TABLES,
+  BATCH_SIZE
 };

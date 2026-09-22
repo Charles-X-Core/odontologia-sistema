@@ -44,7 +44,8 @@ const schema = [
     alergias TEXT DEFAULT '',
     antecedentes_personales TEXT DEFAULT '',
     antecedentes_familiares TEXT DEFAULT '',
-    created_at TEXT DEFAULT (datetime('now'))
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT NULL
   )`,
 
   `CREATE TABLE IF NOT EXISTS historias_clinicas (
@@ -64,7 +65,8 @@ const schema = [
     otras_enfermedades TEXT DEFAULT '',
     enfermedad_actual_medicacion TEXT DEFAULT '',
     observaciones TEXT DEFAULT '',
-    FOREIGN KEY (paciente_id) REFERENCES pacientes(id) ON DELETE CASCADE
+    FOREIGN KEY (paciente_id) REFERENCES pacientes(id) ON DELETE CASCADE,
+    updated_at TEXT DEFAULT NULL
   )`,
 
   `CREATE TABLE IF NOT EXISTS consultas (
@@ -84,7 +86,8 @@ const schema = [
     plan_tratamiento TEXT DEFAULT '{}',
     notas TEXT DEFAULT '',
     consentimiento_informado INTEGER DEFAULT 0,
-    FOREIGN KEY (historia_id) REFERENCES historias_clinicas(id) ON DELETE CASCADE
+    FOREIGN KEY (historia_id) REFERENCES historias_clinicas(id) ON DELETE CASCADE,
+    updated_at TEXT DEFAULT NULL
   )`,
 
   `CREATE TABLE IF NOT EXISTS odontogramas (
@@ -92,7 +95,8 @@ const schema = [
     consulta_id INTEGER NOT NULL,
     datos_json TEXT NOT NULL DEFAULT '{}',
     created_at TEXT DEFAULT (datetime('now')),
-    FOREIGN KEY (consulta_id) REFERENCES consultas(id) ON DELETE CASCADE
+    FOREIGN KEY (consulta_id) REFERENCES consultas(id) ON DELETE CASCADE,
+    updated_at TEXT DEFAULT NULL
   )`,
 
   `CREATE TABLE IF NOT EXISTS tratamientos (
@@ -108,7 +112,8 @@ const schema = [
     estado TEXT DEFAULT 'planificado',
     notas TEXT DEFAULT '',
     created_at TEXT DEFAULT (datetime('now')),
-    FOREIGN KEY (paciente_id) REFERENCES pacientes(id) ON DELETE CASCADE
+    FOREIGN KEY (paciente_id) REFERENCES pacientes(id) ON DELETE CASCADE,
+    updated_at TEXT DEFAULT NULL
   )`,
 
   `CREATE TABLE IF NOT EXISTS recetas (
@@ -119,7 +124,8 @@ const schema = [
     indicaciones TEXT DEFAULT '',
     created_at TEXT DEFAULT (datetime('now')),
     FOREIGN KEY (consulta_id) REFERENCES consultas(id) ON DELETE CASCADE,
-    FOREIGN KEY (paciente_id) REFERENCES pacientes(id) ON DELETE CASCADE
+    FOREIGN KEY (paciente_id) REFERENCES pacientes(id) ON DELETE CASCADE,
+    updated_at TEXT DEFAULT NULL
   )`,
 
   `CREATE TABLE IF NOT EXISTS imagenes (
@@ -133,7 +139,8 @@ const schema = [
     hash_sha256 TEXT DEFAULT '',
     created_at TEXT DEFAULT (datetime('now')),
     FOREIGN KEY (paciente_id) REFERENCES pacientes(id) ON DELETE CASCADE,
-    FOREIGN KEY (consulta_id) REFERENCES consultas(id) ON DELETE SET NULL
+    FOREIGN KEY (consulta_id) REFERENCES consultas(id) ON DELETE SET NULL,
+    updated_at TEXT DEFAULT NULL
   )`,
 
   `CREATE TABLE IF NOT EXISTS necesidades_odontologicas (
@@ -148,7 +155,8 @@ const schema = [
     extraidos INTEGER DEFAULT 0,
     destartraje INTEGER DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now')),
-    FOREIGN KEY (consulta_id) REFERENCES consultas(id) ON DELETE CASCADE
+    FOREIGN KEY (consulta_id) REFERENCES consultas(id) ON DELETE CASCADE,
+    updated_at TEXT DEFAULT NULL
   )`,
 
   `CREATE TABLE IF NOT EXISTS pagos (
@@ -164,7 +172,8 @@ const schema = [
     metodo_pago TEXT DEFAULT 'efectivo',
     notas TEXT DEFAULT '',
     created_at TEXT DEFAULT (datetime('now')),
-    FOREIGN KEY (paciente_id) REFERENCES pacientes(id) ON DELETE CASCADE
+    FOREIGN KEY (paciente_id) REFERENCES pacientes(id) ON DELETE CASCADE,
+    updated_at TEXT DEFAULT NULL
   )`,
 
   `CREATE TABLE IF NOT EXISTS whatsapp_log (
@@ -262,7 +271,44 @@ const schema = [
     descripcion TEXT DEFAULT '',
     updated_at TEXT DEFAULT (datetime('now'))
   )`,
+
+  // ============================================================
+  // FASE 2A: sync_state — estado local del dispositivo
+  // ============================================================
+  `CREATE TABLE IF NOT EXISTS sync_state (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    last_sync_at TEXT,
+    last_push_at TEXT,
+    last_pull_at TEXT,
+    device_id TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+  )`,
 ];
+
+const TRIGGER_TABLES = [
+  'pacientes', 'historias_clinicas', 'consultas', 'odontogramas',
+  'tratamientos', 'recetas', 'citas', 'pagos', 'necesidades_odontologicas', 'imagenes'
+];
+
+const triggers = [];
+for (const table of TRIGGER_TABLES) {
+  triggers.push({
+    sql: `CREATE TRIGGER IF NOT EXISTS trg_${table}_insert
+      AFTER INSERT ON ${table}
+      BEGIN
+        UPDATE ${table} SET updated_at = strftime('%Y-%m-%dT%H:%M:%S', 'now') WHERE id = NEW.id;
+      END`
+  });
+  triggers.push({
+    sql: `CREATE TRIGGER IF NOT EXISTS trg_${table}_update
+      AFTER UPDATE ON ${table}
+      WHEN NEW.updated_at = OLD.updated_at OR NEW.updated_at IS NULL
+      BEGIN
+        UPDATE ${table} SET updated_at = strftime('%Y-%m-%dT%H:%M:%S', 'now') WHERE id = NEW.id;
+      END`
+  });
+}
 
 const seedData = [
   {
@@ -337,6 +383,13 @@ async function pushSchema() {
       await client.execute(sql);
     }
     console.log('[Turso] Tablas creadas OK');
+
+    // Create triggers
+    console.log('[Turso] Creando triggers...');
+    for (const { sql } of triggers) {
+      try { await client.execute(sql); } catch {}
+    }
+    console.log('[Turso] Triggers creados OK');
 
     // Seed plantillas
     console.log('[Turso] Insertando plantillas...');
