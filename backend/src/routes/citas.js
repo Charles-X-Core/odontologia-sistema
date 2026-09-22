@@ -12,6 +12,7 @@ router.put('/:id', ctrl.actualizar);
 router.delete('/:id', ctrl.eliminar);
 router.put('/:id/confirmar', ctrl.confirmar);
 router.post('/:id/asistio', ctrl.asistio);
+router.post('/:id/no-asistio', ctrl.noAsistio);
 router.get('/:id/preparar-sesion', ctrl.prepararSesion);
 router.post('/:id/completar', ctrl.completar);
 

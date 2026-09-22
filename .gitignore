@@ -8,6 +8,7 @@ uploads/
 backend/uploads/
 evidencias/
 .env
+.env.local
 *.log
 .wwebjs_cache/
 wwebjs_auth/

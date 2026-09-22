@@ -162,6 +162,7 @@ export const api = {
     pendientesProcesar: () => request('/citas/pendientes-procesar'),
     confirmar: (id, data) => request(`/citas/${id}/confirmar`, { method: 'PUT', body: JSON.stringify(data || {}) }),
     asistio: (id, data) => request(`/citas/${id}/asistio`, { method: 'POST', body: JSON.stringify(data || {}) }),
+    noAsistio: (id) => request(`/citas/${id}/no-asistio`, { method: 'POST' }),
     prepararSesion: (id) => request(`/citas/${id}/preparar-sesion`),
     completar: (id, consulta_id) => request(`/citas/${id}/completar`, { method: 'POST', body: JSON.stringify({ consulta_id }) }),
   },

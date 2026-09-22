@@ -4,6 +4,30 @@ function motivoUsar(cita) {
   return cita.motivo_editado || cita.motivo;
 }
 
+const TRANSICIONES_PERMITIDAS = {
+  pendiente:  ['confirmada', 'cancelada', 'no_asistio'],
+  confirmada: ['asistio', 'cancelada', 'no_asistio'],
+  asistio:    ['completada', 'no_asistio'],
+};
+
+const ESTADOS_TERMINALES = ['completada', 'cancelada', 'no_asistio'];
+
+function transicionValida(estadoActual, estadoDestino) {
+  if (estadoActual === estadoDestino) return true;
+  const permitidos = TRANSICIONES_PERMITIDAS[estadoActual];
+  return permitidos ? permitidos.includes(estadoDestino) : false;
+}
+
+function ventanaAsistencia(cita) {
+  const [y, m, d] = cita.fecha.split('-').map(Number);
+  const [hh, mm] = cita.hora.split(':').map(Number);
+  const inicio = new Date(Date.UTC(y, m - 1, d, hh, mm));
+  const fin = new Date(inicio.getTime() + (cita.duracion_minutos || 30) * 60000);
+  const antes = new Date(inicio.getTime() - 15 * 60000);
+  const despues = new Date(fin.getTime() + 30 * 60000);
+  return { antes, despues };
+}
+
 exports.listar = async (req, res) => {
   try {
     const { fecha, estado, paciente_id, desde, hasta } = req.query;
@@ -71,6 +95,13 @@ exports.crear = async (req, res) => {
   const paciente = await db.prepare('SELECT id FROM pacientes WHERE id = ?').get(paciente_id);
   if (!paciente) return res.status(404).json({ error: 'Paciente no encontrado' });
 
+  const [y, m, d] = fecha.split('-').map(Number);
+  const [hh, mm] = hora.split(':').map(Number);
+  const fechaCita = new Date(Date.UTC(y, m - 1, d, hh, mm));
+  if (fechaCita <= new Date()) {
+    return res.status(400).json({ error: 'No se puede crear una cita con fecha y hora en el pasado' });
+  }
+
   try {
     const result = await db.prepare(`
       INSERT INTO citas (paciente_id, usuario_id, fecha, hora, duracion_minutos, tipo, motivo, notas)
@@ -100,6 +131,21 @@ exports.actualizar = async (req, res) => {
   try {
     const existente = await db.prepare('SELECT * FROM citas WHERE id = ?').get(req.params.id);
     if (!existente) return res.status(404).json({ error: 'Cita no encontrada' });
+
+    if (estado && !transicionValida(existente.estado, estado)) {
+      return res.status(400).json({
+        error: `Transición inválida: "${existente.estado}" → "${estado}"`,
+      });
+    }
+
+    if (estado === 'no_asistio') {
+      const { despues } = ventanaAsistencia(existente);
+      if (new Date() < despues) {
+        return res.status(400).json({
+          error: 'Solo se puede marcar como "no asistió" después de que haya pasado la ventana de asistencia',
+        });
+      }
+    }
 
     await db.prepare(`
       UPDATE citas SET
@@ -147,6 +193,14 @@ exports.confirmar = async (req, res) => {
       return res.status(400).json({ error: `No se puede confirmar una cita en estado "${cita.estado}"` });
     }
 
+    const [y, m, d] = cita.fecha.split('-').map(Number);
+    const [hh, mm] = cita.hora.split(':').map(Number);
+    const inicio = new Date(Date.UTC(y, m - 1, d, hh, mm));
+    const fin = new Date(inicio.getTime() + (cita.duracion_minutos || 30) * 60000);
+    if (new Date() > fin) {
+      return res.status(400).json({ error: 'No se puede confirmar una cita cuya hora ya pasó' });
+    }
+
     const { motivo_editado } = req.body;
 
     await db.prepare(`
@@ -172,8 +226,17 @@ exports.asistio = async (req, res) => {
   try {
     const cita = await db.prepare('SELECT * FROM citas WHERE id = ?').get(req.params.id);
     if (!cita) return res.status(404).json({ error: 'Cita no encontrada' });
-    if (cita.estado !== 'confirmada' && cita.estado !== 'pendiente') {
-      return res.status(400).json({ error: `No se puede marcar asistencia en estado "${cita.estado}"` });
+    if (cita.estado !== 'confirmada') {
+      return res.status(400).json({ error: `No se puede marcar asistencia en estado "${cita.estado}". Requiere estado "confirmada"` });
+    }
+
+    const { antes, despues } = ventanaAsistencia(cita);
+    const ahora = new Date();
+    if (ahora < antes) {
+      return res.status(400).json({ error: 'Aún no se puede marcar asistencia. Espere hasta 15 minutos antes de la hora programada' });
+    }
+    if (ahora > despues) {
+      return res.status(400).json({ error: 'La ventana de asistencia ya pasó. Use "no asistió" en su lugar' });
     }
 
     const { motivo_editado } = req.body;
@@ -316,6 +379,37 @@ exports.proximas = async (req, res) => {
 
     citas.forEach(c => { c.motivo_usar = motivoUsar(c); });
     res.json(citas);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.noAsistio = async (req, res) => {
+  try {
+    const cita = await db.prepare('SELECT * FROM citas WHERE id = ?').get(req.params.id);
+    if (!cita) return res.status(404).json({ error: 'Cita no encontrada' });
+
+    if (cita.estado !== 'pendiente' && cita.estado !== 'confirmada') {
+      return res.status(400).json({ error: `No se puede marcar "no asistió" en estado "${cita.estado}"` });
+    }
+
+    const { despues } = ventanaAsistencia(cita);
+    if (new Date() < despues) {
+      return res.status(400).json({
+        error: 'Aún no se puede marcar "no asistió". Espere a que pase la ventana de asistencia',
+      });
+    }
+
+    await db.prepare(`
+      UPDATE citas SET
+        estado = 'no_asistio',
+        updated_at = datetime('now')
+      WHERE id = ?
+    `).run(req.params.id);
+
+    const actualizada = await db.prepare('SELECT * FROM citas WHERE id = ?').get(req.params.id);
+    actualizada.motivo_usar = motivoUsar(actualizada);
+    res.json({ message: 'Marcada como no asistió', cita: actualizada });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
