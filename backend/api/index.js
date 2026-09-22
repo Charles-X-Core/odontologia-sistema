@@ -44,8 +44,7 @@ app.get('/api/health', (req, res) => {
 });
 
 // API Routes
-const { authMiddleware } = require('../src/middleware/auth');
-const auth = authMiddleware;
+const { auth } = require('../src/middleware/auth');
 
 try {
   app.use('/api/auth', require('../src/routes/auth'));

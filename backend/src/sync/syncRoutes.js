@@ -11,10 +11,10 @@
 const express = require('express');
 const router = express.Router();
 const syncService = require('./syncService');
-const { authMiddleware } = require('../middleware/auth');
+const { auth } = require('../middleware/auth');
 
 // All sync routes require authentication
-router.use(authMiddleware);
+router.use(auth);
 
 /**
  * POST /api/sync/push
