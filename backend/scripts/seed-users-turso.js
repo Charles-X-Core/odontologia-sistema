@@ -1,6 +1,10 @@
 require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
 const { createClient } = require('@libsql/client');
 const bcrypt = require('bcryptjs');
+const { requireDevOrConfirm, printEnvBanner } = require('../src/utils/envGuard');
+
+requireDevOrConfirm('seed-users');
+printEnvBanner('seed-users (insert test users)');
 
 const client = createClient({
   url: process.env.TURSO_URL,

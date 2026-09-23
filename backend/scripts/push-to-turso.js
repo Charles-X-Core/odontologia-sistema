@@ -1,6 +1,10 @@
 require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
 
 const { createClient } = require('@libsql/client');
+const { requireDevOrConfirm, printEnvBanner } = require('../src/utils/envGuard');
+
+requireDevOrConfirm('push-to-turso');
+printEnvBanner('push-to-turso (schema + seed)');
 
 const client = createClient({
   url: process.env.TURSO_URL,
@@ -65,8 +69,8 @@ const schema = [
     otras_enfermedades TEXT DEFAULT '',
     enfermedad_actual_medicacion TEXT DEFAULT '',
     observaciones TEXT DEFAULT '',
-    FOREIGN KEY (paciente_id) REFERENCES pacientes(id) ON DELETE CASCADE,
-    updated_at TEXT DEFAULT NULL
+    updated_at TEXT DEFAULT NULL,
+    FOREIGN KEY (paciente_id) REFERENCES pacientes(id) ON DELETE CASCADE
   )`,
 
   `CREATE TABLE IF NOT EXISTS consultas (
@@ -86,8 +90,8 @@ const schema = [
     plan_tratamiento TEXT DEFAULT '{}',
     notas TEXT DEFAULT '',
     consentimiento_informado INTEGER DEFAULT 0,
-    FOREIGN KEY (historia_id) REFERENCES historias_clinicas(id) ON DELETE CASCADE,
-    updated_at TEXT DEFAULT NULL
+    updated_at TEXT DEFAULT NULL,
+    FOREIGN KEY (historia_id) REFERENCES historias_clinicas(id) ON DELETE CASCADE
   )`,
 
   `CREATE TABLE IF NOT EXISTS odontogramas (
@@ -95,8 +99,8 @@ const schema = [
     consulta_id INTEGER NOT NULL,
     datos_json TEXT NOT NULL DEFAULT '{}',
     created_at TEXT DEFAULT (datetime('now')),
-    FOREIGN KEY (consulta_id) REFERENCES consultas(id) ON DELETE CASCADE,
-    updated_at TEXT DEFAULT NULL
+    updated_at TEXT DEFAULT NULL,
+    FOREIGN KEY (consulta_id) REFERENCES consultas(id) ON DELETE CASCADE
   )`,
 
   `CREATE TABLE IF NOT EXISTS tratamientos (
@@ -112,8 +116,8 @@ const schema = [
     estado TEXT DEFAULT 'planificado',
     notas TEXT DEFAULT '',
     created_at TEXT DEFAULT (datetime('now')),
-    FOREIGN KEY (paciente_id) REFERENCES pacientes(id) ON DELETE CASCADE,
-    updated_at TEXT DEFAULT NULL
+    updated_at TEXT DEFAULT NULL,
+    FOREIGN KEY (paciente_id) REFERENCES pacientes(id) ON DELETE CASCADE
   )`,
 
   `CREATE TABLE IF NOT EXISTS recetas (
@@ -123,9 +127,9 @@ const schema = [
     medicamentos TEXT NOT NULL DEFAULT '[]',
     indicaciones TEXT DEFAULT '',
     created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT NULL,
     FOREIGN KEY (consulta_id) REFERENCES consultas(id) ON DELETE CASCADE,
-    FOREIGN KEY (paciente_id) REFERENCES pacientes(id) ON DELETE CASCADE,
-    updated_at TEXT DEFAULT NULL
+    FOREIGN KEY (paciente_id) REFERENCES pacientes(id) ON DELETE CASCADE
   )`,
 
   `CREATE TABLE IF NOT EXISTS imagenes (
@@ -138,9 +142,9 @@ const schema = [
     descripcion TEXT DEFAULT '',
     hash_sha256 TEXT DEFAULT '',
     created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT NULL,
     FOREIGN KEY (paciente_id) REFERENCES pacientes(id) ON DELETE CASCADE,
-    FOREIGN KEY (consulta_id) REFERENCES consultas(id) ON DELETE SET NULL,
-    updated_at TEXT DEFAULT NULL
+    FOREIGN KEY (consulta_id) REFERENCES consultas(id) ON DELETE SET NULL
   )`,
 
   `CREATE TABLE IF NOT EXISTS necesidades_odontologicas (
@@ -155,8 +159,8 @@ const schema = [
     extraidos INTEGER DEFAULT 0,
     destartraje INTEGER DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now')),
-    FOREIGN KEY (consulta_id) REFERENCES consultas(id) ON DELETE CASCADE,
-    updated_at TEXT DEFAULT NULL
+    updated_at TEXT DEFAULT NULL,
+    FOREIGN KEY (consulta_id) REFERENCES consultas(id) ON DELETE CASCADE
   )`,
 
   `CREATE TABLE IF NOT EXISTS pagos (
@@ -172,8 +176,8 @@ const schema = [
     metodo_pago TEXT DEFAULT 'efectivo',
     notas TEXT DEFAULT '',
     created_at TEXT DEFAULT (datetime('now')),
-    FOREIGN KEY (paciente_id) REFERENCES pacientes(id) ON DELETE CASCADE,
-    updated_at TEXT DEFAULT NULL
+    updated_at TEXT DEFAULT NULL,
+    FOREIGN KEY (paciente_id) REFERENCES pacientes(id) ON DELETE CASCADE
   )`,
 
   `CREATE TABLE IF NOT EXISTS whatsapp_log (

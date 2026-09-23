@@ -2,6 +2,10 @@ require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') }
 const { createClient } = require('@libsql/client');
 const { DatabaseSync } = require('node:sqlite');
 const path = require('path');
+const { requireDevOrConfirm, printEnvBanner } = require('../src/utils/envGuard');
+
+requireDevOrConfirm('migrate-full');
+printEnvBanner('migrate-full (local -> Turso)');
 
 const turso = createClient({
   url: process.env.TURSO_URL,

@@ -17,10 +17,14 @@ const { createClient } = require('@libsql/client');
 const { DatabaseSync } = require('node:sqlite');
 const path = require('path');
 const fs = require('fs');
+const { requireDevOrConfirm, printEnvBanner } = require('../src/utils/envGuard');
 
 // Configuración
 const TURSO_URL = process.env.TURSO_URL;
 const TURSO_AUTH_TOKEN = process.env.TURSO_AUTH_TOKEN;
+
+requireDevOrConfirm('import-old-db');
+printEnvBanner('import-old-db (.db -> Turso)');
 
 // Conexión a Turso
 const turso = createClient({
