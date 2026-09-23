@@ -4,10 +4,11 @@
  * Strategy:
  * - Local SQLite via database.js (all local reads + writes)
  * - Turso via db.js adapter (cloud reads + writes)
- * - Conflict resolution: last-write-wins (updated_at), DELETE always wins
+ * - Conflict resolution: DELETE always wins over UPDATE
  * - Incremental sync: WHERE updated_at > lastSync
  * - Format: YYYY-MM-DDTHH:mm:ss (ISO 8601 sin milisegundos)
  * - Tombstones: sync_tombstones for DELETE synchronization
+ * - Phase 2B-2: DELETE-wins enforcement, correct lastSync handling
  */
 
 const db = require('../database');
@@ -52,13 +53,44 @@ function setLastSyncTime(timestamp) {
   }
 }
 
+/**
+ * Check if a remote tombstone exists for a record in Turso.
+ * Returns true if the record should NOT be pushed (DELETE wins remotely).
+ */
+async function hasRemoteTombstone(tableName, recordId) {
+  try {
+    const result = await TursoClient.execute({
+      sql: 'SELECT 1 FROM sync_tombstones WHERE table_name = ? AND record_id = ?',
+      args: [tableName, recordId]
+    });
+    return result.rows.length > 0;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Check if a local tombstone exists for a record in SQLite.
+ * Returns true if the record should NOT be pulled (DELETE wins locally).
+ */
+function hasLocalTombstone(tableName, recordId) {
+  try {
+    const existing = db.prepare(
+      'SELECT 1 FROM sync_tombstones WHERE table_name = ? AND record_id = ?'
+    ).get(tableName, recordId);
+    return !!existing;
+  } catch {
+    return false;
+  }
+}
+
 async function pushToTurso(since = null) {
   if (!TursoClient.isTurso()) {
     return { success: false, error: 'Turso not configured' };
   }
 
   const lastSync = since || getLastSyncTime();
-  const results = { pushed: {}, errors: [] };
+  const results = { pushed: {}, errors: [], skippedByRemoteTombstone: 0 };
 
   for (const table of SYNC_TABLES) {
     try {
@@ -76,6 +108,12 @@ async function pushToTurso(since = null) {
         const batch = rows.slice(i, i + BATCH_SIZE);
         for (const row of batch) {
           try {
+            // DELETE-WINS REMOTO: skip if tombstone exists in Turso
+            if (await hasRemoteTombstone(table, row.id)) {
+              results.skippedByRemoteTombstone++;
+              continue;
+            }
+
             const keys = Object.keys(row);
             const placeholders = keys.map(() => '?').join(', ');
             const updatePlaceholders = keys.filter(k => k !== 'id').map(k => `${k} = excluded.${k}`).join(', ');
@@ -134,8 +172,8 @@ async function pushToTurso(since = null) {
     results.errors.push({ table: 'sync_tombstones', error: e.message });
   }
 
-  setLastSyncTime(formatSyncTimestamp(new Date()));
-  return { success: true, ...results };
+  // NOTE: setLastSyncTime is NOT called here — fullSync handles it
+  return { success: results.errors.length === 0, ...results };
 }
 
 async function pullFromTurso(since = null) {
@@ -144,47 +182,11 @@ async function pullFromTurso(since = null) {
   }
 
   const lastSync = since || getLastSyncTime();
-  const results = { pulled: {}, errors: [] };
-
-  for (const table of SYNC_TABLES) {
-    try {
-      let result;
-      if (lastSync) {
-        result = await TursoClient.execute({
-          sql: `SELECT * FROM ${table} WHERE updated_at > ?`,
-          args: [lastSync]
-        });
-      } else {
-        result = await TursoClient.execute({ sql: `SELECT * FROM ${table}`, args: [] });
-      }
-
-      if (result.rows.length === 0) continue;
-
-      let pulledCount = 0;
-      for (const row of result.rows) {
-        try {
-          const keys = Object.keys(row);
-          const placeholders = keys.map(() => '?').join(', ');
-          const updatePlaceholders = keys.filter(k => k !== 'id').map(k => `${k} = excluded.${k}`).join(', ');
-
-          const sql = `INSERT INTO ${table} (${keys.join(', ')}) VALUES (${placeholders})
-            ON CONFLICT(id) DO UPDATE SET ${updatePlaceholders}`;
-
-          db.prepare(sql).run(...Object.values(row));
-          pulledCount++;
-        } catch (e) {
-          results.errors.push({ table, id: row.id, error: e.message });
-        }
-      }
-
-      results.pulled[table] = pulledCount;
-    } catch (e) {
-      results.errors.push({ table, error: e.message });
-    }
-  }
+  const results = { pulled: {}, errors: [], skippedByTombstone: 0 };
 
   // ============================================================
-  // FASE 2B-1: Pull remote tombstones and apply locally
+  // FASE 2B-2: Pull remote tombstones FIRST and apply locally
+  // This ensures DELETE-wins before any records are inserted.
   // ============================================================
   try {
     let remoteTombstones;
@@ -241,15 +243,70 @@ async function pullFromTurso(since = null) {
     results.errors.push({ table: 'sync_tombstones', error: e.message });
   }
 
-  setLastSyncTime(formatSyncTimestamp(new Date()));
-  return { success: true, ...results };
+  // ============================================================
+  // FASE 2B-2: Pull records AFTER tombstones, with DELETE-wins check
+  // ============================================================
+  for (const table of SYNC_TABLES) {
+    try {
+      let result;
+      if (lastSync) {
+        result = await TursoClient.execute({
+          sql: `SELECT * FROM ${table} WHERE updated_at > ?`,
+          args: [lastSync]
+        });
+      } else {
+        result = await TursoClient.execute({ sql: `SELECT * FROM ${table}`, args: [] });
+      }
+
+      if (result.rows.length === 0) continue;
+
+      let pulledCount = 0;
+      for (const row of result.rows) {
+        try {
+          // DELETE-WINS LOCAL: skip if tombstone exists locally
+          if (hasLocalTombstone(table, row.id)) {
+            results.skippedByTombstone++;
+            continue;
+          }
+
+          const keys = Object.keys(row);
+          const placeholders = keys.map(() => '?').join(', ');
+          const updatePlaceholders = keys.filter(k => k !== 'id').map(k => `${k} = excluded.${k}`).join(', ');
+
+          const sql = `INSERT INTO ${table} (${keys.join(', ')}) VALUES (${placeholders})
+            ON CONFLICT(id) DO UPDATE SET ${updatePlaceholders}`;
+
+          db.prepare(sql).run(...Object.values(row));
+          pulledCount++;
+        } catch (e) {
+          results.errors.push({ table, id: row.id, error: e.message });
+        }
+      }
+
+      results.pulled[table] = pulledCount;
+    } catch (e) {
+      results.errors.push({ table, error: e.message });
+    }
+  }
+
+  // NOTE: setLastSyncTime is NOT called here — fullSync handles it
+  return { success: results.errors.length === 0, ...results };
 }
 
 async function fullSync() {
   const startTime = Date.now();
 
-  const pushResult = await pushToTurso();
-  const pullResult = await pullFromTurso();
+  // Capture lastSync ONCE before any operations
+  const lastSync = getLastSyncTime();
+
+  // Both push and pull use the SAME cursor
+  const pushResult = await pushToTurso(lastSync);
+  const pullResult = await pullFromTurso(lastSync);
+
+  // Only update lastSync after both complete successfully
+  if (pushResult.success && pullResult.success) {
+    setLastSyncTime(formatSyncTimestamp(new Date()));
+  }
 
   return {
     success: pushResult.success && pullResult.success,
