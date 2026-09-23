@@ -1,6 +1,7 @@
 const db = require('../db');
 const XLSX = require('xlsx');
 const crypto = require('crypto');
+const { requireDevOrReject } = require('../utils/envGuard');
 const {
   PACIENTE_REQUIRED, PACIENTE_TRANSFORMS,
   TRATAMIENTO_REQUIRED, TRATAMIENTO_TRANSFORMS,
@@ -571,6 +572,7 @@ exports.importarCompleto = async (req, res) => {
 };
 
 exports.devReset = async (req, res) => {
+  if (!requireDevOrReject(req, res, 'dev-reset')) return;
   if (req.body.confirmation !== 'BORRAR TODO') {
     return res.status(400).json({ error: 'Confirmacion incorrecta' });
   }

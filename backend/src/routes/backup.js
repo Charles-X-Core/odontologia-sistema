@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const auth = require('../middleware/auth');
+const { auth } = require('../middleware/auth');
 const backupCtrl = require('../controllers/backupController');
 
 // Configurar multer para archivos .db

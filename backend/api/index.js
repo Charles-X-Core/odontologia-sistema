@@ -127,8 +127,11 @@ try {
 } catch(e) { console.error('[VERCEL] /api/whatsapp error:', e.message); }
 
 try {
-  app.use('/api/sync', require('../src/sync/syncRoutes'));
-  console.log('[VERCEL] /api/sync OK');
+  // Vercel/producción: NO montar /api/sync/clean (solo Desktop/DEV local)
+  const syncRouterMod = require('../src/sync/syncRoutes');
+  const syncRouter = syncRouterMod.createSyncRouter({ includeClean: false });
+  app.use('/api/sync', syncRouter);
+  console.log('[VERCEL] /api/sync OK (sin /clean)');
 } catch(e) { console.error('[VERCEL] /api/sync error:', e.message); }
 
 try {

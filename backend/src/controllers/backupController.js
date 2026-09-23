@@ -3,7 +3,7 @@ const { createClient } = require('@libsql/client');
 const { DatabaseSync } = require('node:sqlite');
 const fs = require('fs');
 const path = require('path');
-const { requireDevOrReject, getTursoEnv } = require('../utils/envGuard');
+const { requireDevOrReject, requireDevSafeUrlOrReject, getTursoEnv } = require('../utils/envGuard');
 
 // Mapeo de tablas del sistema viejo al nuevo
 const TABLE_MAPPING = {
@@ -337,7 +337,7 @@ exports.exportBackup = async (req, res) => {
  * Borrar todos los datos de Turso (danger!)
  */
 exports.cleanAll = async (req, res) => {
-  if (!requireDevOrReject(req, res, 'cleanAll')) return;
+  if (!requireDevSafeUrlOrReject(req, res, 'cleanAll')) return;
 
   if (req.body.confirmation !== 'BORRAR TODO') {
     return res.status(400).json({ error: 'Confirmación incorrecta. Envía "BORRAR TODO"' });

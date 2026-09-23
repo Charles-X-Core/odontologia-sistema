@@ -1,6 +1,8 @@
 const router = require('express').Router();
 const multer = require('multer');
 const ctrl = require('../controllers/importacionController');
+const { requireRole } = require('../middleware/auth');
+const { requireDevOrReject } = require('../utils/envGuard');
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -21,6 +23,14 @@ router.post('/tratamientos', upload.single('archivo'), ctrl.importarTratamientos
 router.post('/consultas', upload.single('archivo'), ctrl.importarConsultas);
 router.post('/pagos', upload.single('archivo'), ctrl.importarPagos);
 router.post('/completo', upload.single('archivo'), ctrl.importarCompleto);
-router.post('/dev-reset', ctrl.devReset);
+router.post(
+  '/dev-reset',
+  requireRole('admin'),
+  (req, res, next) => {
+    if (!requireDevOrReject(req, res, 'dev-reset')) return;
+    next();
+  },
+  ctrl.devReset
+);
 
 module.exports = router;

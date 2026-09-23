@@ -52,7 +52,7 @@ function requireDevOrConfirm(operationName) {
  */
 function requireDevOrReject(req, res, operationName) {
   const env = getTursoEnv();
-  if (env === 'prod') {
+  if (env !== 'dev') {
     res.status(403).json({
       error: 'Operacion bloqueada: ' + operationName,
       message: 'Esta operacion solo esta disponible en entorno DEV.',
@@ -60,6 +60,58 @@ function requireDevOrReject(req, res, operationName) {
     });
     return false;
   }
+  return true;
+}
+
+/**
+ * requireDevSafeUrlOrReject — requireDevOrReject + sanidad de TURSO_URL
+ * para operaciones destructivas sobre la nube (ej. backup/clean).
+ *
+ * Limitación: el repo no incluye un catálogo de hostnames PROD conocidos
+ * y no se inventan nombres de host. Barrera aplicada:
+ *  1) TURSO_ENV ausente o distinto de dev → 403 (fail-safe de requireDevOrReject)
+ *  2) TURSO_URL ausente o URL inválida → 403
+ *  3) hostname con etiqueta inequívoca "prod" (token entre . o -) → 403
+ * Hostnames PROD sin etiqueta "prod" no son distinguibles sin catálogo
+ * conocido; refuerzo recomendado: no desplegar con TURSO_ENV=dev en
+ * productivo y rotar TURSO_AUTH_TOKEN por entorno.
+ */
+function requireDevSafeUrlOrReject(req, res, operationName) {
+  if (!requireDevOrReject(req, res, operationName)) return false;
+
+  const url = process.env.TURSO_URL;
+  if (!url) {
+    res.status(403).json({
+      error: 'Operacion bloqueada: ' + operationName,
+      message: 'TURSO_URL no configurada; se requiere una URL DEV explicita para operaciones destructivas.',
+      env: getTursoEnv(),
+    });
+    return false;
+  }
+
+  let hostname;
+  try {
+    hostname = new URL(url).hostname.toLowerCase();
+  } catch {
+    res.status(403).json({
+      error: 'Operacion bloqueada: ' + operationName,
+      message: 'TURSO_URL invalida.',
+      env: getTursoEnv(),
+    });
+    return false;
+  }
+
+  const labels = hostname.split(/[.-]/);
+  if (labels.includes('prod')) {
+    res.status(403).json({
+      error: 'Operacion bloqueada: ' + operationName,
+      message: 'TURSO_ENV=dev pero TURSO_URL tiene etiqueta PROD en el hostname.',
+      env: getTursoEnv(),
+      url: safeUrl(url),
+    });
+    return false;
+  }
+
   return true;
 }
 
@@ -98,6 +150,7 @@ module.exports = {
   isDev,
   requireDevOrConfirm,
   requireDevOrReject,
+  requireDevSafeUrlOrReject,
   safeUrl,
   printEnvBanner,
 };

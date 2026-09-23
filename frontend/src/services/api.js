@@ -245,6 +245,5 @@ export const api = {
     push: (since) => request('/sync/push', { method: 'POST', body: JSON.stringify({ since }) }),
     pull: (since) => request('/sync/pull', { method: 'POST', body: JSON.stringify({ since }) }),
     fullSync: () => request('/sync/full', { method: 'POST' }),
-    clean: (tables) => request('/sync/clean', { method: 'POST', body: JSON.stringify({ tables }) }),
   },
 };

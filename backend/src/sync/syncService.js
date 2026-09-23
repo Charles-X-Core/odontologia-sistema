@@ -489,7 +489,15 @@ function getSyncStatus() {
 }
 
 function cleanLocalData(tables = null) {
-  const targetTables = tables || CLEAN_TABLES;
+  const targetTables = tables == null ? CLEAN_TABLES : tables;
+  if (!Array.isArray(targetTables)) {
+    throw new Error('tables debe ser un array');
+  }
+  const invalid = targetTables.filter((t) => !CLEAN_TABLES.includes(t));
+  if (invalid.length > 0) {
+    throw new Error('Tablas fuera de CLEAN_TABLES: ' + invalid.join(', '));
+  }
+
   const results = {};
 
   for (const table of targetTables) {
