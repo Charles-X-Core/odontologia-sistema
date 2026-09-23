@@ -2,27 +2,26 @@ jest.mock('../database', () => ({
   prepare: jest.fn(),
 }));
 
-jest.mock('../db', () => ({
-  prepare: jest.fn(),
-  isTurso: jest.fn().mockReturnValue(false),
+jest.mock('../cloudClient', () => ({
+  isConfigured: jest.fn().mockReturnValue(false),
   execute: jest.fn(),
 }));
 
 const mockDatabase = require('../database');
-const mockDb = require('../db');
+const mockCloud = require('../cloudClient');
 
 function mockChain(getFn, runFn, allFn) {
   return {
     get: jest.fn().mockImplementation(getFn || (() => null)),
-    run: jest.fn().mockImplementation(runFn || (() => ({ changes: 0, lastInsertRowid: 0 }))),
+    run: jest.fn().mockImplementation(runFn || (() => ({ changes: 1, lastInsertRowid: 1 }))),
     all: jest.fn().mockImplementation(allFn || (() => [])),
   };
 }
 
 beforeEach(() => {
   jest.clearAllMocks();
-  mockDb.isTurso.mockReturnValue(false);
-  mockDb.execute.mockReset();
+  mockCloud.isConfigured.mockReturnValue(false);
+  mockCloud.execute.mockReset();
 });
 
 describe('SYNC_TABLES', () => {
@@ -114,7 +113,7 @@ describe('setLastSyncTime', () => {
 
 describe('pushToTurso', () => {
   test('returns error when Turso not configured', async () => {
-    mockDb.isTurso.mockReturnValue(false);
+    mockCloud.isConfigured.mockReturnValue(false);
     const { pushToTurso } = require('../sync/syncService');
     const result = await pushToTurso();
     expect(result.success).toBe(false);
@@ -122,22 +121,22 @@ describe('pushToTurso', () => {
   });
 
   test('push with no changes succeeds', async () => {
-    mockDb.isTurso.mockReturnValue(true);
+    mockCloud.isConfigured.mockReturnValue(true);
     mockDatabase.prepare.mockImplementation((sql) => {
       if (sql.includes('sync_state')) {
         return mockChain(() => ({ last_sync_at: '2026-09-22T10:00:00' }));
       }
       return mockChain(null, null, () => []);
     });
-    mockDb.execute.mockResolvedValue({ rows: [], rowsAffected: 0, lastInsertRowid: 0 });
+    mockCloud.execute.mockResolvedValue({ rows: [], rowsAffected: 0, lastInsertRowid: 0 });
 
     const { pushToTurso } = require('../sync/syncService');
     const result = await pushToTurso();
     expect(result.success).toBe(true);
   });
 
-  test('push calls TursoClient.execute for each record', async () => {
-    mockDb.isTurso.mockReturnValue(true);
+  test('push calls cloudClient.execute for each record', async () => {
+    mockCloud.isConfigured.mockReturnValue(true);
     mockDatabase.prepare.mockImplementation((sql) => {
       if (sql.includes('sync_state')) {
         return mockChain(() => ({ last_sync_at: '2026-09-22T10:00:00' }));
@@ -147,15 +146,15 @@ describe('pushToTurso', () => {
       }
       return mockChain(null, null, () => []);
     });
-    mockDb.execute.mockResolvedValue({ rows: [], rowsAffected: 1, lastInsertRowid: 1 });
+    mockCloud.execute.mockResolvedValue({ rows: [], rowsAffected: 1, lastInsertRowid: 1 });
 
     const { pushToTurso } = require('../sync/syncService');
     await pushToTurso();
-    expect(mockDb.execute).toHaveBeenCalled();
+    expect(mockCloud.execute).toHaveBeenCalled();
   });
 
   test('push uses WHERE updated_at > lastSync', async () => {
-    mockDb.isTurso.mockReturnValue(true);
+    mockCloud.isConfigured.mockReturnValue(true);
     const mockAll = jest.fn().mockReturnValue([]);
     mockDatabase.prepare.mockImplementation((sql) => {
       if (sql.includes('sync_state')) {
@@ -166,7 +165,7 @@ describe('pushToTurso', () => {
       }
       return mockChain(null, null, () => []);
     });
-    mockDb.execute.mockResolvedValue({ rows: [], rowsAffected: 0, lastInsertRowid: 0 });
+    mockCloud.execute.mockResolvedValue({ rows: [], rowsAffected: 0, lastInsertRowid: 0 });
 
     const { pushToTurso } = require('../sync/syncService');
     await pushToTurso();
@@ -176,7 +175,7 @@ describe('pushToTurso', () => {
 
 describe('pullFromTurso', () => {
   test('returns error when Turso not configured', async () => {
-    mockDb.isTurso.mockReturnValue(false);
+    mockCloud.isConfigured.mockReturnValue(false);
     const { pullFromTurso } = require('../sync/syncService');
     const result = await pullFromTurso();
     expect(result.success).toBe(false);
@@ -184,33 +183,33 @@ describe('pullFromTurso', () => {
   });
 
   test('pull with no changes succeeds', async () => {
-    mockDb.isTurso.mockReturnValue(true);
+    mockCloud.isConfigured.mockReturnValue(true);
     mockDatabase.prepare.mockReturnValue(mockChain(() => ({ last_sync_at: '2026-09-22T10:00:00' })));
-    mockDb.execute.mockResolvedValue({ rows: [], rowsAffected: 0, lastInsertRowid: 0 });
+    mockCloud.execute.mockResolvedValue({ rows: [], rowsAffected: 0, lastInsertRowid: 0 });
 
     const { pullFromTurso } = require('../sync/syncService');
     const result = await pullFromTurso();
     expect(result.success).toBe(true);
   });
 
-  test('pull calls TursoClient.execute with WHERE updated_at > lastSync', async () => {
-    mockDb.isTurso.mockReturnValue(true);
+  test('pull calls cloudClient.execute with WHERE updated_at > lastSync', async () => {
+    mockCloud.isConfigured.mockReturnValue(true);
     mockDatabase.prepare.mockReturnValue(mockChain(() => ({ last_sync_at: '2026-09-22T10:00:00' })));
-    mockDb.execute.mockResolvedValue({ rows: [], rowsAffected: 0, lastInsertRowid: 0 });
+    mockCloud.execute.mockResolvedValue({ rows: [], rowsAffected: 0, lastInsertRowid: 0 });
 
     const { pullFromTurso } = require('../sync/syncService');
     await pullFromTurso();
-    const calls = mockDb.execute.mock.calls;
+    const calls = mockCloud.execute.mock.calls;
     const selectCall = calls.find(c => c[0].sql && c[0].sql.includes('SELECT'));
     expect(selectCall).toBeDefined();
     expect(selectCall[0].args).toContain('2026-09-22T10:00:00');
   });
 
   test('pull inserts remote records into local SQLite', async () => {
-    mockDb.isTurso.mockReturnValue(true);
+    mockCloud.isConfigured.mockReturnValue(true);
     mockDatabase.prepare.mockReturnValue(mockChain(() => ({ last_sync_at: '2026-09-22T10:00:00' })));
     const remoteRows = [{ id: 1, nombre: 'Bob', updated_at: '2026-09-22T10:00:01' }];
-    mockDb.execute.mockResolvedValue({ rows: remoteRows, rowsAffected: 1, lastInsertRowid: 1 });
+    mockCloud.execute.mockResolvedValue({ rows: remoteRows, rowsAffected: 1, lastInsertRowid: 1 });
 
     const { pullFromTurso } = require('../sync/syncService');
     const result = await pullFromTurso();
@@ -222,7 +221,7 @@ describe('pullFromTurso', () => {
 
 describe('fullSync', () => {
   test('returns push and pull results', async () => {
-    mockDb.isTurso.mockReturnValue(false);
+    mockCloud.isConfigured.mockReturnValue(false);
     const { fullSync } = require('../sync/syncService');
     const result = await fullSync();
     expect(result).toHaveProperty('push');
@@ -234,7 +233,7 @@ describe('fullSync', () => {
 
 describe('getSyncStatus', () => {
   test('returns sync status object', () => {
-    mockDb.isTurso.mockReturnValue(false);
+    mockCloud.isConfigured.mockReturnValue(false);
     mockDatabase.prepare.mockReturnValue(mockChain(() => null));
     const { getSyncStatus } = require('../sync/syncService');
     const status = getSyncStatus();
@@ -246,7 +245,7 @@ describe('getSyncStatus', () => {
   });
 
   test('includes pendingTombstones count', () => {
-    mockDb.isTurso.mockReturnValue(false);
+    mockCloud.isConfigured.mockReturnValue(false);
     mockDatabase.prepare.mockImplementation((sql) => {
       if (sql.includes('sync_tombstones') && sql.includes('COUNT')) {
         return mockChain(() => ({ count: 3 }));
@@ -261,7 +260,7 @@ describe('getSyncStatus', () => {
 
 describe('TOMBSTONES — pushToTurso', () => {
   test('pushes pending tombstones to Turso', async () => {
-    mockDb.isTurso.mockReturnValue(true);
+    mockCloud.isConfigured.mockReturnValue(true);
     const pendingTombstones = [
       { id: 1, table_name: 'pacientes', record_id: 123, deleted_at: '2026-09-23T10:00:00', source: 'user', synced_to_turso: 0, created_at: '2026-09-23T10:00:00' }
     ];
@@ -274,13 +273,13 @@ describe('TOMBSTONES — pushToTurso', () => {
       }
       return mockChain(null, null, () => []);
     });
-    mockDb.execute.mockResolvedValue({ rows: [], rowsAffected: 1, lastInsertRowid: 1 });
+    mockCloud.execute.mockResolvedValue({ rows: [], rowsAffected: 1, lastInsertRowid: 1 });
 
     const { pushToTurso } = require('../sync/syncService');
     const result = await pushToTurso();
     expect(result.success).toBe(true);
     expect(result.pushedTombstones).toBe(1);
-    expect(mockDb.execute).toHaveBeenCalledWith(
+    expect(mockCloud.execute).toHaveBeenCalledWith(
       expect.objectContaining({
         sql: expect.stringContaining('INSERT OR IGNORE INTO sync_tombstones')
       })
@@ -288,7 +287,7 @@ describe('TOMBSTONES — pushToTurso', () => {
   });
 
   test('marks tombstones as synced after push', async () => {
-    mockDb.isTurso.mockReturnValue(true);
+    mockCloud.isConfigured.mockReturnValue(true);
     const pendingTombstones = [
       { id: 1, table_name: 'pacientes', record_id: 123, deleted_at: '2026-09-23T10:00:00', source: 'user', synced_to_turso: 0, created_at: '2026-09-23T10:00:00' }
     ];
@@ -305,7 +304,7 @@ describe('TOMBSTONES — pushToTurso', () => {
       }
       return mockChain(null, null, () => []);
     });
-    mockDb.execute.mockResolvedValue({ rows: [], rowsAffected: 1, lastInsertRowid: 1 });
+    mockCloud.execute.mockResolvedValue({ rows: [], rowsAffected: 1, lastInsertRowid: 1 });
 
     const { pushToTurso } = require('../sync/syncService');
     await pushToTurso();
@@ -313,7 +312,7 @@ describe('TOMBSTONES — pushToTurso', () => {
   });
 
   test('returns 0 pushedTombstones when none pending', async () => {
-    mockDb.isTurso.mockReturnValue(true);
+    mockCloud.isConfigured.mockReturnValue(true);
     mockDatabase.prepare.mockImplementation((sql) => {
       if (sql.includes('sync_state')) {
         return mockChain(() => ({ last_sync_at: '2026-09-22T10:00:00' }));
@@ -323,7 +322,7 @@ describe('TOMBSTONES — pushToTurso', () => {
       }
       return mockChain(null, null, () => []);
     });
-    mockDb.execute.mockResolvedValue({ rows: [], rowsAffected: 0, lastInsertRowid: 0 });
+    mockCloud.execute.mockResolvedValue({ rows: [], rowsAffected: 0, lastInsertRowid: 0 });
 
     const { pushToTurso } = require('../sync/syncService');
     const result = await pushToTurso();
@@ -333,7 +332,7 @@ describe('TOMBSTONES — pushToTurso', () => {
 
 describe('TOMBSTONES — pullFromTurso', () => {
   test('pulls remote tombstones and applies DELETE locally', async () => {
-    mockDb.isTurso.mockReturnValue(true);
+    mockCloud.isConfigured.mockReturnValue(true);
     const remoteTombstones = {
       rows: [
         { table_name: 'pacientes', record_id: 123, deleted_at: '2026-09-23T10:00:00', source: 'user', created_at: '2026-09-23T10:00:00' }
@@ -356,7 +355,7 @@ describe('TOMBSTONES — pullFromTurso', () => {
     });
 
     let callCount = 0;
-    mockDb.execute.mockImplementation((params) => {
+    mockCloud.execute.mockImplementation((params) => {
       callCount++;
       if (callCount === 1) return remoteTombstones; // First call: tombstones
       return { rows: [], rowsAffected: 0, lastInsertRowid: 0 };
@@ -369,7 +368,7 @@ describe('TOMBSTONES — pullFromTurso', () => {
   });
 
   test('skips tombstone that already exists locally', async () => {
-    mockDb.isTurso.mockReturnValue(true);
+    mockCloud.isConfigured.mockReturnValue(true);
     const remoteTombstones = {
       rows: [
         { table_name: 'pacientes', record_id: 123, deleted_at: '2026-09-23T10:00:00', source: 'user', created_at: '2026-09-23T10:00:00' }
@@ -386,7 +385,7 @@ describe('TOMBSTONES — pullFromTurso', () => {
     });
 
     let callCount = 0;
-    mockDb.execute.mockImplementation((params) => {
+    mockCloud.execute.mockImplementation((params) => {
       callCount++;
       if (callCount === 1) return remoteTombstones; // First call: tombstones
       return { rows: [], rowsAffected: 0, lastInsertRowid: 0 };
@@ -400,7 +399,7 @@ describe('TOMBSTONES — pullFromTurso', () => {
   });
 
   test('applies DELETE for non-existing local record gracefully', async () => {
-    mockDb.isTurso.mockReturnValue(true);
+    mockCloud.isConfigured.mockReturnValue(true);
     const remoteTombstones = {
       rows: [
         { table_name: 'pacientes', record_id: 999, deleted_at: '2026-09-23T10:00:00', source: 'sync', created_at: '2026-09-23T10:00:00' }
@@ -423,7 +422,7 @@ describe('TOMBSTONES — pullFromTurso', () => {
     });
 
     let callCount = 0;
-    mockDb.execute.mockImplementation((params) => {
+    mockCloud.execute.mockImplementation((params) => {
       callCount++;
       if (callCount === 1) return remoteTombstones; // First call: tombstones
       return { rows: [], rowsAffected: 0, lastInsertRowid: 0 };
@@ -438,7 +437,7 @@ describe('TOMBSTONES — pullFromTurso', () => {
 
 describe('TOMBSTONES — ping-pong prevention', () => {
   test('INSERT OR IGNORE prevents duplicate tombstones', async () => {
-    mockDb.isTurso.mockReturnValue(true);
+    mockCloud.isConfigured.mockReturnValue(true);
     const pendingTombstones = [
       { id: 1, table_name: 'pacientes', record_id: 123, deleted_at: '2026-09-23T10:00:00', source: 'user', synced_to_turso: 0, created_at: '2026-09-23T10:00:00' }
     ];
@@ -452,7 +451,7 @@ describe('TOMBSTONES — ping-pong prevention', () => {
       return mockChain(null, null, () => []);
     });
     // Turso returns error for duplicate (UNIQUE constraint)
-    mockDb.execute.mockImplementation(() => {
+    mockCloud.execute.mockImplementation(() => {
       return { rows: [], rowsAffected: 0, lastInsertRowid: 0 };
     });
 
@@ -460,7 +459,7 @@ describe('TOMBSTONES — ping-pong prevention', () => {
     const result = await pushToTurso();
     expect(result.success).toBe(true);
     // The INSERT OR IGNORE SQL is sent — Turso handles dedup via UNIQUE
-    expect(mockDb.execute).toHaveBeenCalledWith(
+    expect(mockCloud.execute).toHaveBeenCalledWith(
       expect.objectContaining({
         sql: expect.stringContaining('INSERT OR IGNORE INTO sync_tombstones')
       })
@@ -474,7 +473,7 @@ describe('TOMBSTONES — ping-pong prevention', () => {
 
 describe('DELETE-WINS — pullFromTurso local tombstone blocks INSERT', () => {
   test('local tombstone prevents pulled record from being inserted', async () => {
-    mockDb.isTurso.mockReturnValue(true);
+    mockCloud.isConfigured.mockReturnValue(true);
     // Remote tombstone already applied locally
     const remoteTombstones = { rows: [] };
     // Remote record that was modified before deletion
@@ -492,7 +491,7 @@ describe('DELETE-WINS — pullFromTurso local tombstone blocks INSERT', () => {
     });
 
     let callCount = 0;
-    mockDb.execute.mockImplementation((params) => {
+    mockCloud.execute.mockImplementation((params) => {
       callCount++;
       if (callCount === 1) return remoteTombstones; // tombstones query
       if (callCount === 2) return remoteRecords; // records query
@@ -511,7 +510,7 @@ describe('DELETE-WINS — pullFromTurso local tombstone blocks INSERT', () => {
 
 describe('DELETE-WINS — pushToTurso remote tombstone blocks INSERT', () => {
   test('remote tombstone prevents local record from being pushed', async () => {
-    mockDb.isTurso.mockReturnValue(true);
+    mockCloud.isConfigured.mockReturnValue(true);
     const localRecords = [{ id: 99, nombre: 'Test', updated_at: '2026-09-23T10:00:00' }];
 
     mockDatabase.prepare.mockImplementation((sql) => {
@@ -528,7 +527,7 @@ describe('DELETE-WINS — pushToTurso remote tombstone blocks INSERT', () => {
     });
 
     let callCount = 0;
-    mockDb.execute.mockImplementation((params) => {
+    mockCloud.execute.mockImplementation((params) => {
       callCount++;
       // First call per table: check remote tombstone → exists!
       if (params.sql && params.sql.includes('SELECT 1 FROM sync_tombstones')) {
@@ -542,14 +541,14 @@ describe('DELETE-WINS — pushToTurso remote tombstone blocks INSERT', () => {
     expect(result.success).toBe(true);
     expect(result.skippedByRemoteTombstone).toBe(1);
     // Verify INSERT was NOT called for the record
-    const insertCalls = mockDb.execute.mock.calls.filter(c => c[0] && c[0].sql && c[0].sql.includes('INSERT INTO') && !c[0].sql.includes('sync_tombstones'));
+    const insertCalls = mockCloud.execute.mock.calls.filter(c => c[0] && c[0].sql && c[0].sql.includes('INSERT INTO') && !c[0].sql.includes('sync_tombstones'));
     expect(insertCalls.length).toBe(0);
   });
 });
 
 describe('DELETE-WINS — remote DELETE + local UPDATE scenario', () => {
   test('local UPDATE does not override remote DELETE', async () => {
-    mockDb.isTurso.mockReturnValue(true);
+    mockCloud.isConfigured.mockReturnValue(true);
     // Remote tombstone for record 42
     const remoteTombstones = { rows: [{ table_name: 'pacientes', record_id: 42, deleted_at: '2026-09-23T10:00:00', source: 'user', created_at: '2026-09-23T10:00:00' }] };
     // Remote record 42 also exists (was updated before deletion)
@@ -581,7 +580,7 @@ describe('DELETE-WINS — remote DELETE + local UPDATE scenario', () => {
     });
 
     let callCount = 0;
-    mockDb.execute.mockImplementation((params) => {
+    mockCloud.execute.mockImplementation((params) => {
       callCount++;
       if (callCount === 1) return remoteTombstones; // tombstones first
       if (callCount === 2) return remoteRecords; // records second
@@ -599,7 +598,7 @@ describe('DELETE-WINS — remote DELETE + local UPDATE scenario', () => {
 
 describe('DELETE-WINS — local DELETE + remote UPDATE scenario', () => {
   test('remote UPDATE does not recreate locally deleted record', async () => {
-    mockDb.isTurso.mockReturnValue(true);
+    mockCloud.isConfigured.mockReturnValue(true);
     // No remote tombstones
     const remoteTombstones = { rows: [] };
     // Remote record 42 was updated
@@ -617,7 +616,7 @@ describe('DELETE-WINS — local DELETE + remote UPDATE scenario', () => {
     });
 
     let callCount = 0;
-    mockDb.execute.mockImplementation((params) => {
+    mockCloud.execute.mockImplementation((params) => {
       callCount++;
       if (callCount === 1) return remoteTombstones;
       if (callCount === 2) return remoteRecords;
@@ -636,7 +635,7 @@ describe('DELETE-WINS — local DELETE + remote UPDATE scenario', () => {
 
 describe('DELETE-WINS — PULL applies tombstones before records', () => {
   test('tombstones are processed before records in pullFromTurso', async () => {
-    mockDb.isTurso.mockReturnValue(true);
+    mockCloud.isConfigured.mockReturnValue(true);
     const executionOrder = [];
 
     mockDatabase.prepare.mockImplementation((sql) => {
@@ -659,13 +658,13 @@ describe('DELETE-WINS — PULL applies tombstones before records', () => {
       }
       if (sql.includes('INSERT INTO') && !sql.includes('sync_tombstones')) {
         executionOrder.push('insert_record');
-        return { run: jest.fn() };
+        return { run: jest.fn().mockReturnValue({ changes: 1, lastInsertRowid: 1 }) };
       }
       return mockChain(null, jest.fn(), () => []);
     });
 
     let callCount = 0;
-    mockDb.execute.mockImplementation((params) => {
+    mockCloud.execute.mockImplementation((params) => {
       callCount++;
       // First: tombstone (record was deleted remotely)
       if (callCount === 1) {
@@ -690,7 +689,7 @@ describe('DELETE-WINS — PULL applies tombstones before records', () => {
 
 describe('lastSync — fullSync uses same cursor for push and pull', () => {
   test('fullSync captures lastSync once and passes to both push and pull', async () => {
-    mockDb.isTurso.mockReturnValue(false);
+    mockCloud.isConfigured.mockReturnValue(false);
     const { fullSync } = require('../sync/syncService');
     const result = await fullSync();
     // When Turso is not configured, both return errors but lastSync is not advanced
@@ -699,7 +698,7 @@ describe('lastSync — fullSync uses same cursor for push and pull', () => {
   });
 
   test('fullSync does not advance lastSync when Turso not configured', async () => {
-    mockDb.isTurso.mockReturnValue(false);
+    mockCloud.isConfigured.mockReturnValue(false);
     const runFn = jest.fn();
     mockDatabase.prepare.mockImplementation((sql) => {
       if (sql.includes('sync_state') && sql.includes('SELECT')) {
@@ -719,7 +718,7 @@ describe('lastSync — fullSync uses same cursor for push and pull', () => {
   });
 
   test('fullSync advances lastSync only after both push and pull succeed', async () => {
-    mockDb.isTurso.mockReturnValue(true);
+    mockCloud.isConfigured.mockReturnValue(true);
     const runFn = jest.fn();
     mockDatabase.prepare.mockImplementation((sql) => {
       if (sql.includes('sync_state') && sql.includes('SELECT')) {
@@ -733,7 +732,7 @@ describe('lastSync — fullSync uses same cursor for push and pull', () => {
       }
       return mockChain(null, null, () => []);
     });
-    mockDb.execute.mockResolvedValue({ rows: [], rowsAffected: 0, lastInsertRowid: 0 });
+    mockCloud.execute.mockResolvedValue({ rows: [], rowsAffected: 0, lastInsertRowid: 0 });
 
     const { fullSync } = require('../sync/syncService');
     const result = await fullSync();
@@ -745,7 +744,7 @@ describe('lastSync — fullSync uses same cursor for push and pull', () => {
 
 describe('lastSync — remote change during PUSH not lost', () => {
   test('PULL with same lastSync catches changes made during PUSH', async () => {
-    mockDb.isTurso.mockReturnValue(true);
+    mockCloud.isConfigured.mockReturnValue(true);
     const runFn = jest.fn();
     mockDatabase.prepare.mockImplementation((sql) => {
       if (sql.includes('sync_state') && sql.includes('SELECT')) {
@@ -761,7 +760,7 @@ describe('lastSync — remote change during PUSH not lost', () => {
     });
 
     let callCount = 0;
-    mockDb.execute.mockImplementation((params) => {
+    mockCloud.execute.mockImplementation((params) => {
       callCount++;
       // Tombstone query (empty)
       if (params.sql && params.sql.includes('sync_tombstones') && params.sql.includes('deleted_at')) {
@@ -784,7 +783,7 @@ describe('lastSync — remote change during PUSH not lost', () => {
 
 describe('lastSync — failed sync does not advance cursor', () => {
   test('pushToTurso alone does not advance lastSync', async () => {
-    mockDb.isTurso.mockReturnValue(true);
+    mockCloud.isConfigured.mockReturnValue(true);
     const runFn = jest.fn();
     mockDatabase.prepare.mockImplementation((sql) => {
       if (sql.includes('sync_state') && sql.includes('SELECT')) {
@@ -798,7 +797,7 @@ describe('lastSync — failed sync does not advance cursor', () => {
       }
       return mockChain(null, null, () => []);
     });
-    mockDb.execute.mockResolvedValue({ rows: [], rowsAffected: 0, lastInsertRowid: 0 });
+    mockCloud.execute.mockResolvedValue({ rows: [], rowsAffected: 0, lastInsertRowid: 0 });
 
     const { pushToTurso } = require('../sync/syncService');
     await pushToTurso('2026-09-22T10:00:00');
@@ -807,7 +806,7 @@ describe('lastSync — failed sync does not advance cursor', () => {
   });
 
   test('pullFromTurso alone does not advance lastSync', async () => {
-    mockDb.isTurso.mockReturnValue(true);
+    mockCloud.isConfigured.mockReturnValue(true);
     const runFn = jest.fn();
     mockDatabase.prepare.mockImplementation((sql) => {
       if (sql.includes('sync_state') && sql.includes('SELECT')) {
@@ -818,7 +817,7 @@ describe('lastSync — failed sync does not advance cursor', () => {
       }
       return mockChain(null, null, () => []);
     });
-    mockDb.execute.mockResolvedValue({ rows: [], rowsAffected: 0, lastInsertRowid: 0 });
+    mockCloud.execute.mockResolvedValue({ rows: [], rowsAffected: 0, lastInsertRowid: 0 });
 
     const { pullFromTurso } = require('../sync/syncService');
     await pullFromTurso('2026-09-22T10:00:00');
@@ -829,7 +828,7 @@ describe('lastSync — failed sync does not advance cursor', () => {
 
 describe('IDEMPOTENCY — repeated sync produces same result', () => {
   test('running fullSync twice produces same outcome', async () => {
-    mockDb.isTurso.mockReturnValue(true);
+    mockCloud.isConfigured.mockReturnValue(true);
     mockDatabase.prepare.mockImplementation((sql) => {
       if (sql.includes('sync_state') && sql.includes('SELECT')) {
         return mockChain(() => ({ last_sync_at: '2026-09-22T10:00:00' }));
@@ -842,12 +841,94 @@ describe('IDEMPOTENCY — repeated sync produces same result', () => {
       }
       return mockChain(null, null, () => []);
     });
-    mockDb.execute.mockResolvedValue({ rows: [], rowsAffected: 0, lastInsertRowid: 0 });
+    mockCloud.execute.mockResolvedValue({ rows: [], rowsAffected: 0, lastInsertRowid: 0 });
 
     const { fullSync } = require('../sync/syncService');
     const result1 = await fullSync();
     const result2 = await fullSync();
     expect(result1.success).toBe(true);
     expect(result2.success).toBe(true);
+  });
+});
+
+// ============================================================
+// C1 — cloudClient como remoto (no db.js) + CRUD local + offline
+// ============================================================
+
+describe('C1 — arquitectura de módulos', () => {
+  test('syncService no importa db.js (el remoto es cloudClient)', () => {
+    jest.isolateModules(() => {
+      jest.doMock('../db', () => {
+        throw new Error('db.js no debe usarse como remoto en sync');
+      });
+      jest.doMock('../database', () => ({
+        prepare: jest.fn(() => ({
+          get: jest.fn(() => null),
+          all: jest.fn(() => []),
+          run: jest.fn(() => ({ changes: 0, lastInsertRowid: 0 })),
+        })),
+      }));
+      jest.doMock('../cloudClient', () => ({
+        isConfigured: jest.fn(() => false),
+        execute: jest.fn(),
+      }));
+      expect(() => require('../sync/syncService')).not.toThrow();
+    });
+  });
+
+  test('syncService usa cloudClient.isConfigured como gate de nube', async () => {
+    mockCloud.isConfigured.mockReturnValue(false);
+    const { pushToTurso } = require('../sync/syncService');
+    const result = await pushToTurso();
+    expect(mockCloud.isConfigured).toHaveBeenCalled();
+    expect(result.success).toBe(false);
+    expect(result.error).toBe('Turso not configured');
+    expect(mockCloud.execute).not.toHaveBeenCalled();
+  });
+});
+
+describe('C1 — sin nube: CRUD local sigue disponible y sync falla sin avanzar cursor', () => {
+  test('fullSync sin nube no avanza lastSync y el siguiente intento reintentable', async () => {
+    mockCloud.isConfigured.mockReturnValue(false);
+    const setLast = jest.fn();
+    mockDatabase.prepare.mockImplementation((sql) => {
+      if (sql.includes('sync_state') && sql.includes('SELECT')) {
+        return mockChain(() => ({ last_sync_at: '2026-09-22T10:00:00' }));
+      }
+      if (sql.includes('sync_state') && sql.includes('INSERT')) {
+        return { run: setLast };
+      }
+      return mockChain(null, null, () => []);
+    });
+
+    const { fullSync } = require('../sync/syncService');
+    const first = await fullSync();
+    expect(first.success).toBe(false);
+    expect(setLast).not.toHaveBeenCalled();
+
+    // reintento: nube sigue caída → otra vez sin cursor
+    const second = await fullSync();
+    expect(second.success).toBe(false);
+    expect(setLast).not.toHaveBeenCalled();
+
+    // la nube vuelve → puede avanzar
+    mockCloud.isConfigured.mockReturnValue(true);
+    mockDatabase.prepare.mockImplementation((sql) => {
+      if (sql.includes('sync_state') && sql.includes('SELECT')) {
+        return mockChain(() => ({ last_sync_at: '2026-09-22T10:00:00' }));
+      }
+      if (sql.includes('sync_state') && sql.includes('INSERT')) {
+        return { run: setLast };
+      }
+      if (sql.includes('sync_tombstones') && sql.includes('SELECT') && sql.includes('synced_to_turso = 0')) {
+        return { all: () => [], get: jest.fn(), run: jest.fn() };
+      }
+      return mockChain(null, null, () => []);
+    });
+    mockCloud.execute.mockResolvedValue({ rows: [], rowsAffected: 0, lastInsertRowid: 0 });
+
+    const third = await fullSync();
+    expect(third.success).toBe(true);
+    expect(setLast).toHaveBeenCalledTimes(1);
   });
 });

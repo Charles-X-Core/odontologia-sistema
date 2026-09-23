@@ -122,7 +122,8 @@ db.exec("CREATE TABLE IF NOT EXISTS sync_state (id INTEGER PRIMARY KEY CHECK (id
 
 const syncStateExists = db.prepare("SELECT id FROM sync_state WHERE id = 1").get();
 if (!syncStateExists) {
-  db.prepare("INSERT INTO sync_state (id, last_sync_at) VALUES (1, strftime('%Y-%m-%dT%H:%M:%S', 'now'))").run();
+  // last_sync_at NULL = primer bootstrap (pull completo la primera vez)
+  db.prepare("INSERT INTO sync_state (id, last_sync_at) VALUES (1, NULL)").run();
 }
 
 // ============================================================

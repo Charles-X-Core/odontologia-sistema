@@ -1,18 +1,21 @@
 /**
  * Sync Service — Local SQLite ↔ Turso
  *
- * Strategy:
- * - Local SQLite via database.js (all local reads + writes)
- * - Turso via db.js adapter (cloud reads + writes)
+ * Strategy (C1: DB_MODE separa CRUD de nube):
+ * - Local SQLite via database.js (all local reads + writes) — lado local del sync
+ * - Turso via cloudClient (cloud reads + writes) — solo sync, no CRUD
  * - Conflict resolution: DELETE always wins over UPDATE
+ * - Guards: created_at linaje + updated_at LWW en upserts (barrera anti-corrupción,
+ *   NO es identidad multi-dispositivo definitiva — pendiente)
  * - Incremental sync: WHERE updated_at > lastSync
+ * - Bootstrap: last_sync_at NULL ⇒ pull total → fence sqlite_sequence → push → cursor
  * - Format: YYYY-MM-DDTHH:mm:ss (ISO 8601 sin milisegundos)
  * - Tombstones: sync_tombstones for DELETE synchronization
  * - Phase 2B-2: DELETE-wins enforcement, correct lastSync handling
  */
 
 const db = require('../database');
-const TursoClient = require('../db');
+const cloudClient = require('../cloudClient');
 
 const SYNC_TABLES = [
   'pacientes', 'historias_clinicas', 'consultas', 'odontogramas',
@@ -49,8 +52,33 @@ function setLastSyncTime(timestamp) {
       'ON CONFLICT(id) DO UPDATE SET last_sync_at = excluded.last_sync_at, updated_at = excluded.updated_at'
     ).run(ts);
   } catch (e) {
-    console.error('Error setting last sync time:', e.message);
+    console.error('Error setting sync time:', e.message);
   }
+}
+
+/**
+ * Upsert con barreras:
+ * 1) created_at distinto ⇒ otra fila con el mismo id ⇒ idCollision (no sobrescribe)
+ * 2) updated_at entrante más viejo ⇒ skip stale (LWW, no pisa versión más nueva)
+ * NOTA: protección contra corrupción silenciosa, NO identidad offline multi-dispositivo definitiva.
+ */
+function buildGuardedUpsertSql(table, row) {
+  const keys = Object.keys(row);
+  const placeholders = keys.map(() => '?').join(', ');
+  const updateCols = keys.filter(k => k !== 'id');
+  const updateList = updateCols.map(k => `${k} = excluded.${k}`).join(', ');
+  return `INSERT INTO ${table} (${keys.join(', ')}) VALUES (${placeholders})
+    ON CONFLICT(id) DO UPDATE SET ${updateList}
+    WHERE ${table}.created_at = excluded.created_at
+      AND COALESCE(excluded.updated_at, '') >= COALESCE(${table}.updated_at, '')`;
+}
+
+function classifyUpsertSkip(existing, incoming) {
+  if (!existing) return 'anomaly';
+  const exCreated = existing.created_at != null ? String(existing.created_at) : '';
+  const inCreated = incoming.created_at != null ? String(incoming.created_at) : '';
+  if (exCreated !== inCreated) return 'idCollision';
+  return 'stale';
 }
 
 /**
@@ -59,7 +87,7 @@ function setLastSyncTime(timestamp) {
  */
 async function hasRemoteTombstone(tableName, recordId) {
   try {
-    const result = await TursoClient.execute({
+    const result = await cloudClient.execute({
       sql: 'SELECT 1 FROM sync_tombstones WHERE table_name = ? AND record_id = ?',
       args: [tableName, recordId]
     });
@@ -84,13 +112,43 @@ function hasLocalTombstone(tableName, recordId) {
   }
 }
 
+/**
+ * Ajusta sqlite_sequence local al máximo id conocido (post-pull en bootstrap)
+ * para que los próximos AUTOINCREMENT no colisionen con ids de la nube.
+ */
+function fenceLocalSequences() {
+  const results = { fences: {}, errors: [], success: true };
+  for (const table of SYNC_TABLES) {
+    try {
+      const maxRow = db.prepare(`SELECT COALESCE(MAX(id), 0) AS maxId FROM ${table}`).get();
+      const fence = maxRow && maxRow.maxId != null ? Number(maxRow.maxId) : 0;
+      const seqRow = db.prepare(`SELECT seq FROM sqlite_sequence WHERE name = ?`).get(table);
+      if (!seqRow) {
+        if (fence > 0) {
+          db.prepare(`INSERT INTO sqlite_sequence (name, seq) VALUES (?, ?)`).run(table, fence);
+        }
+      } else if (fence > Number(seqRow.seq)) {
+        db.prepare(`UPDATE sqlite_sequence SET seq = ? WHERE name = ?`).run(fence, table);
+      }
+      results.fences[table] = fence;
+    } catch (e) {
+      results.errors.push({ table, error: e.message });
+      results.success = false;
+    }
+  }
+  return results;
+}
+
 async function pushToTurso(since = null) {
-  if (!TursoClient.isTurso()) {
+  if (!cloudClient.isConfigured()) {
     return { success: false, error: 'Turso not configured' };
   }
 
   const lastSync = since || getLastSyncTime();
-  const results = { pushed: {}, errors: [], skippedByRemoteTombstone: 0 };
+  const results = {
+    pushed: {}, errors: [], skippedByRemoteTombstone: 0,
+    idCollisions: [], skippedStale: 0
+  };
 
   for (const table of SYNC_TABLES) {
     try {
@@ -114,18 +172,28 @@ async function pushToTurso(since = null) {
               continue;
             }
 
-            const keys = Object.keys(row);
-            const placeholders = keys.map(() => '?').join(', ');
-            const updatePlaceholders = keys.filter(k => k !== 'id').map(k => `${k} = excluded.${k}`).join(', ');
-
-            const sql = `INSERT INTO ${table} (${keys.join(', ')}) VALUES (${placeholders})
-              ON CONFLICT(id) DO UPDATE SET ${updatePlaceholders}`;
-
-            await TursoClient.execute({
+            const sql = buildGuardedUpsertSql(table, row);
+            const result = await cloudClient.execute({
               sql,
               args: Object.values(row)
             });
-            pushedCount++;
+
+            if (result.rowsAffected > 0) {
+              pushedCount++;
+            } else {
+              const exRes = await cloudClient.execute({
+                sql: `SELECT created_at, updated_at FROM ${table} WHERE id = ?`,
+                args: [row.id]
+              });
+              const kind = classifyUpsertSkip(exRes.rows[0], row);
+              if (kind === 'idCollision') {
+                results.idCollisions.push({ table, id: row.id, direction: 'push' });
+              } else if (kind === 'stale') {
+                results.skippedStale++;
+              } else {
+                results.errors.push({ table, id: row.id, error: 'upsert guard rejected without existing row' });
+              }
+            }
           } catch (e) {
             results.errors.push({ table, id: row.id, error: e.message });
           }
@@ -150,7 +218,7 @@ async function pushToTurso(since = null) {
     const pushedIds = [];
     for (const ts of pendingTombstones) {
       try {
-        await TursoClient.execute({
+        await cloudClient.execute({
           sql: `INSERT OR IGNORE INTO sync_tombstones
                 (table_name, record_id, deleted_at, source, synced_to_turso, created_at)
                 VALUES (?, ?, ?, ?, 1, ?)`,
@@ -173,30 +241,36 @@ async function pushToTurso(since = null) {
   }
 
   // NOTE: setLastSyncTime is NOT called here — fullSync handles it
-  return { success: results.errors.length === 0, ...results };
+  return {
+    success: results.errors.length === 0 && results.idCollisions.length === 0,
+    ...results
+  };
 }
 
 async function pullFromTurso(since = null) {
-  if (!TursoClient.isTurso()) {
+  if (!cloudClient.isConfigured()) {
     return { success: false, error: 'Turso not configured' };
   }
 
   const lastSync = since || getLastSyncTime();
-  const results = { pulled: {}, errors: [], skippedByTombstone: 0 };
+  const results = {
+    pulled: {}, errors: [], skippedByTombstone: 0,
+    idCollisions: [], skippedStale: 0
+  };
 
   // ============================================================
-  // FASE 2B-2: Pull remote tombstones FIRST and apply locally
+  // FASE 2B-2: Pull remote tombstones FIRST and apply locally.
   // This ensures DELETE-wins before any records are inserted.
   // ============================================================
   try {
     let remoteTombstones;
     if (lastSync) {
-      remoteTombstones = await TursoClient.execute({
+      remoteTombstones = await cloudClient.execute({
         sql: 'SELECT * FROM sync_tombstones WHERE deleted_at > ?',
         args: [lastSync]
       });
     } else {
-      remoteTombstones = await TursoClient.execute({
+      remoteTombstones = await cloudClient.execute({
         sql: 'SELECT * FROM sync_tombstones',
         args: []
       });
@@ -250,12 +324,12 @@ async function pullFromTurso(since = null) {
     try {
       let result;
       if (lastSync) {
-        result = await TursoClient.execute({
+        result = await cloudClient.execute({
           sql: `SELECT * FROM ${table} WHERE updated_at > ?`,
           args: [lastSync]
         });
       } else {
-        result = await TursoClient.execute({ sql: `SELECT * FROM ${table}`, args: [] });
+        result = await cloudClient.execute({ sql: `SELECT * FROM ${table}`, args: [] });
       }
 
       if (result.rows.length === 0) continue;
@@ -269,15 +343,25 @@ async function pullFromTurso(since = null) {
             continue;
           }
 
-          const keys = Object.keys(row);
-          const placeholders = keys.map(() => '?').join(', ');
-          const updatePlaceholders = keys.filter(k => k !== 'id').map(k => `${k} = excluded.${k}`).join(', ');
+          const sql = buildGuardedUpsertSql(table, row);
+          const runResult = db.prepare(sql).run(...Object.values(row));
+          const changes = runResult && runResult.changes != null ? Number(runResult.changes) : 0;
 
-          const sql = `INSERT INTO ${table} (${keys.join(', ')}) VALUES (${placeholders})
-            ON CONFLICT(id) DO UPDATE SET ${updatePlaceholders}`;
-
-          db.prepare(sql).run(...Object.values(row));
-          pulledCount++;
+          if (changes > 0) {
+            pulledCount++;
+          } else {
+            const existing = db.prepare(
+              `SELECT created_at, updated_at FROM ${table} WHERE id = ?`
+            ).get(row.id);
+            const kind = classifyUpsertSkip(existing, row);
+            if (kind === 'idCollision') {
+              results.idCollisions.push({ table, id: row.id, direction: 'pull' });
+            } else if (kind === 'stale') {
+              results.skippedStale++;
+            } else {
+              results.errors.push({ table, id: row.id, error: 'upsert guard rejected without existing row' });
+            }
+          }
         } catch (e) {
           results.errors.push({ table, id: row.id, error: e.message });
         }
@@ -290,7 +374,60 @@ async function pullFromTurso(since = null) {
   }
 
   // NOTE: setLastSyncTime is NOT called here — fullSync handles it
-  return { success: results.errors.length === 0, ...results };
+  return {
+    success: results.errors.length === 0 && results.idCollisions.length === 0,
+    ...results
+  };
+}
+
+/**
+ * Bootstrap (last_sync_at IS NULL): pull total → fence sqlite_sequence → push → cursor.
+ * El cursor solo avanza si todo el bootstrap termina bien (incluye idCollisions=0).
+ */
+async function bootstrapSync(startTime) {
+  const timestamp = formatSyncTimestamp(new Date());
+  const pullResult = await pullFromTurso(null);
+
+  if (!pullResult.success) {
+    return {
+      success: false,
+      bootstrap: true,
+      pull: pullResult,
+      push: { success: false, error: pullResult.error || 'bootstrap pull failed' },
+      fence: null,
+      duration: Date.now() - startTime,
+      timestamp
+    };
+  }
+
+  const fence = fenceLocalSequences();
+  if (!fence.success) {
+    return {
+      success: false,
+      bootstrap: true,
+      pull: pullResult,
+      push: { success: false, error: 'bootstrap fence failed' },
+      fence,
+      duration: Date.now() - startTime,
+      timestamp
+    };
+  }
+
+  const pushResult = await pushToTurso(null);
+  const success = pullResult.success && pushResult.success;
+  if (success) {
+    setLastSyncTime(formatSyncTimestamp(new Date()));
+  }
+
+  return {
+    success,
+    bootstrap: true,
+    pull: pullResult,
+    push: pushResult,
+    fence,
+    duration: Date.now() - startTime,
+    timestamp
+  };
 }
 
 async function fullSync() {
@@ -298,6 +435,11 @@ async function fullSync() {
 
   // Capture lastSync ONCE before any operations
   const lastSync = getLastSyncTime();
+
+  // Bootstrap: cursor NULL ⇒ pull total → fence → push → cursor al final
+  if (!lastSync) {
+    return await bootstrapSync(startTime);
+  }
 
   // Both push and pull use the SAME cursor
   const pushResult = await pushToTurso(lastSync);
@@ -319,7 +461,7 @@ async function fullSync() {
 
 function getSyncStatus() {
   const lastSync = getLastSyncTime();
-  const isTurso = TursoClient.isTurso();
+  const isTurso = cloudClient.isConfigured();
 
   let pendingChanges = 0;
   if (lastSync) {
@@ -333,7 +475,7 @@ function getSyncStatus() {
 
   let pendingTombstones = 0;
   try {
-    const row = db.prepare('SELECT COUNT(*) as count FROM sync_tombstones WHERE synced_to_turso = 0').get();
+    const row = db.prepare(`SELECT COUNT(*) as count FROM sync_tombstones WHERE synced_to_turso = 0`).get();
     pendingTombstones = row.count;
   } catch {}
 
@@ -372,6 +514,8 @@ module.exports = {
   getLastSyncTime,
   setLastSyncTime,
   formatSyncTimestamp,
+  fenceLocalSequences,
+  buildGuardedUpsertSql,
   SYNC_TABLES,
   CLEAN_TABLES,
   BATCH_SIZE

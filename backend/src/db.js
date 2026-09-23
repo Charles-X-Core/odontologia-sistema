@@ -1,49 +1,54 @@
 const path = require('path');
 
-const TURSO_URL = process.env.TURSO_URL;
-const TURSO_AUTH_TOKEN = process.env.TURSO_AUTH_TOKEN;
+// DB_MODE: 'local' (default) | 'turso' — decide DÓNDE ESCRIBE EL CRUD.
+// TURSO_URL/TURSO_AUTH_TOKEN NO deciden el destino del CRUD; los usa cloudClient para el sync.
 const LOCAL_DB_PATH = process.env.LOCAL_DB_PATH || process.env.DB_PATH || path.join(__dirname, '..', 'clinica.db');
 
 let _client = null;
+let _clientMode = null;
 let _isTurso = false;
 
-function getClient() {
-  if (_client) return _client;
+function resolveMode() {
+  const raw = (process.env.DB_MODE || 'local').trim().toLowerCase();
+  return raw === 'turso' ? 'turso' : 'local';
+}
 
-  if (TURSO_URL) {
-    const { createClient } = require('@libsql/client');
-    _client = createClient({
-      url: TURSO_URL,
-      authToken: TURSO_AUTH_TOKEN || undefined,
-    });
+function getClient() {
+  const mode = resolveMode();
+  if (_client && _clientMode === mode) return _client;
+
+  _clientMode = mode;
+  if (mode === 'turso') {
+    _client = require('./cloudClient');
     _isTurso = true;
-    console.log('[DB] Modo: Turso (' + TURSO_URL + ')');
+    console.log('[DB] Modo: Turso (DB_MODE=turso) via cloudClient');
   } else {
     _client = require('./database');
     _isTurso = false;
-    console.log('[DB] Modo: SQLite local (via database.js)');
+    console.log('[DB] Modo: SQLite local (DB_MODE=local) via database.js');
   }
 
   return _client;
 }
 
 function prepare(sql) {
-  const client = getClient();
-
   return {
     get(...args) {
+      const client = getClient();
       if (_isTurso) {
         return client.execute({ sql, args }).then(r => r.rows[0] || null);
       }
       return Promise.resolve(client.prepare(sql).get(...args));
     },
     all(...args) {
+      const client = getClient();
       if (_isTurso) {
         return client.execute({ sql, args }).then(r => r.rows);
       }
       return Promise.resolve(client.prepare(sql).all(...args));
     },
     run(...args) {
+      const client = getClient();
       if (_isTurso) {
         return client.execute({ sql, args }).then(r => ({
           changes: r.rowsAffected,
@@ -82,4 +87,8 @@ async function execute({ sql, args = [] }) {
   };
 }
 
-module.exports = { prepare, exec, getClient, isTurso: () => _isTurso, execute };
+function isTurso() {
+  return resolveMode() === 'turso';
+}
+
+module.exports = { prepare, exec, getClient, isTurso, execute, resolveMode };

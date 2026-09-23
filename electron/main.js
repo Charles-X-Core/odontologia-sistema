@@ -88,6 +88,7 @@ function ensureDatabase(dataPath) {
   if (!fs.existsSync(dbPath)) {
     console.log('[MAIN] Creating new database...');
     process.env.DB_PATH = dbPath;
+    process.env.DB_MODE = 'local';
     process.env.PORT = PORT;
     process.env.JWT_SECRET = 'clinica-dental-pro-desktop-secret';
     try {
@@ -124,6 +125,7 @@ function startBackend() {
 
       process.env.PORT = PORT;
       process.env.DB_PATH = dbPath;
+      process.env.DB_MODE = 'local';
       process.env.UPLOAD_DIR = uploadsPath;
       process.env.JWT_SECRET = 'clinica-dental-pro-desktop-secret';
       process.env.FRONTEND_URL = '*';
