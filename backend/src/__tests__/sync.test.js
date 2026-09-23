@@ -241,6 +241,221 @@ describe('getSyncStatus', () => {
     expect(status).toHaveProperty('isTurso');
     expect(status).toHaveProperty('lastSync');
     expect(status).toHaveProperty('pendingChanges');
+    expect(status).toHaveProperty('pendingTombstones');
     expect(status).toHaveProperty('tables');
+  });
+
+  test('includes pendingTombstones count', () => {
+    mockDb.isTurso.mockReturnValue(false);
+    mockDatabase.prepare.mockImplementation((sql) => {
+      if (sql.includes('sync_tombstones') && sql.includes('COUNT')) {
+        return mockChain(() => ({ count: 3 }));
+      }
+      return mockChain(() => null);
+    });
+    const { getSyncStatus } = require('../sync/syncService');
+    const status = getSyncStatus();
+    expect(status.pendingTombstones).toBe(3);
+  });
+});
+
+describe('TOMBSTONES — pushToTurso', () => {
+  test('pushes pending tombstones to Turso', async () => {
+    mockDb.isTurso.mockReturnValue(true);
+    const pendingTombstones = [
+      { id: 1, table_name: 'pacientes', record_id: 123, deleted_at: '2026-09-23T10:00:00', source: 'user', synced_to_turso: 0, created_at: '2026-09-23T10:00:00' }
+    ];
+    mockDatabase.prepare.mockImplementation((sql) => {
+      if (sql.includes('sync_state')) {
+        return mockChain(() => ({ last_sync_at: '2026-09-22T10:00:00' }));
+      }
+      if (sql.includes('sync_tombstones') && sql.includes('SELECT') && sql.includes('synced_to_turso = 0')) {
+        return { all: () => pendingTombstones, get: jest.fn(), run: jest.fn() };
+      }
+      return mockChain(null, null, () => []);
+    });
+    mockDb.execute.mockResolvedValue({ rows: [], rowsAffected: 1, lastInsertRowid: 1 });
+
+    const { pushToTurso } = require('../sync/syncService');
+    const result = await pushToTurso();
+    expect(result.success).toBe(true);
+    expect(result.pushedTombstones).toBe(1);
+    expect(mockDb.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sql: expect.stringContaining('INSERT OR IGNORE INTO sync_tombstones')
+      })
+    );
+  });
+
+  test('marks tombstones as synced after push', async () => {
+    mockDb.isTurso.mockReturnValue(true);
+    const pendingTombstones = [
+      { id: 1, table_name: 'pacientes', record_id: 123, deleted_at: '2026-09-23T10:00:00', source: 'user', synced_to_turso: 0, created_at: '2026-09-23T10:00:00' }
+    ];
+    const runFn = jest.fn();
+    mockDatabase.prepare.mockImplementation((sql) => {
+      if (sql.includes('sync_state')) {
+        return mockChain(() => ({ last_sync_at: '2026-09-22T10:00:00' }));
+      }
+      if (sql.includes('sync_tombstones') && sql.includes('SELECT') && sql.includes('synced_to_turso = 0')) {
+        return { all: () => pendingTombstones, get: jest.fn(), run: jest.fn() };
+      }
+      if (sql.includes('UPDATE sync_tombstones SET synced_to_turso = 1')) {
+        return { run: runFn };
+      }
+      return mockChain(null, null, () => []);
+    });
+    mockDb.execute.mockResolvedValue({ rows: [], rowsAffected: 1, lastInsertRowid: 1 });
+
+    const { pushToTurso } = require('../sync/syncService');
+    await pushToTurso();
+    expect(runFn).toHaveBeenCalled();
+  });
+
+  test('returns 0 pushedTombstones when none pending', async () => {
+    mockDb.isTurso.mockReturnValue(true);
+    mockDatabase.prepare.mockImplementation((sql) => {
+      if (sql.includes('sync_state')) {
+        return mockChain(() => ({ last_sync_at: '2026-09-22T10:00:00' }));
+      }
+      if (sql.includes('sync_tombstones') && sql.includes('SELECT')) {
+        return { all: () => [], get: jest.fn(), run: jest.fn() };
+      }
+      return mockChain(null, null, () => []);
+    });
+    mockDb.execute.mockResolvedValue({ rows: [], rowsAffected: 0, lastInsertRowid: 0 });
+
+    const { pushToTurso } = require('../sync/syncService');
+    const result = await pushToTurso();
+    expect(result.pushedTombstones).toBe(0);
+  });
+});
+
+describe('TOMBSTONES — pullFromTurso', () => {
+  test('pulls remote tombstones and applies DELETE locally', async () => {
+    mockDb.isTurso.mockReturnValue(true);
+    const remoteTombstones = {
+      rows: [
+        { table_name: 'pacientes', record_id: 123, deleted_at: '2026-09-23T10:00:00', source: 'user', created_at: '2026-09-23T10:00:00' }
+      ]
+    };
+    mockDatabase.prepare.mockImplementation((sql) => {
+      if (sql.includes('sync_state')) {
+        return mockChain(() => ({ last_sync_at: '2026-09-22T10:00:00' }));
+      }
+      if (sql.includes('SELECT 1 FROM sync_tombstones WHERE table_name')) {
+        return mockChain(() => null); // No existing tombstone
+      }
+      return mockChain(null, jest.fn(), () => []);
+    });
+    mockDb.execute.mockImplementation((params) => {
+      if (params.sql && params.sql.includes('SELECT') && params.sql.includes('sync_tombstones') && params.sql.includes('deleted_at')) {
+        return remoteTombstones;
+      }
+      return { rows: [], rowsAffected: 0, lastInsertRowid: 0 };
+    });
+
+    const { pullFromTurso } = require('../sync/syncService');
+    const result = await pullFromTurso();
+    expect(result.success).toBe(true);
+    expect(result.pulledTombstones).toBe(1);
+  });
+
+  test('skips tombstone that already exists locally', async () => {
+    mockDb.isTurso.mockReturnValue(true);
+    const remoteTombstones = {
+      rows: [
+        { table_name: 'pacientes', record_id: 123, deleted_at: '2026-09-23T10:00:00', source: 'user', created_at: '2026-09-23T10:00:00' }
+      ]
+    };
+    mockDatabase.prepare.mockImplementation((sql) => {
+      if (sql.includes('sync_state')) {
+        return mockChain(() => ({ last_sync_at: '2026-09-22T10:00:00' }));
+      }
+      if (sql.includes('SELECT 1 FROM sync_tombstones WHERE table_name')) {
+        return mockChain(() => ({ 1: 1 })); // Tombstone exists locally
+      }
+      return mockChain(null, jest.fn(), () => []);
+    });
+    mockDb.execute.mockImplementation((params) => {
+      if (params.sql && params.sql.includes('SELECT') && params.sql.includes('sync_tombstones') && params.sql.includes('deleted_at')) {
+        return remoteTombstones;
+      }
+      return { rows: [], rowsAffected: 0, lastInsertRowid: 0 };
+    });
+
+    const { pullFromTurso } = require('../sync/syncService');
+    const result = await pullFromTurso();
+    expect(result.success).toBe(true);
+    expect(result.pulledTombstones).toBe(0);
+    expect(result.skippedTombstones).toBe(1);
+  });
+
+  test('applies DELETE for non-existing local record gracefully', async () => {
+    mockDb.isTurso.mockReturnValue(true);
+    const remoteTombstones = {
+      rows: [
+        { table_name: 'pacientes', record_id: 999, deleted_at: '2026-09-23T10:00:00', source: 'sync', created_at: '2026-09-23T10:00:00' }
+      ]
+    };
+    const runFn = jest.fn();
+    mockDatabase.prepare.mockImplementation((sql) => {
+      if (sql.includes('sync_state')) {
+        return mockChain(() => ({ last_sync_at: '2026-09-22T10:00:00' }));
+      }
+      if (sql.includes('SELECT 1 FROM sync_tombstones WHERE table_name')) {
+        return mockChain(() => null);
+      }
+      if (sql.includes('DELETE FROM')) {
+        return { run: runFn };
+      }
+      if (sql.includes('INSERT OR IGNORE INTO sync_tombstones')) {
+        return { run: runFn };
+      }
+      return mockChain(null, jest.fn(), () => []);
+    });
+    mockDb.execute.mockImplementation((params) => {
+      if (params.sql && params.sql.includes('SELECT') && params.sql.includes('sync_tombstones') && params.sql.includes('deleted_at')) {
+        return remoteTombstones;
+      }
+      return { rows: [], rowsAffected: 0, lastInsertRowid: 0 };
+    });
+
+    const { pullFromTurso } = require('../sync/syncService');
+    const result = await pullFromTurso();
+    expect(result.success).toBe(true);
+    expect(result.pulledTombstones).toBe(1);
+  });
+});
+
+describe('TOMBSTONES — ping-pong prevention', () => {
+  test('INSERT OR IGNORE prevents duplicate tombstones', async () => {
+    mockDb.isTurso.mockReturnValue(true);
+    const pendingTombstones = [
+      { id: 1, table_name: 'pacientes', record_id: 123, deleted_at: '2026-09-23T10:00:00', source: 'user', synced_to_turso: 0, created_at: '2026-09-23T10:00:00' }
+    ];
+    mockDatabase.prepare.mockImplementation((sql) => {
+      if (sql.includes('sync_state')) {
+        return mockChain(() => ({ last_sync_at: '2026-09-22T10:00:00' }));
+      }
+      if (sql.includes('sync_tombstones') && sql.includes('SELECT') && sql.includes('synced_to_turso = 0')) {
+        return { all: () => pendingTombstones, get: jest.fn(), run: jest.fn() };
+      }
+      return mockChain(null, null, () => []);
+    });
+    // Turso returns error for duplicate (UNIQUE constraint)
+    mockDb.execute.mockImplementation(() => {
+      return { rows: [], rowsAffected: 0, lastInsertRowid: 0 };
+    });
+
+    const { pushToTurso } = require('../sync/syncService');
+    const result = await pushToTurso();
+    expect(result.success).toBe(true);
+    // The INSERT OR IGNORE SQL is sent — Turso handles dedup via UNIQUE
+    expect(mockDb.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sql: expect.stringContaining('INSERT OR IGNORE INTO sync_tombstones')
+      })
+    );
   });
 });

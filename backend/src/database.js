@@ -168,4 +168,44 @@ for (const table of TRIGGER_TABLES) {
   } catch {}
 }
 
+// ============================================================
+// FASE 2B-1: Tombstones para sincronizacion de DELETEs
+// ============================================================
+
+db.exec(`CREATE TABLE IF NOT EXISTS sync_tombstones (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  table_name TEXT NOT NULL,
+  record_id INTEGER NOT NULL,
+  deleted_at TEXT NOT NULL,
+  source TEXT NOT NULL DEFAULT 'user',
+  synced_to_turso INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(table_name, record_id)
+)`);
+
+try { db.exec(`CREATE INDEX IF NOT EXISTS idx_tombstones_pending ON sync_tombstones(synced_to_turso, deleted_at)`); } catch {}
+try { db.exec(`CREATE INDEX IF NOT EXISTS idx_tombstones_table ON sync_tombstones(table_name, record_id)`); } catch {}
+
+const TOMBSTONE_TABLES = [
+  'pacientes', 'historias_clinicas', 'consultas', 'odontogramas',
+  'tratamientos', 'recetas', 'citas', 'pagos', 'necesidades_odontologicas', 'imagenes'
+];
+
+for (const table of TOMBSTONE_TABLES) {
+  try {
+    db.exec(`
+      CREATE TRIGGER IF NOT EXISTS trg_${table}_tombstone
+      AFTER DELETE ON ${table}
+      BEGIN
+        INSERT OR IGNORE INTO sync_tombstones
+          (table_name, record_id, deleted_at, source)
+        VALUES
+          ('${table}', OLD.id,
+           COALESCE(OLD.updated_at, strftime('%Y-%m-%dT%H:%M:%S', 'now')),
+           'user');
+      END;
+    `);
+  } catch {}
+}
+
 module.exports = db;

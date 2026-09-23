@@ -4,9 +4,10 @@
  * Strategy:
  * - Local SQLite via database.js (all local reads + writes)
  * - Turso via db.js adapter (cloud reads + writes)
- * - Conflict resolution: last-write-wins (updated_at)
+ * - Conflict resolution: last-write-wins (updated_at), DELETE always wins
  * - Incremental sync: WHERE updated_at > lastSync
  * - Format: YYYY-MM-DDTHH:mm:ss (ISO 8601 sin milisegundos)
+ * - Tombstones: sync_tombstones for DELETE synchronization
  */
 
 const db = require('../database');
@@ -99,6 +100,40 @@ async function pushToTurso(since = null) {
     }
   }
 
+  // ============================================================
+  // FASE 2B-1: Push pending tombstones to Turso
+  // ============================================================
+  try {
+    const pendingTombstones = db.prepare(
+      'SELECT * FROM sync_tombstones WHERE synced_to_turso = 0'
+    ).all();
+
+    let pushedTombstones = 0;
+    const pushedIds = [];
+    for (const ts of pendingTombstones) {
+      try {
+        await TursoClient.execute({
+          sql: `INSERT OR IGNORE INTO sync_tombstones
+                (table_name, record_id, deleted_at, source, synced_to_turso, created_at)
+                VALUES (?, ?, ?, ?, 1, ?)`,
+          args: [ts.table_name, ts.record_id, ts.deleted_at, ts.source, ts.created_at]
+        });
+        pushedTombstones++;
+        pushedIds.push(ts.id);
+      } catch (e) {
+        results.errors.push({ table: 'sync_tombstones', id: ts.id, error: e.message });
+      }
+    }
+
+    if (pushedIds.length > 0) {
+      const placeholders = pushedIds.map(() => '?').join(',');
+      db.prepare(`UPDATE sync_tombstones SET synced_to_turso = 1 WHERE id IN (${placeholders})`).run(...pushedIds);
+    }
+    results.pushedTombstones = pushedTombstones;
+  } catch (e) {
+    results.errors.push({ table: 'sync_tombstones', error: e.message });
+  }
+
   setLastSyncTime(formatSyncTimestamp(new Date()));
   return { success: true, ...results };
 }
@@ -148,6 +183,64 @@ async function pullFromTurso(since = null) {
     }
   }
 
+  // ============================================================
+  // FASE 2B-1: Pull remote tombstones and apply locally
+  // ============================================================
+  try {
+    let remoteTombstones;
+    if (lastSync) {
+      remoteTombstones = await TursoClient.execute({
+        sql: 'SELECT * FROM sync_tombstones WHERE deleted_at > ?',
+        args: [lastSync]
+      });
+    } else {
+      remoteTombstones = await TursoClient.execute({
+        sql: 'SELECT * FROM sync_tombstones',
+        args: []
+      });
+    }
+
+    let appliedTombstones = 0;
+    let skippedTombstones = 0;
+
+    for (const rt of remoteTombstones.rows) {
+      // Check if tombstone already exists locally
+      const existing = db.prepare(
+        'SELECT 1 FROM sync_tombstones WHERE table_name = ? AND record_id = ?'
+      ).get(rt.table_name, rt.record_id);
+
+      if (existing) {
+        skippedTombstones++;
+        continue;
+      }
+
+      // Apply DELETE locally
+      try {
+        db.prepare(`DELETE FROM ${rt.table_name} WHERE id = ?`).run(rt.record_id);
+      } catch (e) {
+        // Record may already not exist — that's fine
+      }
+
+      // Insert tombstone locally (trigger may have already done this, INSERT OR IGNORE is safe)
+      try {
+        db.prepare(
+          `INSERT OR IGNORE INTO sync_tombstones
+           (table_name, record_id, deleted_at, source, synced_to_turso, created_at)
+           VALUES (?, ?, ?, 'sync', 1, ?)`
+        ).run(rt.table_name, rt.record_id, rt.deleted_at, rt.created_at || formatSyncTimestamp(new Date()));
+      } catch (e) {
+        // Ignore duplicate
+      }
+
+      appliedTombstones++;
+    }
+
+    results.pulledTombstones = appliedTombstones;
+    results.skippedTombstones = skippedTombstones;
+  } catch (e) {
+    results.errors.push({ table: 'sync_tombstones', error: e.message });
+  }
+
   setLastSyncTime(formatSyncTimestamp(new Date()));
   return { success: true, ...results };
 }
@@ -181,10 +274,17 @@ function getSyncStatus() {
     }
   }
 
+  let pendingTombstones = 0;
+  try {
+    const row = db.prepare('SELECT COUNT(*) as count FROM sync_tombstones WHERE synced_to_turso = 0').get();
+    pendingTombstones = row.count;
+  } catch {}
+
   return {
     isTurso,
     lastSync,
     pendingChanges,
+    pendingTombstones,
     tables: SYNC_TABLES
   };
 }
