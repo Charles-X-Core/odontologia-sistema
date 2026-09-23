@@ -1,10 +1,11 @@
 /**
  * Sync Routes — API endpoints for synchronization
  *
- * POST /api/sync/push        — Push local changes to Turso
+ * POST /api/sync/push        — Push local changes (bloqueado si bootstrap pendiente sin admitLocalPush)
  * POST /api/sync/pull        — Pull remote changes from Turso
- * POST /api/sync/full        — Full bidirectional sync
+ * POST /api/sync/full        — Full bidirectional sync (bootstrap A1/A2)
  * GET  /api/sync/status      — Get sync status
+ * POST /api/sync/rebootstrap — Invalida cursor (restore explícito)
  * POST /api/sync/clean       — Clean local data (Desktop/DEV only, admin)
  *
  * /clean no se registra en Vercel (includeClean=false / VERCEL=1).
@@ -26,11 +27,53 @@ function createSyncRouter({ includeClean = true } = {}) {
   /**
    * POST /api/sync/push
    * Push local changes to Turso
+   *
+   * C4.2.5.1: con last_sync_at NULL (bootstrap pendiente) el push total está prohibido
+   * salvo admitLocalPush===true y solo en escenario A2 (nunca A1).
    */
   router.post('/push', async (req, res) => {
     try {
-      const { since } = req.body;
-      const result = await syncService.pushToTurso(since || null);
+      const body = req.body || {};
+      const admitLocalPush = body.admitLocalPush === true;
+      const lastSync = syncService.getLastSyncTime();
+
+      if (!lastSync) {
+        if (!admitLocalPush) {
+          return res.status(409).json({
+            success: false,
+            error: 'BOOTSTRAP_PENDING',
+            code: 'BOOTSTRAP_PENDING',
+            message:
+              'Bootstrap pendiente: push total prohibido sin admitLocalPush=true. Use POST /api/sync/full.'
+          });
+        }
+
+        const scenario = syncService.classifyBootstrapScenario();
+        if (scenario.scenario === 'A1_empty') {
+          return res.status(409).json({
+            success: false,
+            error: 'BOOTSTRAP_A1_PULL_ONLY',
+            code: 'BOOTSTRAP_A1_PULL_ONLY',
+            message:
+              'Escenario A1 es pull-only: push de contenido prohibido incluso con admitLocalPush.'
+          });
+        }
+
+        const admitted = await syncService.pushToTurso(null);
+        if (admitted.success) {
+          return res.json({
+            success: true,
+            message: 'Push admitido (A2) — no avanza last_sync_at',
+            data: admitted
+          });
+        }
+        return res.status(500).json({
+          success: false,
+          error: admitted.error || 'Error al subir cambios (admitLocalPush)'
+        });
+      }
+
+      const result = await syncService.pushToTurso(body.since || null);
 
       if (result.success) {
         res.json({
@@ -124,6 +167,26 @@ function createSyncRouter({ includeClean = true } = {}) {
         success: false,
         error: 'Error al obtener estado'
       });
+    }
+  });
+
+  /**
+   * POST /api/sync/rebootstrap
+   * Invalida el cursor (restore / re-clasificación A2/A3). No borra datos.
+   */
+  router.post('/rebootstrap', (req, res) => {
+    try {
+      const result = syncService.invalidateCursor(req.body && req.body.reason
+        ? String(req.body.reason)
+        : 'manual');
+      res.json({
+        success: result.success,
+        message: 'Cursor invalidado; el próximo fullSync ejecutará bootstrap',
+        data: result
+      });
+    } catch (error) {
+      console.error('Sync rebootstrap error:', error);
+      res.status(500).json({ success: false, error: 'Error al invalidar cursor' });
     }
   });
 

@@ -27,15 +27,19 @@ const upload = multer({
 });
 
 // Preview del .db viejo (muestra tablas y conteos)
+// C4.2.5.1 decisión: operación ADMINISTRATIVA (C3), NO bootstrapGate.
+// No escribe tablas clínicas locales; solo lee el .db temporal.
 router.post('/preview-db', auth, upload.single('database'), backupCtrl.previewDb);
 
-// Importar .db viejo a Turso
+// Importar .db viejo a Turso (directo a nube, DEV + auth — C3 requireDevOrReject)
+// C4.2.5.1 decisión: ADMIN fuera de bootstrapGate (no toca last_sync_at ni CRUD local).
 router.post('/import-db', auth, upload.single('database'), backupCtrl.importDb);
 
-// Exportar backup completo desde Turso
+// Exportar backup completo desde Turso (solo lectura)
 router.get('/export', auth, backupCtrl.exportBackup);
 
-// Borrar todos los datos (peligroso)
+// Borrar todos los datos en Turso (peligroso) — DEV + URL segura (C3)
+// C4.2.5.1 decisión: ADMIN fuera de bootstrapGate (borra remoto, no valida cursor local).
 router.post('/clean', auth, backupCtrl.cleanAll);
 
 module.exports = router;

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const ctrl = require('../controllers/citaController');
+const { withBootstrapGate } = require('../middleware/bootstrapGate');
 
 router.get('/hoy', ctrl.hoy);
 router.get('/proximas', ctrl.proximas);
@@ -16,4 +17,4 @@ router.post('/:id/no-asistio', ctrl.noAsistio);
 router.get('/:id/preparar-sesion', ctrl.prepararSesion);
 router.post('/:id/completar', ctrl.completar);
 
-module.exports = router;
+module.exports = withBootstrapGate(router);

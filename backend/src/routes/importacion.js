@@ -3,6 +3,7 @@ const multer = require('multer');
 const ctrl = require('../controllers/importacionController');
 const { requireRole } = require('../middleware/auth');
 const { requireDevOrReject } = require('../utils/envGuard');
+const { withBootstrapGate } = require('../middleware/bootstrapGate');
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -33,4 +34,4 @@ router.post(
   ctrl.devReset
 );
 
-module.exports = router;
+module.exports = withBootstrapGate(router);

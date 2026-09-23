@@ -98,7 +98,7 @@ describe('setLastSyncTime', () => {
     mockDatabase.prepare.mockReturnValue(mockChain(null, runFn));
     const { setLastSyncTime } = require('../sync/syncService');
     setLastSyncTime('2026-09-22T10:00:00');
-    expect(runFn).toHaveBeenCalledWith('2026-09-22T10:00:00');
+    expect(runFn).toHaveBeenCalledWith('2026-09-22T10:00:00', expect.any(String), '2026-09-22T10:00:00');
   });
 
   test('generates ISO timestamp when no argument given', () => {

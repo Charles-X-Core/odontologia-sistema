@@ -3,6 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const ctrl = require('../controllers/imagenController');
+const { withBootstrapGate } = require('../middleware/bootstrapGate');
 
 const storage = multer.memoryStorage();
 
@@ -26,4 +27,4 @@ router.get('/consulta/:consultaId', ctrl.porConsulta);
 router.get('/file/:filename(*)', ctrl.servir);
 router.delete('/:id', ctrl.eliminar);
 
-module.exports = router;
+module.exports = withBootstrapGate(router);

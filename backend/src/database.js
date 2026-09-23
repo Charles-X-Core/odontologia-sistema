@@ -101,6 +101,20 @@ try {
 
 try { db.exec("ALTER TABLE consultas ADD COLUMN consentimiento_informado INTEGER DEFAULT 0"); } catch {}
 
+// C4.2.5: linaje de nacimiento de consultas (histórico queda NULL; sin backfill)
+try { db.exec("ALTER TABLE consultas ADD COLUMN created_at TEXT DEFAULT NULL"); } catch {}
+try {
+  db.exec(`
+    CREATE TRIGGER IF NOT EXISTS trg_consultas_created_at
+    AFTER INSERT ON consultas
+    BEGIN
+      UPDATE consultas
+      SET created_at = COALESCE(NEW.created_at, strftime('%Y-%m-%dT%H:%M:%S', 'now'))
+      WHERE id = NEW.id;
+    END;
+  `);
+} catch {}
+
 // ============================================================
 // FASE 2A: updated_at para sincronizacion
 // ============================================================
@@ -118,7 +132,8 @@ for (const table of SYNC_TABLES_COLS) {
 // FASE 2A: sync_state — estado local del dispositivo
 // ============================================================
 
-db.exec("CREATE TABLE IF NOT EXISTS sync_state (id INTEGER PRIMARY KEY CHECK (id = 1), last_sync_at TEXT, last_push_at TEXT, last_pull_at TEXT, device_id TEXT, created_at TEXT DEFAULT (datetime('now')), updated_at TEXT DEFAULT (datetime('now')))");
+db.exec("CREATE TABLE IF NOT EXISTS sync_state (id INTEGER PRIMARY KEY CHECK (id = 1), last_sync_at TEXT, last_push_at TEXT, last_pull_at TEXT, device_id TEXT, bootstrap_completed_at TEXT, created_at TEXT DEFAULT (datetime('now')), updated_at TEXT DEFAULT (datetime('now')))");
+try { db.exec("ALTER TABLE sync_state ADD COLUMN bootstrap_completed_at TEXT"); } catch {}
 
 const syncStateExists = db.prepare("SELECT id FROM sync_state WHERE id = 1").get();
 if (!syncStateExists) {

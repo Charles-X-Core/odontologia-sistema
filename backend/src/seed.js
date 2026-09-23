@@ -1,14 +1,30 @@
 const db = require('./database');
 const bcrypt = require('bcryptjs');
+const { isProdCloudConfigured } = require('./utils/seedPolicy');
+
+/**
+ * C4.2.5.1 — seed clínico:
+ * - Sin TURSO_URL (local) → SÍ
+ * - Nube solo con TURSO_ENV=dev explícito → SÍ
+ * - PROD / nube sin TURSO_ENV=dev → NO (fail-safe)
+ * Ver utils/seedPolicy.js
+ * Usuarios: SIEMPRE (login), INSERT OR IGNORE; no generan datos clínicos.
+ */
+const prodCloud = isProdCloudConfigured();
 
 console.log('Insertando datos de prueba...');
 
 try {
+  // Usuarios: SIEMPRE (login). En PROD solo si no existen (INSERT OR IGNORE).
   const insertUsuario = db.prepare(`INSERT OR IGNORE INTO usuarios (nombre, email, password, rol) VALUES (?, ?, ?, ?)`);
   insertUsuario.run('Admin', 'admin', bcrypt.hashSync('admin', 10), 'admin');
   insertUsuario.run('Dr. Carlos Alonso', 'doctor', bcrypt.hashSync('doctor', 10), 'odontologo');
   console.log('  Usuarios OK');
 
+if (prodCloud) {
+  console.log('[SEED] Nube sin TURSO_ENV=dev (fail-safe PROD) — se omiten pacientes/historias/consultas/tratamientos demo.');
+  console.log('[SEED] Para seed clínico en nube DEV: export TURSO_ENV=dev. Contenido real: bootstrap pull.');
+} else {
   const insertPaciente = db.prepare(`INSERT OR IGNORE INTO pacientes (apellido_paterno, apellido_materno, nombres, dni, telefono, email, fecha_nacimiento, sexo, estado_civil, direccion, lugar_nacimiento, lugar_procedencia, grado_instruccion, ocupacion, nombre_acompanante, contacto_emergencia, telefono_emergencia) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
   const pacientes = [
     ['Garcia', 'Lopez', 'Maria Elena', '12345678', '555-0101', 'maria@email.com', '1985-03-15', 'F', 'Casado', 'Av. Principal 123', 'Lima', 'Lima', 'Universitario', 'Docente', '', 'Pedro Garcia', '555-9901'],
@@ -63,6 +79,7 @@ try {
   console.log('  Admin: admin / admin');
   console.log('  Doctor: doctor / doctor');
   console.log('  3 pacientes, 3 historias, 4 consultas, 6 tratamientos, 2 recetas, 2 imagenes');
+}
 } catch (err) {
   console.error('Error:', err.message);
   console.error(err.stack);

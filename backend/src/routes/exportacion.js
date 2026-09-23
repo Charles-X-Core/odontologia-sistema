@@ -4,6 +4,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const ctrl = require('../controllers/exportacionController');
+const { requireBootstrapIfCloud } = require('../middleware/bootstrapGate');
 
 const uploadsDir = process.env.UPLOAD_DIR || path.join(__dirname, '..', '..', 'uploads');
 if (!fs.existsSync(uploadsDir)) {
@@ -30,7 +31,10 @@ router.get('/pagos', ctrl.pagos);
 router.get('/recetas', ctrl.recetas);
 router.get('/estadisticas', ctrl.estadisticas);
 router.get('/backup-db', ctrl.exportarBD);
-router.post('/importar-db', (req, res, next) => {
+// C4.2.5.1: importar .db escribe tablas clínicas locales.
+// Si hay nube y bootstrap pendiente → 409 (no saltar A1/A2).
+// Con bootstrap completado o solo-local → opera como siempre (admin, no es CRUD normal).
+router.post('/importar-db', requireBootstrapIfCloud, (req, res, next) => {
   upload.single('archivo')(req, res, (err) => {
     if (err) {
       if (err instanceof multer.MulterError) {
