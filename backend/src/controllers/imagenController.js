@@ -21,8 +21,19 @@ function getLocalIP() {
   return 'localhost';
 }
 
+/**
+ * C4.3 serverless: el mkdir de arranque NUNCA debe tumbar el require.
+ * En Vercel (/var/task read-only) este mkdir lanzaba ENOENT y dejaba
+ * /api/imagenes sin montar. Los handlers siguen fallando en runtime si el
+ * FS no es escribible (requiere UPLOAD_DIR en /tmp solo-temporal o
+ * almacenamiento externo — decisión fuera de C4.3, sin cambio clínico).
+ */
 if (!fs.existsSync(BASE_DIR)) {
-  fs.mkdirSync(BASE_DIR, { recursive: true });
+  try {
+    fs.mkdirSync(BASE_DIR, { recursive: true });
+  } catch {
+    /* boot serverless: sin FS escribible; se reporta en runtime por handler */
+  }
 }
 
 function computeHash(filePath) {

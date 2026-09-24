@@ -13,9 +13,23 @@
  * Residual: ambos NULL + ids realmente distintos NO es detectable por linaje.
  */
 
-const db = require('../database');
 const cloudClient = require('../cloudClient');
 const crypto = require('crypto');
+
+/**
+ * C4.3 serverless: NO abrir SQLite en require-time.
+ * `database.js` crea DatabaseSync(clinica.db) al importarse; en Vercel
+ * (/var/task read-only) eso lanza "unable to open database file" y tumba
+ * el montaje de /api/sync (y de todo lo que usa bootstrapGate).
+ * localDb() difiere el require al primer uso real. En Desktop el
+ * comportamiento es idéntico (require cache = mismo singleton).
+ * En cloud sin SQLite local, los callers ya toleran el throw
+ * (getLastSyncTime/getSyncStateRow/getLocalColumns → null; fence → error
+ * por tabla; bootstrapGate → BOOTSTRAP_PENDING fail-safe).
+ */
+function localDb() {
+  return require('../database');
+}
 
 const SYNC_TABLES = [
   'pacientes', 'historias_clinicas', 'consultas', 'odontogramas',
@@ -41,7 +55,7 @@ function getLocalColumns(table) {
   const key = `local:${table}`;
   if (columnCache.has(key)) return columnCache.get(key);
   try {
-    const rows = db.prepare(`PRAGMA table_info(${table})`).all();
+    const rows = localDb().prepare(`PRAGMA table_info(${table})`).all();
     const names = rows.map((r) => r.name).filter(Boolean);
     if (!names.length) return null;
     columnCache.set(key, names);
@@ -78,7 +92,7 @@ function filterRowToKeys(row, allowedKeys) {
 
 function getLastSyncTime() {
   try {
-    const row = db.prepare('SELECT last_sync_at FROM sync_state WHERE id = 1').get();
+    const row = localDb().prepare('SELECT last_sync_at FROM sync_state WHERE id = 1').get();
     return row ? row.last_sync_at : null;
   } catch {
     return null;
@@ -87,7 +101,7 @@ function getLastSyncTime() {
 
 function getSyncStateRow() {
   try {
-    return db.prepare(
+    return localDb().prepare(
       'SELECT last_sync_at, device_id, bootstrap_completed_at FROM sync_state WHERE id = 1'
     ).get() || null;
   } catch {
@@ -97,10 +111,10 @@ function getSyncStateRow() {
 
 function ensureDeviceId() {
   try {
-    const row = db.prepare('SELECT device_id FROM sync_state WHERE id = 1').get();
+    const row = localDb().prepare('SELECT device_id FROM sync_state WHERE id = 1').get();
     if (row && row.device_id) return row.device_id;
     const id = crypto.randomUUID();
-    db.prepare(
+    localDb().prepare(
       "INSERT INTO sync_state (id, device_id) VALUES (1, ?) " +
       'ON CONFLICT(id) DO UPDATE SET device_id = excluded.device_id'
     ).run(id);
@@ -115,12 +129,12 @@ function setLastSyncTime(timestamp) {
     const ts = timestamp || formatSyncTimestamp(new Date());
     let deviceId = null;
     try {
-      const row = db.prepare('SELECT device_id FROM sync_state WHERE id = 1').get();
+      const row = localDb().prepare('SELECT device_id FROM sync_state WHERE id = 1').get();
       deviceId = row && row.device_id ? row.device_id : crypto.randomUUID();
     } catch {
       deviceId = crypto.randomUUID();
     }
-    db.prepare(
+    localDb().prepare(
       "INSERT INTO sync_state (id, last_sync_at, device_id, bootstrap_completed_at, updated_at) " +
       "VALUES (1, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%S', 'now')) " +
       'ON CONFLICT(id) DO UPDATE SET last_sync_at = excluded.last_sync_at, ' +
@@ -139,7 +153,7 @@ function setLastSyncTime(timestamp) {
  */
 function invalidateCursor(reason = 'manual') {
   try {
-    db.prepare(
+    localDb().prepare(
       'UPDATE sync_state SET last_sync_at = NULL, bootstrap_completed_at = NULL, updated_at = ? WHERE id = 1'
     ).run(formatSyncTimestamp(new Date()));
     return { success: true, reason };
@@ -152,7 +166,7 @@ function classifyBootstrapScenario() {
   let localRows = 0;
   for (const t of SYNC_TABLES) {
     try {
-      const row = db.prepare(`SELECT COUNT(*) AS c FROM ${t}`).get();
+      const row = localDb().prepare(`SELECT COUNT(*) AS c FROM ${t}`).get();
       localRows += Number(row && row.c) || 0;
     } catch {
       /* tabla ausente */
@@ -237,7 +251,7 @@ async function hasRemoteTombstone(tableName, recordId) {
 
 function hasLocalTombstone(tableName, recordId) {
   try {
-    const existing = db.prepare(
+    const existing = localDb().prepare(
       'SELECT 1 FROM sync_tombstones WHERE table_name = ? AND record_id = ?'
     ).get(tableName, recordId);
     return !!existing;
@@ -250,15 +264,15 @@ function fenceLocalSequences() {
   const results = { fences: {}, errors: [], success: true };
   for (const table of SYNC_TABLES) {
     try {
-      const maxRow = db.prepare(`SELECT COALESCE(MAX(id), 0) AS maxId FROM ${table}`).get();
+      const maxRow = localDb().prepare(`SELECT COALESCE(MAX(id), 0) AS maxId FROM ${table}`).get();
       const fence = maxRow && maxRow.maxId != null ? Number(maxRow.maxId) : 0;
-      const seqRow = db.prepare(`SELECT seq FROM sqlite_sequence WHERE name = ?`).get(table);
+      const seqRow = localDb().prepare(`SELECT seq FROM sqlite_sequence WHERE name = ?`).get(table);
       if (!seqRow) {
         if (fence > 0) {
-          db.prepare(`INSERT INTO sqlite_sequence (name, seq) VALUES (?, ?)`).run(table, fence);
+          localDb().prepare(`INSERT INTO sqlite_sequence (name, seq) VALUES (?, ?)`).run(table, fence);
         }
       } else if (fence > Number(seqRow.seq)) {
-        db.prepare(`UPDATE sqlite_sequence SET seq = ? WHERE name = ?`).run(fence, table);
+        localDb().prepare(`UPDATE sqlite_sequence SET seq = ? WHERE name = ?`).run(fence, table);
       }
       results.fences[table] = fence;
     } catch (e) {
@@ -328,9 +342,9 @@ async function pushToTurso(since = null) {
     try {
       let rows;
       if (lastSync) {
-        rows = db.prepare(`SELECT * FROM ${table} WHERE updated_at > ?`).all(lastSync);
+        rows = localDb().prepare(`SELECT * FROM ${table} WHERE updated_at > ?`).all(lastSync);
       } else {
-        rows = db.prepare(`SELECT * FROM ${table}`).all();
+        rows = localDb().prepare(`SELECT * FROM ${table}`).all();
       }
 
       if (rows.length === 0) continue;
@@ -379,7 +393,7 @@ async function pushToTurso(since = null) {
   }
 
   try {
-    const pendingTombstones = db.prepare(
+    const pendingTombstones = localDb().prepare(
       'SELECT * FROM sync_tombstones WHERE synced_to_turso = 0'
     ).all();
 
@@ -402,7 +416,7 @@ async function pushToTurso(since = null) {
 
     if (pushedIds.length > 0) {
       const placeholders = pushedIds.map(() => '?').join(',');
-      db.prepare(`UPDATE sync_tombstones SET synced_to_turso = 1 WHERE id IN (${placeholders})`).run(...pushedIds);
+      localDb().prepare(`UPDATE sync_tombstones SET synced_to_turso = 1 WHERE id IN (${placeholders})`).run(...pushedIds);
     }
     results.pushedTombstones = pushedTombstones;
   } catch (e) {
@@ -444,7 +458,7 @@ async function pullFromTurso(since = null) {
     let skippedTombstones = 0;
 
     for (const rt of remoteTombstones.rows) {
-      const existing = db.prepare(
+      const existing = localDb().prepare(
         'SELECT 1 FROM sync_tombstones WHERE table_name = ? AND record_id = ?'
       ).get(rt.table_name, rt.record_id);
 
@@ -454,13 +468,13 @@ async function pullFromTurso(since = null) {
       }
 
       try {
-        db.prepare(`DELETE FROM ${rt.table_name} WHERE id = ?`).run(rt.record_id);
+        localDb().prepare(`DELETE FROM ${rt.table_name} WHERE id = ?`).run(rt.record_id);
       } catch (e) {
         /* ya borrado */
       }
 
       try {
-        db.prepare(
+        localDb().prepare(
           `INSERT OR IGNORE INTO sync_tombstones
            (table_name, record_id, deleted_at, source, synced_to_turso, created_at)
            VALUES (?, ?, ?, 'sync', 1, ?)`
@@ -503,15 +517,15 @@ async function pullFromTurso(since = null) {
           const row = filterRowToLocal(table, remoteRow);
           const hasCreatedAt = hasLocalColumn(table, 'created_at');
           const sql = buildGuardedUpsertSql(table, row, { hasCreatedAt });
-          const runResult = db.prepare(sql).run(...Object.values(row));
+          const runResult = localDb().prepare(sql).run(...Object.values(row));
           const changes = runResult && runResult.changes != null ? Number(runResult.changes) : 0;
 
           if (changes > 0) {
             pulledCount++;
           } else {
             const existing = hasLocalColumn(table, 'created_at')
-              ? db.prepare(`SELECT created_at, updated_at FROM ${table} WHERE id = ?`).get(row.id)
-              : db.prepare(`SELECT updated_at FROM ${table} WHERE id = ?`).get(row.id);
+              ? localDb().prepare(`SELECT created_at, updated_at FROM ${table} WHERE id = ?`).get(row.id)
+              : localDb().prepare(`SELECT updated_at FROM ${table} WHERE id = ?`).get(row.id);
             const kind = classifyUpsertSkip(existing, row);
             if (kind === 'idCollision') {
               results.idCollisions.push({ table, id: row.id, direction: 'pull' });
@@ -691,7 +705,7 @@ function getSyncStatus() {
   if (lastSync) {
     for (const table of SYNC_TABLES) {
       try {
-        const row = db.prepare(`SELECT COUNT(*) as count FROM ${table} WHERE updated_at > ?`).get(lastSync);
+        const row = localDb().prepare(`SELECT COUNT(*) as count FROM ${table} WHERE updated_at > ?`).get(lastSync);
         pendingChanges += row.count;
       } catch {}
     }
@@ -699,7 +713,7 @@ function getSyncStatus() {
 
   let pendingTombstones = 0;
   try {
-    const row = db.prepare(`SELECT COUNT(*) as count FROM sync_tombstones WHERE synced_to_turso = 0`).get();
+    const row = localDb().prepare(`SELECT COUNT(*) as count FROM sync_tombstones WHERE synced_to_turso = 0`).get();
     pendingTombstones = row.count;
   } catch {}
 
@@ -730,8 +744,8 @@ function cleanLocalData(tables = null) {
 
   for (const table of targetTables) {
     try {
-      const count = db.prepare(`SELECT COUNT(*) as count FROM ${table}`).get().count;
-      db.prepare(`DELETE FROM ${table}`).run();
+      const count = localDb().prepare(`SELECT COUNT(*) as count FROM ${table}`).get().count;
+      localDb().prepare(`DELETE FROM ${table}`).run();
       results[table] = count;
     } catch (e) {
       results[table] = `error: ${e.message}`;
