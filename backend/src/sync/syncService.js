@@ -45,6 +45,16 @@ const CLEAN_TABLES = [
 
 const BATCH_SIZE = 50;
 
+/**
+ * Ventana conservadora del cursor de admisión (C4.2.5).
+ * admitExistingReplica fija last_sync_at 24h en el pasado para que el
+ * siguiente incremental re-consulte cambios recientes de PROD ocurridos
+ * entre la verificación externa y la admisión. El LWW existente resuelve
+ * lo ya coincidente como stale/unchanged (escrituras no-op con mismos
+ * valores); lo realmente nuevo en remoto se aplica por pull.
+ */
+const ADMIT_REPLICA_CURSOR_LOOKBACK_MS = 24 * 60 * 60 * 1000;
+
 const columnCache = new Map();
 
 function formatSyncTimestamp(date) {
@@ -160,6 +170,67 @@ function invalidateCursor(reason = 'manual') {
   } catch (e) {
     return { success: false, reason, error: e.message };
   }
+}
+
+/**
+ * Admite una réplica local existente previamente verificada (C4.2.5).
+ *
+ * Caso: la SQLite local es copia del contenido PROD (conteos + SHA por
+ * contenido verificados fuera de banda) y el bootstrap A2 aborta por
+ * idCollision, correctamente. Esta función establece el cursor SIN push:
+ *
+ *   admitLocalPush      = permite push de contenido local en A2.
+ *   admitExistingReplica = confirma réplica verificada, ZERO push.
+ *
+ * Semánticas deliberadamente distintas; esta función NUNCA llama a
+ * pushToTurso() y NO modifica ni borra ninguna tabla clínica. Solo toca
+ * sync_state (device_id + cursor) vía la lógica existente.
+ *
+ * @param {object} [options] — ignorado a propósito: ningún parámetro
+ *   puede habilitar push por esta vía.
+ */
+function admitExistingReplica(options = {}) {
+  void options;
+  if (!cloudClient.isConfigured()) {
+    return { success: false, admitted: null, error: 'Turso not configured' };
+  }
+  const lastSync = getLastSyncTime();
+  if (lastSync) {
+    return {
+      success: false,
+      admitted: null,
+      error: 'BOOTSTRAP_ALREADY_COMPLETED',
+      code: 'BOOTSTRAP_ALREADY_COMPLETED',
+      lastSync,
+    };
+  }
+  const classification = classifyBootstrapScenario();
+  if (!classification || classification.scenario !== 'A2_with_data') {
+    return {
+      success: false,
+      admitted: null,
+      error: 'ADMIT_REPLICA_A1_EMPTY',
+      code: 'ADMIT_REPLICA_A1_EMPTY',
+      message: 'Solo una réplica con datos (A2) puede admitirse; A1 vacío requiere pull.',
+      classification,
+    };
+  }
+  const deviceId = ensureDeviceId();
+  // Cursor deliberadamente en el pasado (nunca "now", nunca timestamp
+  // externo/HTTP): cubre la ventana verificación→admisión. ZERO push igual.
+  const ts = formatSyncTimestamp(new Date(Date.now() - ADMIT_REPLICA_CURSOR_LOOKBACK_MS));
+  setLastSyncTime(ts);
+  return {
+    success: true,
+    admitted: 'existing_replica',
+    admittedReplica: true,
+    zeroPush: true,
+    pushExecuted: false,
+    lastSyncAt: ts,
+    bootstrapCompletedAt: ts,
+    deviceId,
+    classification,
+  };
 }
 
 function classifyBootstrapScenario() {
@@ -515,6 +586,22 @@ async function pullFromTurso(since = null) {
           }
 
           const row = filterRowToLocal(table, remoteRow);
+          // C4.3: citas.usuario_id referencia usuarios(id), tabla deliberadamente
+          // fuera de SYNC_TABLES. En bootstrap A1 (local vacío) el pull de citas
+          // con usuario_id huérfano rompería por FOREIGN KEY. La columna es
+          // opcional (ON DELETE SET NULL): si el usuario no existe en local,
+          // se nulifica SOLO esa FK y el pull continúa. PRAGMA foreign_keys
+          // sigue activo; no se toca lineage/LWW/tombstones/cursors.
+          if (table === 'citas' && row.usuario_id !== null && row.usuario_id !== undefined) {
+            try {
+              const userExists = localDb().prepare(
+                'SELECT 1 FROM usuarios WHERE id = ?'
+              ).get(row.usuario_id);
+              if (!userExists) row.usuario_id = null;
+            } catch {
+              /* sin tabla usuarios: conservar comportamiento previo */
+            }
+          }
           const hasCreatedAt = hasLocalColumn(table, 'created_at');
           const sql = buildGuardedUpsertSql(table, row, { hasCreatedAt });
           const runResult = localDb().prepare(sql).run(...Object.values(row));
@@ -771,6 +858,8 @@ module.exports = {
   classifyBootstrapScenario,
   ensureDeviceId,
   invalidateCursor,
+  admitExistingReplica,
+  ADMIT_REPLICA_CURSOR_LOOKBACK_MS,
   SYNC_TABLES,
   CLEAN_TABLES,
   BATCH_SIZE

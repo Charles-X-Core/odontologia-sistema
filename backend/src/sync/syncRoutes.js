@@ -6,6 +6,7 @@
  * POST /api/sync/full        — Full bidirectional sync (bootstrap A1/A2)
  * GET  /api/sync/status      — Get sync status
  * POST /api/sync/rebootstrap — Invalida cursor (restore explícito)
+ * POST /api/sync/admit-replica — Admite réplica verificada, ZERO push (admin)
  * POST /api/sync/clean       — Clean local data (Desktop/DEV only, admin)
  *
  * /clean no se registra en Vercel (includeClean=false / VERCEL=1).
@@ -187,6 +188,54 @@ function createSyncRouter({ includeClean = true } = {}) {
     } catch (error) {
       console.error('Sync rebootstrap error:', error);
       res.status(500).json({ success: false, error: 'Error al invalidar cursor' });
+    }
+  });
+
+  /**
+   * POST /api/sync/admit-replica
+   * Admite una réplica local existente previamente verificada (C4.2.5).
+   * Solo admin, solo bootstrap pendiente, solo A2_with_data. ZERO push:
+   * no acepta ni honra ningún parámetro que habilite push y jamás llama
+   * a pushToTurso. Distinto de admitLocalPush (ese sí permite push en A2).
+   */
+  router.post('/admit-replica', requireRole('admin'), (req, res) => {
+    try {
+      const lastSync = syncService.getLastSyncTime();
+      if (lastSync) {
+        return res.status(409).json({
+          success: false,
+          error: 'BOOTSTRAP_ALREADY_COMPLETED',
+          code: 'BOOTSTRAP_ALREADY_COMPLETED',
+          message: 'El bootstrap ya está completado; no hay nada que admitir.'
+        });
+      }
+      const scenario = syncService.classifyBootstrapScenario();
+      if (!scenario || scenario.scenario !== 'A2_with_data') {
+        return res.status(409).json({
+          success: false,
+          error: 'ADMIT_REPLICA_A1_EMPTY',
+          code: 'ADMIT_REPLICA_A1_EMPTY',
+          message: 'Solo una réplica con datos (A2) puede admitirse; A1 vacío requiere pull.',
+          data: scenario || null
+        });
+      }
+      const result = syncService.admitExistingReplica();
+      if (!result.success) {
+        return res.status(409).json({
+          success: false,
+          error: result.error || 'No se pudo admitir la réplica',
+          code: result.code || result.error || 'ADMIT_REPLICA_REJECTED',
+          data: result
+        });
+      }
+      res.json({
+        success: true,
+        message: 'Réplica existente admitida — zero push, cursor establecido',
+        data: result
+      });
+    } catch (error) {
+      console.error('Sync admit-replica error:', error);
+      res.status(500).json({ success: false, error: 'Error al admitir réplica' });
     }
   });
 
