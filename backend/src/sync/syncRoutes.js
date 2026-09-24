@@ -26,13 +26,40 @@ function createSyncRouter({ includeClean = true } = {}) {
   router.use(auth);
 
   /**
+   * requireDesktopSyncRuntime — C4.3 opción A.
+   *
+   * Vercel no es un dispositivo Desktop: no hay SQLite local persistente y
+   * cualquier pata local del sync (pull/materializar, fence, cursor,
+   * admit-replica) lanzaría "unable to open database file". Se bloquea con
+   * 409 ANTES de llamar a syncService/cloudClient/database: cero queries a
+   * Turso, cero aperturas de SQLite, cero cambios de estado.
+   *
+   * Detector: process.env.VERCEL (señal de plataforma ya usada en este
+   * proyecto), NUNCA DB_MODE — DB_MODE=turso no significa Vercel (un Desktop
+   * puede usar CRUD cloud) y el bloqueo depende del almacenamiento local,
+   * no del modo de datos. GET /status queda sin bloqueo (solo lectura,
+   * degrada a bootstrapPending sin crash).
+   */
+  function requireDesktopSyncRuntime(req, res, next) {
+    if (process.env.VERCEL) {
+      return res.status(409).json({
+        success: false,
+        error: 'SYNC_DESKTOP_ONLY',
+        code: 'SYNC_DESKTOP_ONLY',
+        message: 'Las operaciones de sincronización requieren el almacenamiento SQLite local del Desktop.'
+      });
+    }
+    next();
+  }
+
+  /**
    * POST /api/sync/push
    * Push local changes to Turso
    *
    * C4.2.5.1: con last_sync_at NULL (bootstrap pendiente) el push total está prohibido
    * salvo admitLocalPush===true y solo en escenario A2 (nunca A1).
    */
-  router.post('/push', async (req, res) => {
+  router.post('/push', requireDesktopSyncRuntime, async (req, res) => {
     try {
       const body = req.body || {};
       const admitLocalPush = body.admitLocalPush === true;
@@ -101,7 +128,7 @@ function createSyncRouter({ includeClean = true } = {}) {
    * POST /api/sync/pull
    * Pull remote changes from Turso
    */
-  router.post('/pull', async (req, res) => {
+  router.post('/pull', requireDesktopSyncRuntime, async (req, res) => {
     try {
       const { since } = req.body;
       const result = await syncService.pullFromTurso(since || null);
@@ -131,7 +158,7 @@ function createSyncRouter({ includeClean = true } = {}) {
    * POST /api/sync/full
    * Full bidirectional sync
    */
-  router.post('/full', async (req, res) => {
+  router.post('/full', requireDesktopSyncRuntime, async (req, res) => {
     try {
       const result = await syncService.fullSync();
 
@@ -175,7 +202,7 @@ function createSyncRouter({ includeClean = true } = {}) {
    * POST /api/sync/rebootstrap
    * Invalida el cursor (restore / re-clasificación A2/A3). No borra datos.
    */
-  router.post('/rebootstrap', (req, res) => {
+  router.post('/rebootstrap', requireDesktopSyncRuntime, (req, res) => {
     try {
       const result = syncService.invalidateCursor(req.body && req.body.reason
         ? String(req.body.reason)
@@ -198,7 +225,7 @@ function createSyncRouter({ includeClean = true } = {}) {
    * no acepta ni honra ningún parámetro que habilite push y jamás llama
    * a pushToTurso. Distinto de admitLocalPush (ese sí permite push en A2).
    */
-  router.post('/admit-replica', requireRole('admin'), (req, res) => {
+  router.post('/admit-replica', requireRole('admin'), requireDesktopSyncRuntime, (req, res) => {
     try {
       const lastSync = syncService.getLastSyncTime();
       if (lastSync) {
