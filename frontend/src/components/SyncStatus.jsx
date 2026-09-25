@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { syncService } from '../services/syncService';
+import { onFirstSyncEvent, requestAssistantReopen } from '../services/firstSyncBus';
 
 /**
  * SyncStatus — Proyecto 3.1, estado de sincronización en UI.
@@ -94,8 +95,10 @@ function countRealStats(branch, key) {
  * Enviando > Colisión > SYNC_DESKTOP_ONLY > Error >
  * Primera copia + nube > Cambios > Al día > Solo local > Cargando.
  * Con `bootstrapPending` nunca se devuelve "Al día" por tener pendientes en 0.
+ * Proyecto 3.3: `assistantOpen` indica si el asistente A2 está visible; solo
+ * se ofrece "Abrir asistente" cuando está cerrado (sin duplicar su CTA).
  */
-export function classifySyncState({ status, cloud, syncing, lastResult }) {
+export function classifySyncState({ status, cloud, syncing, lastResult, assistantOpen = false }) {
   if (syncing) {
     return {
       key: 'syncing',
@@ -167,6 +170,23 @@ export function classifySyncState({ status, cloud, syncing, lastResult }) {
         buttonText: 'Descargar primera copia',
       };
     }
+    // Proyecto 3.3 — A2 + nube vacía con asistente cerrado ("Ahora no"): se
+    // ofrece reabrir el wizard existente. No ejecuta sync; el clic solo emite
+    // la solicitud local. Con asistente abierto no hay botón (sin doble CTA).
+    // Va antes de la rama genérica para no quedar inalcanzable.
+    if (scenario === 'A2_with_data' && cloud && cloud.cloud === 'empty' && !assistantOpen) {
+      return {
+        key: 'bootstrap-reopen',
+        title: 'Primera copia pendiente',
+        subtitle:
+          'Esta computadora tiene información que aún no está en la nube. Abre el asistente para preparar la primera copia.',
+        dot: 'pending',
+        showButton: true,
+        buttonEnabled: true,
+        buttonText: 'Abrir asistente',
+        action: 'reopen',
+      };
+    }
     if (!cloud || cloud.cloud === 'empty' || cloud.cloud === 'unconfigured') {
       return {
         key: 'bootstrap',
@@ -192,11 +212,13 @@ export function classifySyncState({ status, cloud, syncing, lastResult }) {
       };
     }
     if (cloud.cloud === 'with-data') {
+      // Proyecto 3.3 — aquí no aparece ningún asistente, así que el texto no
+      // debe remitir a uno. No hay botón: no existe flujo de resolución UI.
       return {
         key: 'bootstrap',
         title: 'Primera copia pendiente',
         subtitle:
-          'Esta computadora aún no tiene su primera copia. Sigue el asistente en pantalla para continuar.',
+          'Esta computadora aún no tiene su primera copia. Pide ayuda al encargado de sistemas para continuar.',
         dot: 'pending',
         showButton: false,
         buttonEnabled: false,
@@ -287,6 +309,7 @@ export default function SyncStatus() {
   const [syncing, setSyncing] = useState(false);
   const [lastResult, setLastResult] = useState(null);
   const [loaded, setLoaded] = useState(false);
+  const [assistantOpen, setAssistantOpen] = useState(false);
   const syncingRef = useRef(false);
 
   useEffect(() => {
@@ -363,10 +386,23 @@ export default function SyncStatus() {
     }
   };
 
+  // Proyecto 3.3 — reapertura del asistente: solo emite la solicitud local.
+  // No ejecuta push/fullSync ni modifica el estado de sincronización.
+  const handleReopen = () => {
+    requestAssistantReopen();
+  };
+
+  // Proyecto 3.3 — el asistente avisa si está visible para no duplicar su CTA.
+  useEffect(() => {
+    return onFirstSyncEvent((evt) => {
+      if (evt && evt.type === 'assistant-open') setAssistantOpen(!!evt.open);
+    });
+  }, []);
+
   // Carga inicial sin parpadeos: invisible hasta el primer GET /status.
   if (!loaded || !status) return null;
 
-  const view = classifySyncState({ status, cloud, syncing, lastResult });
+  const view = classifySyncState({ status, cloud, syncing, lastResult, assistantOpen });
 
   // Resumen de la última operación con datos reales (H): solo en éxito y
   // solo con conteos > 0, con etiquetas amigables en español.
@@ -403,7 +439,7 @@ export default function SyncStatus() {
           <div className="sync-actions">
             <button
               className="btn btn-sm btn-primary"
-              onClick={handleSync}
+              onClick={view.action === 'reopen' ? handleReopen : handleSync}
               disabled={!view.buttonEnabled}
             >
               {view.buttonText}

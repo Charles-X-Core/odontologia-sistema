@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Modal from './ui/Modal';
 import Button from './ui/Button';
 import Spinner from './ui/Spinner';
 import { syncService } from '../services/syncService';
+import { onFirstSyncEvent, notifyAssistantOpen } from '../services/firstSyncBus';
 
 /**
  * FirstSyncOnboarding — Proyecto 2, onboarding de primera sincronización.
@@ -89,6 +90,11 @@ export default function FirstSyncOnboarding() {
   const [runError, setRunError] = useState(null);
   const [failKind, setFailKind] = useState(null); // 'push' | 'finalize' | 'blocked'
   const [lastSyncAt, setLastSyncAt] = useState(null);
+  // Proyecto 3.3 — reapertura solicitada desde SyncStatus: re-ejecuta el
+  // chequeo inicial existente (sin duplicar lógica). openRef evita reabrir
+  // cuando el wizard ya está visible.
+  const [reopenTick, setReopenTick] = useState(0);
+  const openRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -114,7 +120,7 @@ export default function FirstSyncOnboarding() {
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [reopenTick]);
 
   const open = phase === 'step1' || phase === 'step2' || phase === 'partial' ||
     phase === 'error' || phase === 'running' || phase === 'success' || phase === 'failed';
@@ -122,10 +128,21 @@ export default function FirstSyncOnboarding() {
   // Pausa local y reversible del auto-sync durante TODO el wizard,
   // incluida la ejecución real y la pantalla final.
   useEffect(() => {
+    openRef.current = open;
+    notifyAssistantOpen(open);
     if (!open) return undefined;
     syncService.stopAutoSync();
     return () => { syncService.startAutoSync(); };
   }, [open ]);
+
+  // Proyecto 3.3 — reapertura desde SyncStatus ("Abrir asistente").
+  useEffect(() => {
+    return onFirstSyncEvent((evt) => {
+      if (evt && evt.type === 'reopen-request' && !openRef.current) {
+        setReopenTick((t) => t + 1);
+      }
+    });
+  }, []);
 
   const dismiss = useCallback(() => {
     setPhase('dismissed');

@@ -1,7 +1,9 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import SyncStatus from '../components/SyncStatus';
+import FirstSyncOnboarding from '../components/FirstSyncOnboarding';
 import { syncService } from '../services/syncService';
+import { onFirstSyncEvent, requestAssistantReopen, notifyAssistantOpen } from '../services/firstSyncBus';
 
 const baseStatus = {
   isTurso: true,
@@ -190,14 +192,15 @@ describe('SyncStatus — bootstrap y nube', () => {
     expect(fullCalls()).toBe(0);
   });
 
-  test('11. Bootstrap A2 + nube vacía: remite al asistente', async () => {
+  test('11. Bootstrap A2 + nube vacía: ofrece reabrir el asistente', async () => {
     mockApi({
       status: { ...baseStatus, lastSync: null, bootstrapPending: true, scenario: 'A2_with_data' },
       cloud: { ...cloudEmpty, cloud: 'empty' },
     });
     render(<SyncStatus />);
     expect(await screen.findByText('Primera copia pendiente')).toBeTruthy();
-    expect(screen.getByText(/asistente de primera sincronización/i)).toBeTruthy();
+    expect(screen.getByText(/Abre el asistente para preparar la primera copia/)).toBeTruthy();
+    expect(screen.getByText('Abrir asistente')).toBeTruthy();
     expect(screen.queryByText('Sincronizar ahora')).toBeNull();
     expect(fullCalls()).toBe(0);
   });
@@ -443,5 +446,82 @@ describe('SyncStatus — primera descarga A1 (3.2)', () => {
     for (const raw of ['A1_empty', 'bootstrap', 'Turso', 'cursor', 'admitLocalPush']) {
       expect(screen.queryByText(new RegExp(raw, 'i'))).toBeNull();
     }
+  });
+});
+
+describe('SyncStatus — reapertura del asistente (3.3)', () => {
+  const statusA2Empty = { ...baseStatus, lastSync: null, bootstrapPending: true, scenario: 'A2_with_data' };
+
+  test('27. Descartar y reabrir: sin botón duplicado, sin sync, flujo intacto', async () => {
+    mockApi({ status: statusA2Empty, cloud: { ...cloudEmpty, cloud: 'empty' } });
+    const fullSpy = vi.spyOn(syncService, 'fullSync');
+    const pushSpy = vi.spyOn(syncService, 'push');
+    render(<><SyncStatus /><FirstSyncOnboarding /></>);
+    // Asistente abierto: SyncStatus no duplica su CTA.
+    expect(await screen.findByText('Prepara la nube de tu clínica')).toBeTruthy();
+    await waitFor(() => expect(screen.queryByText('Abrir asistente')).toBeNull());
+    // "Ahora no": el asistente se cierra y aparece la reapertura.
+    fireEvent.click(screen.getByText('Ahora no'));
+    expect(await screen.findByText('Abrir asistente')).toBeTruthy();
+    expect(fullSpy).not.toHaveBeenCalled();
+    expect(pushSpy).not.toHaveBeenCalled();
+    expect(pushCalls()).toBe(0);
+    expect(fullCalls()).toBe(0);
+    // Reabrir: vuelve el flujo existente intacto.
+    fireEvent.click(screen.getByText('Abrir asistente'));
+    expect(await screen.findByText('Prepara la nube de tu clínica')).toBeTruthy();
+    fireEvent.click(screen.getByText('Revisar y continuar'));
+    expect(await screen.findByText('Antes de continuar')).toBeTruthy();
+  });
+
+  test('28. El bus avisa y el unsubscribe deja de avisar', () => {
+    const seen = [];
+    const unsub = onFirstSyncEvent((e) => seen.push(e));
+    requestAssistantReopen();
+    notifyAssistantOpen(true);
+    expect(seen).toEqual([{ type: 'reopen-request' }, { type: 'assistant-open', open: true }]);
+    unsub();
+    requestAssistantReopen();
+    expect(seen).toHaveLength(2);
+  });
+
+  test('29. Desmontar limpia el listener: emitir después no falla', async () => {
+    mockApi({ status: statusA2Empty, cloud: { ...cloudEmpty, cloud: 'empty' } });
+    const { unmount } = render(<SyncStatus />);
+    expect(await screen.findByText('Abrir asistente')).toBeTruthy();
+    unmount();
+    expect(() => {
+      requestAssistantReopen();
+      notifyAssistantOpen(false);
+    }).not.toThrow();
+  });
+
+  test('30. A2 + nube con datos: ayuda de sistemas, sin asistente ni botón', async () => {
+    mockApi({
+      status: statusA2Empty,
+      cloud: { ...cloudEmpty, cloud: 'with-data', totalRows: 30 },
+    });
+    render(<SyncStatus />);
+    expect(await screen.findByText('Primera copia pendiente')).toBeTruthy();
+    expect(screen.getByText(/Pide ayuda al encargado de sistemas/)).toBeTruthy();
+    expect(screen.queryByText('Abrir asistente')).toBeNull();
+    expect(screen.queryByText(/Sigue el asistente/)).toBeNull();
+    expect(screen.queryByText('Sincronizar ahora')).toBeNull();
+    expect(fullCalls()).toBe(0);
+  });
+
+  test('31. A1 y estados normales: sin botón de reapertura', async () => {
+    mockApi({
+      status: { ...baseStatus, lastSync: null, bootstrapPending: true, scenario: 'A1_empty' },
+      cloud: { ...cloudEmpty, cloud: 'empty' },
+    });
+    const first = render(<SyncStatus />);
+    expect(await screen.findByText('Descargar primera copia')).toBeTruthy();
+    expect(screen.queryByText('Abrir asistente')).toBeNull();
+    first.unmount();
+    mockApi({});
+    render(<SyncStatus />);
+    expect(await screen.findByText('Al día')).toBeTruthy();
+    expect(screen.queryByText('Abrir asistente')).toBeNull();
   });
 });
