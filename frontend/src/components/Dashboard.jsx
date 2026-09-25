@@ -59,7 +59,7 @@ function getUltimosMeses(consultas, numMeses = 6) {
   return meses;
 }
 
-export default function Dashboard({ onNavigate }) {
+export default function Dashboard({ onNavigate, onIniciarSesion }) {
   const [stats, setStats] = useState(null);
   const [cargando, setCargando] = useState(true);
   // Proyecto 4.2 — fallo de carga distinguible de "sin datos": api.request
@@ -69,6 +69,7 @@ export default function Dashboard({ onNavigate }) {
   const [filtroFecha, setFiltroFecha] = useState('todo');
   const [waConnected, setWaConnected] = useState(false);
   const [citasPorProcesar, setCitasPorProcesar] = useState([]);
+  const [errorSesion, setErrorSesion] = useState(null);
 
   useEffect(() => {
     cargarDatos();
@@ -98,6 +99,24 @@ export default function Dashboard({ onNavigate }) {
   const consultasFiltradas = stats?.ultimasConsultas
     ? filtrarPorFecha(stats.ultimasConsultas, filtroFecha)
     : [];
+
+  // Proyecto 4.3 (E1) — apertura de sesión SIN cita: se obtiene el paciente
+  // y se entrega a App.iniciarSesion (sesión con citaId=null). El contexto de
+  // cita (citaId/motivo) llegará en la integración futura con Citas; aquí no
+  // se implementa ninguna lógica de Citas.
+  const abrirSesionDirecta = async (cita) => {
+    setErrorSesion(null);
+    try {
+      const paciente = await api.pacientes.obtener(cita.paciente_id);
+      if (!paciente || paciente.error || !paciente.id) {
+        setErrorSesion('No se pudo abrir la sesión. Inténtalo de nuevo.');
+        return;
+      }
+      onIniciarSesion?.(paciente);
+    } catch {
+      setErrorSesion('No se pudo abrir la sesión. Inténtalo de nuevo.');
+    }
+  };
 
   const ultimosMeses = useMemo(() => {
     return stats?.ultimasConsultas ? getUltimosMeses(stats.ultimasConsultas, 6) : [];
@@ -361,6 +380,9 @@ export default function Dashboard({ onNavigate }) {
               <span className="dashboard-chart-badge" style={{ background: '#dcfce7', color: '#166534' }}>{citasPorProcesar.length} cita{citasPorProcesar.length !== 1 ? 's' : ''}</span>
             </div>
             <div style={{ padding: '14px' }}>
+              {errorSesion && (
+                <div className="alert alert-error">{errorSesion}</div>
+              )}
               {citasPorProcesar.slice(0, 5).map(cita => (
                 <div key={cita.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderBottom: '1px solid var(--gray-100)', fontSize: '13px' }}>
                   <div>
@@ -368,7 +390,7 @@ export default function Dashboard({ onNavigate }) {
                     <span style={{ fontWeight: 600 }}>{cita.paciente_nombre}</span>
                     {cita.motivo_usar && <span style={{ color: 'var(--gray-500)', marginLeft: '8px' }}>- {cita.motivo_usar}</span>}
                   </div>
-                  <button className="btn btn-sm btn-primary" onClick={() => onNavigate('citas')} style={{ fontSize: '11px', padding: '4px 10px' }}>
+                  <button className="btn btn-sm btn-primary" onClick={() => abrirSesionDirecta(cita)} style={{ fontSize: '11px', padding: '4px 10px' }}>
                     Abrir Sesion
                   </button>
                 </div>

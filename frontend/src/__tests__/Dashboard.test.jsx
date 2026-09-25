@@ -14,6 +14,7 @@ vi.mock('../services/api', () => ({
   api: {
     dashboard: { stats: vi.fn() },
     citas: { pendientesProcesar: vi.fn() },
+    pacientes: { obtener: vi.fn() },
     whatsapp: { estado: vi.fn() },
   },
 }));
@@ -32,12 +33,15 @@ const statsOk = {
 };
 
 const citasOk = [
-  { id: 10, hora: '09:00', paciente_nombre: 'Perez Juan', motivo_usar: 'Control' },
+  { id: 10, hora: '09:00', paciente_id: 5, paciente_nombre: 'Perez Juan', motivo_usar: 'Control' },
 ];
 
-function mockApi({ stats = statsOk, citas = citasOk, wa = { connected: false } } = {}) {
+const pacienteOk = { id: 5, apellido_paterno: 'Perez', nombres: 'Juan', dni: '12345678' };
+
+function mockApi({ stats = statsOk, citas = citasOk, wa = { connected: false }, paciente = pacienteOk } = {}) {
   api.dashboard.stats.mockResolvedValue(stats);
   api.citas.pendientesProcesar.mockResolvedValue(citas);
+  api.pacientes.obtener.mockResolvedValue(paciente);
   api.whatsapp.estado.mockResolvedValue(wa);
 }
 
@@ -92,5 +96,43 @@ describe('Dashboard — carga de datos', () => {
     expect(screen.queryByText('No se pudieron cargar los datos del panel.')).toBeNull();
     // …pero la sección de citas por procesar desaparece (comportamiento actual).
     expect(screen.queryByText('Citas por Procesar')).toBeNull();
+  });
+});
+
+describe('Dashboard — abrir sesión sin cita (4.3/E1)', () => {
+  test('clic en Abrir Sesión obtiene el paciente y lo entrega, sin ir a Citas', async () => {
+    const onNavigate = vi.fn();
+    const onIniciarSesion = vi.fn();
+    render(<Dashboard onNavigate={onNavigate} onIniciarSesion={onIniciarSesion} />);
+    expect(await screen.findByText('Citas por Procesar')).toBeTruthy();
+    fireEvent.click(screen.getByText('Abrir Sesion'));
+    await waitFor(() => expect(api.pacientes.obtener).toHaveBeenCalledWith(5));
+    expect(onIniciarSesion).toHaveBeenCalledTimes(1);
+    expect(onIniciarSesion).toHaveBeenCalledWith(pacienteOk);
+    expect(onNavigate).not.toHaveBeenCalledWith('citas');
+  });
+
+  test('paciente inexistente: mensaje inline, sin sesión ni navegación', async () => {
+    mockApi({ paciente: { error: 'Paciente no encontrado' } });
+    const onNavigate = vi.fn();
+    const onIniciarSesion = vi.fn();
+    render(<Dashboard onNavigate={onNavigate} onIniciarSesion={onIniciarSesion} />);
+    expect(await screen.findByText('Citas por Procesar')).toBeTruthy();
+    fireEvent.click(screen.getByText('Abrir Sesion'));
+    expect(await screen.findByText('No se pudo abrir la sesión. Inténtalo de nuevo.')).toBeTruthy();
+    expect(onIniciarSesion).not.toHaveBeenCalled();
+    expect(onNavigate).not.toHaveBeenCalledWith('citas');
+  });
+
+  test('error de red al obtener: mensaje inline, sin sesión ni navegación', async () => {
+    api.pacientes.obtener.mockRejectedValue(new Error('red caída'));
+    const onNavigate = vi.fn();
+    const onIniciarSesion = vi.fn();
+    render(<Dashboard onNavigate={onNavigate} onIniciarSesion={onIniciarSesion} />);
+    expect(await screen.findByText('Citas por Procesar')).toBeTruthy();
+    fireEvent.click(screen.getByText('Abrir Sesion'));
+    expect(await screen.findByText('No se pudo abrir la sesión. Inténtalo de nuevo.')).toBeTruthy();
+    expect(onIniciarSesion).not.toHaveBeenCalled();
+    expect(onNavigate).not.toHaveBeenCalledWith('citas');
   });
 });
