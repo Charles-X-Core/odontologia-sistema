@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import SincronizacionTab from './SincronizacionTab';
 
 const isElectron = window.electronAPI?.isElectron;
 
@@ -22,9 +23,9 @@ const STATUS_COLORS = {
   disconnected: '#6b7280',
 };
 
-export default function Configuracion({ onVolver }) {
+export default function Configuracion({ onVolver, tabInicial = 'perfil' }) {
   const { usuario, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState('perfil');
+  const [activeTab, setActiveTab] = useState(tabInicial);
   const [devMode, setDevMode] = useState(false);
   const [devClicks, setDevClicks] = useState(0);
   const [showResetModal, setShowResetModal] = useState(false);
@@ -32,6 +33,12 @@ export default function Configuracion({ onVolver }) {
   const [resetting, setResetting] = useState(false);
   const [resetMsg, setResetMsg] = useState('');
   const [resetError, setResetError] = useState('');
+
+  // Permite que Dashboard/Sidebar abran Configuración en una pestaña concreta
+  // (p. ej. Sincronización) usando la navegación existente, sin router.
+  useEffect(() => {
+    setActiveTab(tabInicial);
+  }, [tabInicial]);
 
   const handleTitleClick = () => {
     const next = devClicks + 1;
@@ -68,6 +75,7 @@ export default function Configuracion({ onVolver }) {
         <button className={`tab-btn ${activeTab === 'firma' ? 'active' : ''}`} onClick={() => setActiveTab('firma')}>Firma</button>
         <button className={`tab-btn ${activeTab === 'password' ? 'active' : ''}`} onClick={() => setActiveTab('password')}>Cambiar Password</button>
         <button className={`tab-btn ${activeTab === 'whatsapp' ? 'active' : ''}`} onClick={() => setActiveTab('whatsapp')}>WhatsApp</button>
+        <button className={`tab-btn ${activeTab === 'sincronizacion' ? 'active' : ''}`} onClick={() => setActiveTab('sincronizacion')}>Sincronización</button>
         {devMode && <button className={`tab-btn tab-dev ${activeTab === 'dev' ? 'active' : ''}`} onClick={() => setActiveTab('dev')}>Dev</button>}
       </div>
 
@@ -75,6 +83,7 @@ export default function Configuracion({ onVolver }) {
       {activeTab === 'firma' && <FirmaTab usuario={usuario} />}
       {activeTab === 'password' && <PasswordTab />}
       {activeTab === 'whatsapp' && <WhatsAppTab />}
+      {activeTab === 'sincronizacion' && <SincronizacionTab />}
       {activeTab === 'dev' && devMode && (
         <div className="dev-panel">
           <div className="dev-panel-header">

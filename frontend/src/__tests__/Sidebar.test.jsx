@@ -39,7 +39,7 @@ describe('Sidebar — indicador de sincronización (4.6)', () => {
     render(<Sidebar active="dashboard" onNavigate={onNavigate} />);
     expect(await screen.findByText('Al día')).toBeTruthy();
     fireEvent.click(screen.getByText('Al día'));
-    expect(onNavigate).toHaveBeenCalledWith('configuracion');
+    expect(onNavigate).toHaveBeenCalledWith('configuracion', { tab: 'sincronizacion' });
   });
 
   test('indicador visible aun sin backend: neutral en vez de desaparecer', async () => {

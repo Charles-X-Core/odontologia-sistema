@@ -431,7 +431,7 @@ export default function Dashboard({ onNavigate }) {
                 {syncView.subtitle && <span className="sync-last">{syncView.subtitle}</span>}
               </div>
               <div style={{ textAlign: 'right', marginTop: '8px' }}>
-                <button onClick={() => onNavigate('configuracion')} style={DETALLE_LINK_STYLE}>
+                <button onClick={() => onNavigate('configuracion', { tab: 'sincronizacion' })} style={DETALLE_LINK_STYLE}>
                   Ver detalle →
                 </button>
               </div>

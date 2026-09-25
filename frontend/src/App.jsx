@@ -28,9 +28,17 @@ function App() {
 
 function LayoutAuth() {
   const [view, setView] = useState('dashboard');
+  const [configTab, setConfigTab] = useState('perfil');
   const [pacienteSeleccionado, setPacienteSeleccionado] = useState(null);
   const [citaId, setCitaId] = useState(null);
   const [motivoCita, setMotivoCita] = useState(null);
+
+  // Navegación existente (setView) + pestaña de destino opcional. Permite que
+  // Dashboard/Sidebar abran Configuración → Sincronización sin router.
+  const navigate = (target, opts) => {
+    if (target === 'configuracion') setConfigTab((opts && opts.tab) || 'perfil');
+    setView(target);
+  };
 
   useEffect(() => {
     const isElectron =
@@ -86,9 +94,9 @@ function LayoutAuth() {
     <div className="layout">
       <TitleBar />
       <div className="layout-body">
-        <Sidebar active={view} onNavigate={setView} />
+        <Sidebar active={view} onNavigate={navigate} />
         <main className="main-content">
-        {view === 'dashboard' && <Dashboard onNavigate={setView} />}
+        {view === 'dashboard' && <Dashboard onNavigate={navigate} />}
         {view === 'recepcion' && (
           <Recepcion onVolver={() => setView('dashboard')} onStartSesion={iniciarSesion} />
         )}
@@ -112,7 +120,7 @@ function LayoutAuth() {
           <Paciente360 paciente={pacienteSeleccionado} onVolver={volverPacientes} onVerHistorial={verHistorial} />
         )}
         {view === 'configuracion' && (
-          <Configuracion onVolver={() => setView('dashboard')} />
+          <Configuracion tabInicial={configTab} onVolver={() => setView('dashboard')} />
         )}
         {view === 'estacion-datos' && (
           <EstacionDatos onVolver={() => setView('dashboard')} />

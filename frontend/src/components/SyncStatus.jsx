@@ -13,7 +13,7 @@ import { onFirstSyncEvent, requestAssistantReopen } from '../services/firstSyncB
  * - No muestra códigos técnicos como texto principal (van a console.error).
  */
 
-const TABLE_LABELS = {
+export const TABLE_LABELS = {
   pacientes: 'Pacientes',
   historias_clinicas: 'Historias clínicas',
   consultas: 'Consultas',
@@ -26,7 +26,7 @@ const TABLE_LABELS = {
   imagenes: 'Imágenes',
 };
 
-function formatFechaHora(value) {
+export function formatFechaHora(value) {
   if (!value) return '';
   try {
     return new Date(value).toLocaleString('es-PE');
@@ -36,7 +36,7 @@ function formatFechaHora(value) {
 }
 
 /** Nivel real del resultado: acepta envelope `{data:{...}}` y formato directo. */
-function innerResult(result) {
+export function innerResult(result) {
   if (!result) return null;
   if (result.data && typeof result.data === 'object') return result.data;
   return result;
@@ -82,7 +82,7 @@ function isFailure(result) {
   return !!inner && inner.success === false;
 }
 
-function countRealStats(branch, key) {
+export function countRealStats(branch, key) {
   const counts = (branch && branch[key]) || {};
   if (!counts || typeof counts !== 'object') return [];
   return Object.entries(counts)

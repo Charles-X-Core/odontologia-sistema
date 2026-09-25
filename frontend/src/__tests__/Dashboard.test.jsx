@@ -120,7 +120,7 @@ describe('Dashboard — citas ocultas y bloque sync (4.6)', () => {
     // Badge del encabezado + fila comparten el texto corto.
     expect((await screen.findAllByText('Al día'))).toHaveLength(2);
     fireEvent.click(screen.getByText('Ver detalle →'));
-    expect(onNavigate).toHaveBeenCalledWith('configuracion');
+    expect(onNavigate).toHaveBeenCalledWith('configuracion', { tab: 'sincronizacion' });
     expect(onNavigate).toHaveBeenCalledTimes(1);
   });
 
