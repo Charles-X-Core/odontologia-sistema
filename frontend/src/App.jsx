@@ -33,6 +33,15 @@ function LayoutAuth() {
   const [motivoCita, setMotivoCita] = useState(null);
 
   useEffect(() => {
+    const isElectron =
+      window.location.protocol === 'file:' ||
+      window.electronAPI?.isElectron;
+
+    const isCapacitor =
+      !!(window.Capacitor && window.Capacitor.isNativePlatform);
+
+    if (!isElectron && !isCapacitor) return undefined;
+
     syncService.startAutoSync(300000);
     return () => syncService.stopAutoSync();
   }, []);
