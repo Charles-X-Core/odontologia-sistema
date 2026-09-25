@@ -7449,6 +7449,32 @@ body {
 .sync-dot.pending { background: var(--warning); }
 .sync-dot.error { background: var(--danger); }
 .sync-dot.syncing { background: var(--warning); animation: sync-pulse 1.2s ease-in-out infinite; }
+/* Proyecto 4.6 — fila compacta clicable (reutiliza sync-dot/sync-label). */
+.sync-compact {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: white;
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  padding: 8px 12px;
+  text-align: left;
+}
+button.sync-compact { cursor: pointer; }
+/* Proyecto 4.6 — fila de sincronización sin caja anidada (reutiliza
+   sync-dot/sync-label/sync-last). */
+.sync-inline { display: flex; align-items: center; gap: 8px; }
+/* Proyecto 4.6 — indicador integrado al Sidebar oscuro: transparente, texto
+   claro y hover equivalente a .sidebar-item. Nunca fondo de opción activa. */
+.sidebar .sync-compact {
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 14px;
+}
+.sidebar .sync-compact .sync-label { color: #fff; }
+.sidebar button.sync-compact:hover { background: rgba(255,255,255,0.08); }
 
 @keyframes sync-pulse {
   0%, 100% { opacity: 1; }

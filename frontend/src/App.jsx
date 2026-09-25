@@ -79,7 +79,7 @@ function LayoutAuth() {
       <div className="layout-body">
         <Sidebar active={view} onNavigate={setView} />
         <main className="main-content">
-        {view === 'dashboard' && <Dashboard onNavigate={setView} onIniciarSesion={iniciarSesion} />}
+        {view === 'dashboard' && <Dashboard onNavigate={setView} />}
         {view === 'recepcion' && (
           <Recepcion onVolver={() => setView('dashboard')} onStartSesion={iniciarSesion} />
         )}

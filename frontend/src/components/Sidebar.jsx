@@ -35,7 +35,7 @@ export default function Sidebar({ active, onNavigate }) {
         ))}
       </nav>
 
-      <SyncStatus />
+      <SyncStatus variant="compact" onDetalle={() => onNavigate('configuracion')} />
 
       <div className="sidebar-footer">
         <div className="sidebar-user">

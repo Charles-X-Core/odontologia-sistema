@@ -509,7 +509,9 @@ describe('SyncStatus — reapertura del asistente (3.3)', () => {
     });
     render(<SyncStatus />);
     expect(await screen.findByText('Primera copia pendiente')).toBeTruthy();
-    expect(screen.getByText(/Pide ayuda al encargado de sistemas/)).toBeTruthy();
+    // Esperar la variante con nube confirmada (el título aparece antes,
+    // con nube aún sin cargar, en la rama genérica).
+    expect(await screen.findByText(/Pide ayuda al encargado de sistemas/)).toBeTruthy();
     expect(screen.queryByText('Abrir asistente')).toBeNull();
     expect(screen.queryByText(/Sigue el asistente/)).toBeNull();
     expect(screen.queryByText('Sincronizar ahora')).toBeNull();
@@ -529,5 +531,104 @@ describe('SyncStatus — reapertura del asistente (3.3)', () => {
     render(<SyncStatus />);
     expect(await screen.findByText('Al día')).toBeTruthy();
     expect(screen.queryByText('Abrir asistente')).toBeNull();
+  });
+});
+
+describe('SyncStatus — variante compacta y sin backend (4.6)', () => {
+  const synced = {
+    isTurso: true, lastSync: '2026-09-24T10:00:00', bootstrapPending: false,
+    bootstrapCompletedAt: '2026-09-24T10:00:00', deviceId: 'dev-1',
+    scenario: 'A2_with_data', pendingChanges: 0, pendingTombstones: 0, tables: ['pacientes'],
+  };
+
+  function mockStatusOnly(status) {
+    global.fetch = vi.fn(async (url) => {
+      if (String(url).includes('/api/sync/status')) {
+        return status === null
+          ? { ok: true, json: async () => ({ success: false, error: 'x' }) }
+          : { ok: true, json: async () => ({ success: true, data: status }) };
+      }
+      if (String(url).includes('cloud-status')) {
+        return { ok: true, json: async () => ({ success: true, data: { ...cloudEmpty, cloud: 'empty' } }) };
+      }
+      return { ok: true, json: async () => ({ success: true, data: status }) };
+    });
+  }
+
+  test('32. Compacta: una fila con texto corto, sin botones de acción', async () => {
+    mockStatusOnly(synced);
+    const onDetalle = vi.fn();
+    render(<SyncStatus variant="compact" onDetalle={onDetalle} />);
+    expect(await screen.findByText('Al día')).toBeTruthy();
+    // Indicador, no panel: sin subtítulo largo ni botones de sync.
+    expect(screen.queryByText(/Última copia/)).toBeNull();
+    expect(screen.queryByText('Sincronizar ahora')).toBeNull();
+    expect(screen.queryByText('Descargar primera copia')).toBeNull();
+    expect(screen.queryByText('Abrir asistente')).toBeNull();
+    fireEvent.click(screen.getByText('Al día'));
+    expect(onDetalle).toHaveBeenCalledTimes(1);
+  });
+
+  test('33. Compacta sin onDetalle: no clicable, mismo estado', async () => {
+    mockStatusOnly({ ...synced, pendingChanges: 4 });
+    render(<SyncStatus variant="compact" />);
+    expect(await screen.findByText('Cambios por enviar')).toBeTruthy();
+    expect(document.querySelector('.sync-status-container button')).toBeNull();
+  });
+
+  test('34. Compacta ante error: texto corto amable, sin acciones', async () => {
+    mockStatusOnly(synced);
+    render(<SyncStatus variant="compact" />);
+    expect(await screen.findByText('Al día')).toBeTruthy();
+    // Un fallo de fondo (p. ej. auto-sync) se refleja sin botones en compacta.
+    syncService.notifyListeners({ syncing: false, lastResult: { success: false, error: 'Error al subir cambios' } });
+    expect(await screen.findByText('Sin sincronizar')).toBeTruthy();
+    expect(screen.queryByText('Sincronizar ahora')).toBeNull();
+    expect(screen.queryByText(/Tus datos siguen a salvo/)).toBeNull();
+  });
+
+  test('38. Estado válido nunca cae en "Estado desconocido"', async () => {
+    mockApi({});
+    const full = render(<SyncStatus />);
+    expect(await screen.findByText('Al día')).toBeTruthy();
+    expect(screen.queryByText('Estado desconocido')).toBeNull();
+    full.unmount();
+    mockApi({});
+    render(<SyncStatus variant="compact" />);
+    expect(await screen.findByText('Al día')).toBeTruthy();
+    expect(screen.queryByText('Estado desconocido')).toBeNull();
+  });
+
+  test('35. Sin backend: neutral visible en vez de desaparecer', async () => {    mockStatusOnly(null);
+    const full = render(<SyncStatus />);
+    expect(await screen.findByText('No se pudo comprobar la sincronización')).toBeTruthy();
+    expect(screen.getByText('Puedes seguir trabajando aquí. Se reintentará solo.')).toBeTruthy();
+    full.unmount();
+    render(<SyncStatus variant="compact" />);
+    expect(await screen.findByText('Estado desconocido')).toBeTruthy();
+  });
+
+  test('36. Cargando: estado transitorio visible', async () => {
+    let release;
+    const gate = new Promise((res) => { release = res; });
+    global.fetch = vi.fn(() => gate.then(() => ({ ok: true, json: async () => ({ success: true, data: synced }) })));
+    const full = render(<SyncStatus />);
+    expect(await screen.findByText('Revisando estado…')).toBeTruthy();
+    full.unmount();
+    render(<SyncStatus variant="compact" />);
+    expect(await screen.findByText('Revisando…')).toBeTruthy();
+    release();
+    await screen.findByText('Al día');
+  });
+
+  test('37. Compacta en bootstrap A2: texto corto sin CTA duplicado', async () => {
+    mockApi({
+      status: { ...synced, lastSync: null, bootstrapPending: true, scenario: 'A2_with_data' },
+      cloud: { ...cloudEmpty, cloud: 'empty' },
+    });
+    render(<SyncStatus variant="compact" />);
+    expect(await screen.findByText('Primera copia pendiente')).toBeTruthy();
+    expect(screen.queryByText('Abrir asistente')).toBeNull();
+    expect(screen.queryByText('Sincronizar ahora')).toBeNull();
   });
 });

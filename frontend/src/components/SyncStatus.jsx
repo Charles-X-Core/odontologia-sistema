@@ -97,8 +97,10 @@ function countRealStats(branch, key) {
  * Con `bootstrapPending` nunca se devuelve "Al día" por tener pendientes en 0.
  * Proyecto 3.3: `assistantOpen` indica si el asistente A2 está visible; solo
  * se ofrece "Abrir asistente" cuando está cerrado (sin duplicar su CTA).
+ * Proyecto 4.6: `loadFailed` indica que el estado no pudo obtenerse (backend
+ * sin respuesta); en ese caso se devuelve un estado visible, nunca null.
  */
-export function classifySyncState({ status, cloud, syncing, lastResult, assistantOpen = false }) {
+export function classifySyncState({ status, cloud, syncing, lastResult, assistantOpen = false, loadFailed = false }) {
   if (syncing) {
     return {
       key: 'syncing',
@@ -304,6 +306,20 @@ export function classifySyncState({ status, cloud, syncing, lastResult, assistan
     };
   }
 
+  // Proyecto 4.6 — backend sin respuesta tras cargar: estado neutral visible.
+  // Nunca null: el indicador debe seguir mostrándose. No inventa sincronía.
+  if (loadFailed && !status) {
+    return {
+      key: 'unknown',
+      title: 'No se pudo comprobar la sincronización',
+      subtitle: 'Puedes seguir trabajando aquí. Se reintentará solo.',
+      dot: 'error',
+      showButton: false,
+      buttonEnabled: false,
+      buttonText: 'Sincronizar ahora',
+    };
+  }
+
   return {
     key: 'loading',
     title: 'Revisando estado…',
@@ -315,12 +331,42 @@ export function classifySyncState({ status, cloud, syncing, lastResult, assistan
   };
 }
 
-export default function SyncStatus() {
+/**
+ * Proyecto 4.6 — etiquetas cortas para la variante compacta (una fila).
+ * Solo presentación: la clasificación y prioridades no cambian.
+ */
+export const SHORT_TITLES = {
+  syncing: 'Sincronizando…',
+  collision: 'Revisar información',
+  'desktop-only': 'Solo en la clínica',
+  error: 'Sin sincronizar',
+  bootstrap: 'Primera copia pendiente',
+  'bootstrap-partial': 'Primera copia pendiente',
+  'bootstrap-offline': 'Sin conexión a la nube',
+  'bootstrap-download': 'Primera copia pendiente',
+  'bootstrap-reopen': 'Primera copia pendiente',
+  pending: 'Cambios por enviar',
+  synced: 'Al día',
+  local: 'Solo en esta computadora',
+  loading: 'Revisando…',
+  unknown: 'Estado desconocido',
+};
+
+/**
+ * Proyecto 4.6 — fuente única del estado de sincronización para UI.
+ * Extraído del componente sin cambiar comportamiento: misma suscripción,
+ * mismas reglas y mismos efectos. Lo usan SyncStatus (full/compact) y el
+ * bloque del Dashboard: una sola lógica, varias presentaciones.
+ */
+export function useSyncView() {
   const [status, setStatus] = useState(null);
   const [cloud, setCloud] = useState(null);
   const [syncing, setSyncing] = useState(false);
   const [lastResult, setLastResult] = useState(null);
   const [loaded, setLoaded] = useState(false);
+  // Proyecto 4.6 — distingue "aún cargando" de "no se pudo obtener": el
+  // indicador nunca desaparece por fallo del backend.
+  const [loadFailed, setLoadFailed] = useState(false);
   const [assistantOpen, setAssistantOpen] = useState(false);
   const syncingRef = useRef(false);
 
@@ -330,6 +376,7 @@ export default function SyncStatus() {
       const s = await syncService.getStatus();
       if (cancelled) return;
       setStatus(s);
+      setLoadFailed(!s);
       setLoaded(true);
     })();
     const unsubscribe = syncService.onStatusChange(({ syncing: s, lastResult: r, error }) => {
@@ -341,7 +388,9 @@ export default function SyncStatus() {
           console.error('[sync] última operación con error:', r.error || r.code || 'desconocido');
         }
         syncService.getStatus().then((fresh) => {
-          if (!cancelled) setStatus(fresh);
+          if (cancelled) return;
+          setStatus(fresh);
+          setLoadFailed(!fresh);
         });
       } else if (error) {
         // syncService notifica errores de red sin lastResult: se convierten
@@ -389,6 +438,7 @@ export default function SyncStatus() {
       }
       const s = await syncService.getStatus();
       setStatus(s);
+      setLoadFailed(!s);
     } catch (e) {
       console.error('[sync] sincronización manual con error:', (e && e.message) || 'desconocido');
       setLastResult({ success: false, error: (e && e.message) || 'Error de conexión' });
@@ -411,10 +461,42 @@ export default function SyncStatus() {
     });
   }, []);
 
-  // Carga inicial sin parpadeos: invisible hasta el primer GET /status.
-  if (!loaded || !status) return null;
+  // Proyecto 4.6 — el indicador nunca desaparece: antes de la primera carga
+  // muestra "Revisando…"; si el backend no responde, estado neutral visible.
+  const view = !loaded
+    ? classifySyncState({})
+    : classifySyncState({ status, cloud, syncing, lastResult, assistantOpen, loadFailed });
 
-  const view = classifySyncState({ status, cloud, syncing, lastResult, assistantOpen });
+  return { view, status, cloud, syncing, lastResult, loaded, loadFailed, handleSync, handleReopen };
+}
+
+export default function SyncStatus({ variant = 'full', onDetalle } = {}) {
+  const { view, status, cloud, lastResult, handleSync, handleReopen } = useSyncView();
+
+  // Proyecto 4.6 — variante compacta (una fila): mismo estado y suscripción,
+  // solo indicador + texto corto. Con onDetalle, la fila lleva al detalle.
+  if (variant === 'compact') {
+    const row = (
+      <>
+        <div className={`sync-dot ${view.dot}`} />
+        <span className="sync-label">{SHORT_TITLES[view.key] || view.title}</span>
+      </>
+    );
+    if (onDetalle) {
+      return (
+        <div className="sync-status-container">
+          <button type="button" className="sync-compact" onClick={onDetalle} title={view.title}>
+            {row}
+          </button>
+        </div>
+      );
+    }
+    return (
+      <div className="sync-status-container">
+        <div className="sync-compact">{row}</div>
+      </div>
+    );
+  }
 
   // Resumen de la última operación con datos reales (H): solo en éxito y
   // solo con conteos > 0, con etiquetas amigables en español.
@@ -431,6 +513,7 @@ export default function SyncStatus() {
   // copia pero el diagnóstico de nube falló (no es título principal).
   const offlineHint =
     view.key !== 'bootstrap-offline' &&
+    status &&
     status.isTurso &&
     status.lastSync &&
     cloud &&

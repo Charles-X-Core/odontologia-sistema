@@ -13,8 +13,29 @@ import {
   Filler,
 } from 'chart.js';
 import { Bar, Doughnut, Line } from 'react-chartjs-2';
+import { useSyncView, SHORT_TITLES } from './SyncStatus';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, LineElement, PointElement, Tooltip, Legend, Filler);
+
+// Proyecto 4.6 — Citas fuera del alcance de esta actualización: la sección
+// "Citas por Procesar" se oculta (render y carga) y se reactivará cuando
+// Citas entre en alcance. El código queda intacto y reutilizable.
+const MOSTRAR_CITAS_POR_PROCESAR = false;
+
+// Proyecto 4.6 — badge semántico con la paleta existente (mismo patrón inline
+// del badge de citas). Neutro usa la clase .dashboard-chart-badge tal cual.
+const SYNC_BADGE_STYLE = {
+  connected: { background: '#dcfce7', color: '#166534' },
+  pending: { background: '#fef3c7', color: '#92400e' },
+  syncing: { background: '#fef3c7', color: '#92400e' },
+  error: { background: '#fee2e2', color: '#991b1b' },
+};
+
+// Enlace de texto con el patrón existente ("Ver todas las citas →").
+const DETALLE_LINK_STYLE = {
+  background: 'none', border: 'none', color: 'var(--primary)',
+  cursor: 'pointer', fontSize: '12px', fontWeight: 600,
+};
 
 const FILTROS_FECHA = [
   { value: 'hoy', label: 'Hoy' },
@@ -59,7 +80,7 @@ function getUltimosMeses(consultas, numMeses = 6) {
   return meses;
 }
 
-export default function Dashboard({ onNavigate, onIniciarSesion }) {
+export default function Dashboard({ onNavigate }) {
   const [stats, setStats] = useState(null);
   const [cargando, setCargando] = useState(true);
   // Proyecto 4.2 — fallo de carga distinguible de "sin datos": api.request
@@ -69,7 +90,11 @@ export default function Dashboard({ onNavigate, onIniciarSesion }) {
   const [filtroFecha, setFiltroFecha] = useState('todo');
   const [waConnected, setWaConnected] = useState(false);
   const [citasPorProcesar, setCitasPorProcesar] = useState([]);
-  const [errorSesion, setErrorSesion] = useState(null);
+
+  // Proyecto 4.6 — el bloque sync comparte la fuente única de SyncStatus
+  // (servicio + clasificador): misma lógica, otra presentación.
+  const { view: syncView } = useSyncView();
+  const syncShort = SHORT_TITLES[syncView.key] || syncView.title;
 
   useEffect(() => {
     cargarDatos();
@@ -89,34 +114,18 @@ export default function Dashboard({ onNavigate, onIniciarSesion }) {
     } catch {
       setErrorCarga(true);
     }
-    try {
-      const citas = await api.citas.pendientesProcesar();
-      setCitasPorProcesar(Array.isArray(citas) ? citas : []);
-    } catch {}
+    if (MOSTRAR_CITAS_POR_PROCESAR) {
+      try {
+        const citas = await api.citas.pendientesProcesar();
+        setCitasPorProcesar(Array.isArray(citas) ? citas : []);
+      } catch {}
+    }
     setCargando(false);
   };
 
   const consultasFiltradas = stats?.ultimasConsultas
     ? filtrarPorFecha(stats.ultimasConsultas, filtroFecha)
     : [];
-
-  // Proyecto 4.3 (E1) — apertura de sesión SIN cita: se obtiene el paciente
-  // y se entrega a App.iniciarSesion (sesión con citaId=null). El contexto de
-  // cita (citaId/motivo) llegará en la integración futura con Citas; aquí no
-  // se implementa ninguna lógica de Citas.
-  const abrirSesionDirecta = async (cita) => {
-    setErrorSesion(null);
-    try {
-      const paciente = await api.pacientes.obtener(cita.paciente_id);
-      if (!paciente || paciente.error || !paciente.id) {
-        setErrorSesion('No se pudo abrir la sesión. Inténtalo de nuevo.');
-        return;
-      }
-      onIniciarSesion?.(paciente);
-    } catch {
-      setErrorSesion('No se pudo abrir la sesión. Inténtalo de nuevo.');
-    }
-  };
 
   const ultimosMeses = useMemo(() => {
     return stats?.ultimasConsultas ? getUltimosMeses(stats.ultimasConsultas, 6) : [];
@@ -371,8 +380,9 @@ export default function Dashboard({ onNavigate, onIniciarSesion }) {
         </div>
       </div>
 
-      {/* CITAS POR PROCESAR */}
-      {citasPorProcesar.length > 0 && (
+      {/* CITAS POR PROCESAR — oculto en Proyecto 4.6 (Citas fuera de alcance).
+          Código intacto: se reactiva con MOSTRAR_CITAS_POR_PROCESAR. */}
+      {MOSTRAR_CITAS_POR_PROCESAR && citasPorProcesar.length > 0 && (
         <div className="dashboard-grid-2col" style={{ marginBottom: '20px' }}>
           <div className="dashboard-chart-card" style={{ gridColumn: '1 / -1' }}>
             <div className="dashboard-chart-header">
@@ -380,9 +390,6 @@ export default function Dashboard({ onNavigate, onIniciarSesion }) {
               <span className="dashboard-chart-badge" style={{ background: '#dcfce7', color: '#166534' }}>{citasPorProcesar.length} cita{citasPorProcesar.length !== 1 ? 's' : ''}</span>
             </div>
             <div style={{ padding: '14px' }}>
-              {errorSesion && (
-                <div className="alert alert-error">{errorSesion}</div>
-              )}
               {citasPorProcesar.slice(0, 5).map(cita => (
                 <div key={cita.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderBottom: '1px solid var(--gray-100)', fontSize: '13px' }}>
                   <div>
@@ -390,7 +397,7 @@ export default function Dashboard({ onNavigate, onIniciarSesion }) {
                     <span style={{ fontWeight: 600 }}>{cita.paciente_nombre}</span>
                     {cita.motivo_usar && <span style={{ color: 'var(--gray-500)', marginLeft: '8px' }}>- {cita.motivo_usar}</span>}
                   </div>
-                  <button className="btn btn-sm btn-primary" onClick={() => abrirSesionDirecta(cita)} style={{ fontSize: '11px', padding: '4px 10px' }}>
+                  <button className="btn btn-sm btn-primary" onClick={() => onNavigate('citas')} style={{ fontSize: '11px', padding: '4px 10px' }}>
                     Abrir Sesion
                   </button>
                 </div>
@@ -398,6 +405,34 @@ export default function Dashboard({ onNavigate, onIniciarSesion }) {
               <div style={{ textAlign: 'right', marginTop: '8px' }}>
                 <button onClick={() => onNavigate('citas')} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}>
                   Ver todas las citas →
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Proyecto 4.6 — bloque compacto de sincronización en el espacio de
+          citas. Sin caja anidada: badge semántico + fila + enlace de texto.
+          El detalle vivirá en Configuración → Sincronización. */}
+      {!MOSTRAR_CITAS_POR_PROCESAR && (
+        <div className="dashboard-grid-2col" style={{ marginBottom: '20px' }}>
+          <div className="dashboard-chart-card" style={{ gridColumn: '1 / -1' }}>
+            <div className="dashboard-chart-header">
+              <h3>Sincronización</h3>
+              <span className="dashboard-chart-badge" style={SYNC_BADGE_STYLE[syncView.dot]}>
+                {syncShort}
+              </span>
+            </div>
+            <div style={{ padding: '14px' }}>
+              <div className="sync-inline">
+                <div className={`sync-dot ${syncView.dot}`} />
+                <span className="sync-label">{syncShort}</span>
+                {syncView.subtitle && <span className="sync-last">{syncView.subtitle}</span>}
+              </div>
+              <div style={{ textAlign: 'right', marginTop: '8px' }}>
+                <button onClick={() => onNavigate('configuracion')} style={DETALLE_LINK_STYLE}>
+                  Ver detalle →
                 </button>
               </div>
             </div>
