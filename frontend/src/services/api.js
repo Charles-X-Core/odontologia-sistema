@@ -12,6 +12,13 @@ if (isElectron) {
   API_URL = (import.meta.env.VITE_API_URL || `${VERCEL_URL}/api`).replace(/\/+$/, '');
 }
 
+// Proyecto 4.6 — base del API sin el sufijo /api, como fuente única para
+// syncService (que construye rutas con /api/... delante). Antes syncService
+// resolvía `''` (o solo VITE_API_URL), por lo que en navegador sus llamadas
+// eran relativas al servidor que servía la UI y /api/sync/status devolvía HTML:
+// res.json() fallaba y el estado de sincronización quedaba "desconocido".
+export const API_BASE = API_URL.replace(/\/+$/, '').replace(/\/api$/, '');
+
 function getToken() {
   return localStorage.getItem('token');
 }

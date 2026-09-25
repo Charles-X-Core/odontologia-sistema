@@ -11,10 +11,11 @@ vi.mock('react-chartjs-2', () => ({
 }));
 
 vi.mock('../services/api', () => ({
+  // API_BASE (4.6) lo consume syncService para resolver /api/sync/*.
+  API_BASE: '',
   api: {
     dashboard: { stats: vi.fn() },
     citas: { pendientesProcesar: vi.fn() },
-    pacientes: { obtener: vi.fn() },
     whatsapp: { estado: vi.fn() },
   },
 }));

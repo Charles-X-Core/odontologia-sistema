@@ -5,7 +5,10 @@
  * Auto-syncs on startup and periodically.
  */
 
-const API_BASE = import.meta.env.VITE_API_URL || '';
+// Proyecto 4.6 — se reutiliza la resolución de base de api.js (Electron /
+// Capacitor / web) en lugar de rutas relativas: evita que /api/sync/* se
+// pida al servidor que sirve la UI. Las rutas y la lógica no cambian.
+import { API_BASE } from './api';
 
 class SyncService {
   constructor() {
