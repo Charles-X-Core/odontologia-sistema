@@ -7446,6 +7446,14 @@ body {
 
 .sync-dot.connected { background: #22c55e; }
 .sync-dot.disconnected { background: var(--gray-400); }
+.sync-dot.pending { background: var(--warning); }
+.sync-dot.error { background: var(--danger); }
+.sync-dot.syncing { background: var(--warning); animation: sync-pulse 1.2s ease-in-out infinite; }
+
+@keyframes sync-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
 
 .sync-label {
   font-size: 13px;
