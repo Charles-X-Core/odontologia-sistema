@@ -32,6 +32,9 @@ export default function Pacientes({ onVerHistorial, onVer360 }) {
   const [cargando, setCargando] = useState(true);
   const [form, setForm] = useState({ ...FORM_DEFAULT });
   const [error, setError] = useState('');
+  // Proyecto 4.4 — error de eliminación a nivel de lista (el `error` del
+  // formulario vive dentro del modal y no se ve desde la lista).
+  const [errorEliminar, setErrorEliminar] = useState('');
   const [antecedentesForm, setAntecedentesForm] = useState({});
   const [ordenarPor, setOrdenarPor] = useState('recientes');
 
@@ -156,7 +159,9 @@ export default function Pacientes({ onVerHistorial, onVer360 }) {
 
   const handleEliminar = async (id) => {
     if (!confirm('Eliminar paciente y todo su historial?')) return;
-    await api.pacientes.eliminar(id);
+    setErrorEliminar('');
+    const res = await api.pacientes.eliminar(id);
+    if (res && res.error) { setErrorEliminar('No se pudo eliminar: ' + res.error); return; }
     cargar();
   };
 
@@ -368,6 +373,8 @@ export default function Pacientes({ onVerHistorial, onVer360 }) {
         {cargando ? (
           <div className="loading">Cargando pacientes...</div>
         ) : (
+          <>
+          {errorEliminar && <div className="alert alert-error">{errorEliminar}</div>}
           <div className="table-responsive">
             <table className="table">
               <thead>
@@ -417,6 +424,7 @@ export default function Pacientes({ onVerHistorial, onVer360 }) {
               </tbody>
             </table>
           </div>
+          </>
         )}
       </div>
     </div>

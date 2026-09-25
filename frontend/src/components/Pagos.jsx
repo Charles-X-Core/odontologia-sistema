@@ -95,7 +95,9 @@ export default function Pagos({ pacienteId, paciente, consultas }) {
 
   const handleEliminar = async (id) => {
     if (!confirm('Eliminar este registro de pago?')) return;
-    await api.pagos.eliminar(id);
+    setError('');
+    const res = await api.pagos.eliminar(id);
+    if (res && res.error) { setError('No se pudo eliminar: ' + res.error); return; }
     cargar();
   };
 

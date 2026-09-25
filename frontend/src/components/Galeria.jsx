@@ -227,6 +227,8 @@ export default function Galeria({ pacienteId }) {
   const [nuevasCount, setNuevasCount] = useState(0);
   const [mostrarPassword, setMostrarPassword] = useState(false);
   const [accionPendiente, setAccionPendiente] = useState(null);
+  // Proyecto 4.4 — error de eliminación visible en el panel.
+  const [errorEliminar, setErrorEliminar] = useState('');
   const imagenesRef = useRef(imagenes);
 
   const requerirPassword = (accion) => {
@@ -308,7 +310,9 @@ export default function Galeria({ pacienteId }) {
 
   const eliminar = async (id) => {
     if (!confirm('Eliminar esta imagen?')) return;
-    await api.imagenes.eliminar(id);
+    setErrorEliminar('');
+    const res = await api.imagenes.eliminar(id);
+    if (res && res.error) { setErrorEliminar('No se pudo eliminar: ' + res.error); return; }
     cargar();
   };
 
@@ -346,6 +350,8 @@ export default function Galeria({ pacienteId }) {
           </button>
         </div>
       </div>
+
+      {errorEliminar && <div className="alert alert-error">{errorEliminar}</div>}
 
       {mostrarUpload && (
         <div className="tratamiento-form-card">

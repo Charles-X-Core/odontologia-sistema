@@ -30,6 +30,9 @@ export default function Tratamientos({ pacienteId, consultas, paciente }) {
   const [pagina, setPagina] = useState(1);
   const [mostrarPassword, setMostrarPassword] = useState(false);
   const [accionPendiente, setAccionPendiente] = useState(null);
+  // Proyecto 4.4 — error de eliminación a nivel de lista (el `error` del
+  // formulario vive dentro del modal y no se ve desde la lista).
+  const [errorEliminar, setErrorEliminar] = useState('');
 
   const requerirPassword = (accion) => {
     setAccionPendiente(() => accion);
@@ -105,7 +108,9 @@ export default function Tratamientos({ pacienteId, consultas, paciente }) {
 
   const eliminar = async (id) => {
     if (!confirm('Eliminar este tratamiento?')) return;
-    await api.tratamientos.eliminar(id);
+    setErrorEliminar('');
+    const res = await api.tratamientos.eliminar(id);
+    if (res && res.error) { setErrorEliminar('No se pudo eliminar: ' + res.error); return; }
     cargar();
   };
 
@@ -252,6 +257,8 @@ export default function Tratamientos({ pacienteId, consultas, paciente }) {
           </form>
         </div>
       )}
+
+      {errorEliminar && <div className="alert alert-error">{errorEliminar}</div>}
 
       {tratamientos.length === 0 ? (
         <p className="empty">No hay tratamientos registrados</p>

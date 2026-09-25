@@ -49,6 +49,9 @@ function ConsultaTimeline({ c, onRecargar }) {
   const [editando, setEditando] = useState(false);
   const [editForm, setEditForm] = useState({});
   const [guardando, setGuardando] = useState(false);
+  // Proyecto 4.4 — error de eliminación visible en el detalle (el `error`
+  // del padre no es alcanzable desde aquí y el alert() no orienta).
+  const [errorEliminar, setErrorEliminar] = useState('');
   const [imagenes, setImagenes] = useState([]);
   const [viewerIndex, setViewerIndex] = useState(null);
   const [mostrarPassword, setMostrarPassword] = useState(false);
@@ -106,7 +109,12 @@ function ConsultaTimeline({ c, onRecargar }) {
 
   const eliminarConsulta = async () => {
     if (!confirm('Eliminar esta consulta? Se eliminaran sus odontogramas, necesidades y recetas vinculadas.')) return;
-    try { await api.consultas.eliminar(c.id); onRecargar?.(); } catch (e) { alert('Error: ' + e.message); }
+    setErrorEliminar('');
+    try {
+      const res = await api.consultas.eliminar(c.id);
+      if (res && res.error) { setErrorEliminar('No se pudo eliminar: ' + res.error); return; }
+      onRecargar?.();
+    } catch (e) { setErrorEliminar('No se pudo eliminar: ' + e.message); }
   };
 
   const trats = c.tratamientos || [];
@@ -287,6 +295,7 @@ function ConsultaTimeline({ c, onRecargar }) {
               <button className="btn btn-sm btn-secondary" onClick={() => requerirPassword(iniciarEdicion)}>Editar</button>
               <button className="btn btn-sm btn-danger" onClick={() => requerirPassword(eliminarConsulta)}>Eliminar</button>
             </div>
+            {errorEliminar && <div className="alert alert-error">{errorEliminar}</div>}
           </div>
         )}
 
