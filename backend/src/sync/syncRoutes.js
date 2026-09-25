@@ -199,6 +199,23 @@ function createSyncRouter({ includeClean = true } = {}) {
   });
 
   /**
+   * GET /api/sync/cloud-status
+   * Diagnóstico de nube pre-bootstrap (Proyecto 2): indica si Turso está
+   * vacío antes de la primera sincronización. Solo lectura (SELECT fijos),
+   * hereda auth del router, sin gate de escritura: opera con bootstrap
+   * pendiente y en Vercel (nunca toca SQLite local).
+   */
+  router.get('/cloud-status', async (req, res) => {
+    try {
+      const status = await syncService.getCloudStatus();
+      res.json(status);
+    } catch (error) {
+      console.error('Sync cloud-status error:', error);
+      res.status(500).json({ success: false, error: 'Error al consultar estado de la nube' });
+    }
+  });
+
+  /**
    * POST /api/sync/rebootstrap
    * Invalida el cursor (restore / re-clasificación A2/A3). No borra datos.
    */

@@ -56,9 +56,29 @@ class SyncService {
   }
 
   /**
-   * Push local changes to Turso
+   * Get cloud status (Proyecto 2: diagnóstico pre-bootstrap).
+   * Indica si la nube Turso está vacía antes de la primera sincronización.
+   * Solo lectura; nunca inicia sync.
    */
-  async push(since = null) {
+  async getCloudStatus() {
+    try {
+      const res = await fetch(`${API_BASE}/api/sync/cloud-status`, {
+        headers: this.getHeaders()
+      });
+      const data = await res.json();
+      return data.success ? data.data : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Push local changes to Turso.
+   * admitLocalPush=true solo para primera carga explícita (wizard Proyecto 2):
+   * el backend valida bootstrap pendiente + escenario A2 + permisos + colisiones.
+   * Por defecto false: comportamiento incremental normal sin cambios.
+   */
+  async push(since = null, admitLocalPush = false) {
     this.isSyncing = true;
     this.notifyListeners({ syncing: true });
 
@@ -66,7 +86,7 @@ class SyncService {
       const res = await fetch(`${API_BASE}/api/sync/push`, {
         method: 'POST',
         headers: this.getHeaders(),
-        body: JSON.stringify({ since })
+        body: JSON.stringify({ since, admitLocalPush })
       });
       const data = await res.json();
       this.isSyncing = false;

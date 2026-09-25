@@ -308,18 +308,6 @@ function classifyUpsertSkip(existing, incoming) {
   return 'stale';
 }
 
-async function hasRemoteTombstone(tableName, recordId) {
-  try {
-    const result = await cloudClient.execute({
-      sql: 'SELECT 1 FROM sync_tombstones WHERE table_name = ? AND record_id = ?',
-      args: [tableName, recordId]
-    });
-    return result.rows.length > 0;
-  } catch {
-    return false;
-  }
-}
-
 function hasLocalTombstone(tableName, recordId) {
   try {
     const existing = localDb().prepare(
@@ -329,6 +317,29 @@ function hasLocalTombstone(tableName, recordId) {
   } catch {
     return false;
   }
+}
+
+/**
+ * Proyecto 2 — citas.usuario_id es referencia LOCAL no portable (quién
+ * registró la cita en esa instalación; usuarios nunca se sincroniza).
+ * Comprueba en destino remoto con caché por ejecución (una consulta por
+ * usuario_id distinto, no N+1 por fila). Ante error se asume ausente:
+ * NULL siempre satisface la FK, es la dirección segura.
+ */
+async function remoteUsuarioExists(userId, cache) {
+  if (cache.has(userId)) return cache.get(userId);
+  let exists = false;
+  try {
+    const r = await cloudClient.execute({
+      sql: 'SELECT 1 AS one FROM usuarios WHERE id = ?',
+      args: [userId]
+    });
+    exists = Array.isArray(r.rows) && r.rows.length > 0;
+  } catch {
+    exists = false;
+  }
+  cache.set(userId, exists);
+  return exists;
 }
 
 function fenceLocalSequences() {
@@ -408,6 +419,54 @@ async function pushToTurso(since = null) {
     pushed: {}, errors: [], skippedByRemoteTombstone: 0,
     idCollisions: [], skippedStale: 0
   };
+  // Snapshot único de tombstones remotos: 1 query por ejecución en vez de
+  // 1 por fila (N+1). Misma semántica delete-wins, solo cambia el momento
+  // de lectura (más consistente, no menos).
+  // Si el snapshot falla: conjunto vacío. Es idéntico resultado que el
+  // comportamiento previo, donde cada hasRemoteTombstone() individual
+  // devolvía false al fallar. No se oculta nada: si el upsert posterior
+  // falla, su error se registra igual en results.errors.
+  let remoteTombstones = new Set();
+  try {
+    const t = await cloudClient.execute({
+      sql: 'SELECT table_name, record_id FROM sync_tombstones',
+      args: []
+    });
+    for (const r of (t && t.rows) || []) {
+      if (r && r.table_name !== undefined && r.record_id !== undefined) {
+        remoteTombstones.add(`${r.table_name}:${r.record_id}`);
+      }
+    }
+  } catch {
+    remoteTombstones = new Set();
+  }
+  // Caché por ejecución para la comprobación de usuarios remotos.
+  const usuarioRemotoCache = new Map();
+
+  // Cliente batch: 1 round-trip por lote de hasta BATCH_SIZE en vez de 1
+  // por fila. batch() es transaccional (aborta al primer fallo), así que
+  // ante error se reintenta el lote fila por fila con la semántica exacta
+  // previa (errores/colisiones/stale por fila). Si el driver no expone
+  // batch (tests viejos, mocks), se usa siempre la vía secuencial.
+  // Rama de lectura de la respuesta: idéntica en ambas vías.
+  async function classifyAndRecord(table, raw) {
+    const kind = await classifyRemoteSkip(table, raw);
+    if (kind === 'idCollision') {
+      results.idCollisions.push({ table, id: raw.id, direction: 'push' });
+    } else if (kind === 'stale') {
+      results.skippedStale++;
+    } else {
+      results.errors.push({ table, id: raw.id, error: 'upsert guard rejected without existing row' });
+    }
+  }
+
+  let batchClient = null;
+  try {
+    const c = cloudClient.getClient ? cloudClient.getClient() : null;
+    if (c && typeof c.batch === 'function') batchClient = c;
+  } catch {
+    batchClient = null;
+  }
 
   for (const table of SYNC_TABLES) {
     try {
@@ -424,35 +483,71 @@ async function pushToTurso(since = null) {
       let pushedCount = 0;
       for (let i = 0; i < rows.length; i += BATCH_SIZE) {
         const batch = rows.slice(i, i + BATCH_SIZE);
+        // Fase A (sin cambios semánticos): filtros en memoria + adaptación
+        // usuario_id; los errores de preparación se registran igual que antes.
+        const prepared = [];
         for (const raw of batch) {
           try {
-            if (await hasRemoteTombstone(table, raw.id)) {
+            if (remoteTombstones.has(`${table}:${raw.id}`)) {
               results.skippedByRemoteTombstone++;
               continue;
             }
 
             const row = remoteCols && remoteCols.length ? filterRowToKeys(raw, remoteCols) : raw;
-            const hasCreatedAt = !remoteCols || !remoteCols.length || remoteCols.includes('created_at');
-            const sql = buildGuardedUpsertSql(table, row, { hasCreatedAt });
-            const result = await cloudClient.execute({
-              sql,
-              args: Object.values(row)
-            });
-
-            if (result.rowsAffected > 0) {
-              pushedCount++;
-            } else {
-              const kind = await classifyRemoteSkip(table, raw);
-              if (kind === 'idCollision') {
-                results.idCollisions.push({ table, id: raw.id, direction: 'push' });
-              } else if (kind === 'stale') {
-                results.skippedStale++;
-              } else {
-                results.errors.push({ table, id: raw.id, error: 'upsert guard rejected without existing row' });
+            // Proyecto 2 — referencia LOCAL no portable: si la cita lleva
+            // usuario_id pero ese usuario no existe en destino, se envía
+            // NULL. Solo afecta la copia del upsert remoto: pushToTurso
+            // jamás escribe en SQLite local, así que el original queda intacto.
+            // NULL conserva NULL sin consultar. Con esto una cita huérfana
+            // no falla por FK y el cursor puede seguir avanzando.
+            if (table === 'citas' && row.usuario_id !== null && row.usuario_id !== undefined) {
+              try {
+                const exists = await remoteUsuarioExists(row.usuario_id, usuarioRemotoCache);
+                if (!exists) row.usuario_id = null;
+              } catch {
+                /* ante duda, conservar comportamiento previo */
               }
             }
+            const hasCreatedAt = !remoteCols || !remoteCols.length || remoteCols.includes('created_at');
+            const sql = buildGuardedUpsertSql(table, row, { hasCreatedAt });
+            prepared.push({ raw, sql, args: Object.values(row) });
           } catch (e) {
             results.errors.push({ table, id: raw.id, error: e.message });
+          }
+        }
+        if (prepared.length === 0) continue;
+        // Fase B: escritura por batch (1 round-trip por lote) con fallback
+        // secuencial idéntico si el batch aborta. Mismos contadores y ramas.
+        let batched = null;
+        if (batchClient) {
+          try {
+            const out = await batchClient.batch(prepared.map((p) => ({ sql: p.sql, args: p.args })));
+            if (Array.isArray(out) && out.length === prepared.length) batched = out;
+          } catch {
+            batched = null;
+          }
+        }
+        if (batched) {
+          for (let k = 0; k < prepared.length; k++) {
+            const affected = Number(batched[k] && batched[k].rowsAffected) || 0;
+            if (affected > 0) {
+              pushedCount++;
+            } else {
+              await classifyAndRecord(table, prepared[k].raw);
+            }
+          }
+        } else {
+          for (const p of prepared) {
+            try {
+              const single = await cloudClient.execute({ sql: p.sql, args: p.args });
+              if (single.rowsAffected > 0) {
+                pushedCount++;
+              } else {
+                await classifyAndRecord(table, p.raw);
+              }
+            } catch (e) {
+              results.errors.push({ table, id: p.raw.id, error: e.message });
+            }
           }
         }
       }
@@ -600,6 +695,26 @@ async function pullFromTurso(since = null) {
               if (!userExists) row.usuario_id = null;
             } catch {
               /* sin tabla usuarios: conservar comportamiento previo */
+            }
+          }
+          // Proyecto 2 — referencia LOCAL no portable, sentido inverso: un
+          // usuario_id remoto NULL (p. ej. degradado por el push) NUNCA debe
+          // borrar el registrante local. Solo esta columna; el resto del
+          // merge (LWW/lineage/tombstones) queda intacto.
+          if (
+            table === 'citas' &&
+            row.usuario_id === null &&
+            hasLocalColumn(table, 'usuario_id')
+          ) {
+            try {
+              const existing = localDb().prepare(
+                'SELECT usuario_id FROM citas WHERE id = ?'
+              ).get(row.id);
+              if (existing && existing.usuario_id !== null && existing.usuario_id !== undefined) {
+                row.usuario_id = existing.usuario_id;
+              }
+            } catch {
+              /* conservar comportamiento previo */
             }
           }
           const hasCreatedAt = hasLocalColumn(table, 'created_at');
@@ -817,6 +932,91 @@ function getSyncStatus() {
   };
 }
 
+/**
+ * Diagnóstico de nube pre-bootstrap (Proyecto 2).
+ *
+ * Responde si la nube Turso está vacía ANTES de iniciar la primera
+ * sincronización, sin ejecutar ningún sync. Garantías:
+ * - SOLO sentencias SELECT fijas (tablas desde SYNC_TABLES, sin input).
+ * - NUNCA toca localDb()/db.js/database.js (Vercel-safe: sin SQLite).
+ * - NUNCA ejecuta push/pull/fullSync/setLastSyncTime ni escribe nada.
+ * - NUNCA confunde fallo de conexión con nube vacía (probe estructural
+ *   previo sobre sqlite_master).
+ *
+ * Estados (data.cloud):
+ * - unconfigured: sin TURSO_URL (cero queries).
+ * - error: el probe estructural falla (conexión/auth) — nunca empty.
+ * - partial: alguna de las 10 tablas falta o no se resuelve.
+ * - with-data: alguna tabla tiene filas.
+ * - empty: las 10 existen y totalRows === 0.
+ * La ausencia de sync_state/sync_tombstones (nube pre-C4) solo se refleja
+ * en hasSyncState/hasTombstones, jamás como error global.
+ */
+async function getCloudStatus() {
+  const emptyTables = () => {
+    const t = {};
+    for (const name of SYNC_TABLES) t[name] = { rows: 0, state: 'unknown' };
+    return t;
+  };
+  const base = (cloud, extra = {}) => ({
+    success: true,
+    data: {
+      cloud,
+      isConfigured: cloudClient.isConfigured(),
+      totalRows: 0,
+      tables: emptyTables(),
+      hasSyncState: false,
+      hasTombstones: false,
+      error: null,
+      ...extra
+    }
+  });
+
+  if (!cloudClient.isConfigured()) {
+    return base('unconfigured');
+  }
+
+  // Probe estructural: distingue fallo global (conexión/auth) de nube vacía.
+  try {
+    await cloudClient.execute({ sql: 'SELECT COUNT(*) AS c FROM sqlite_master', args: [] });
+  } catch (e) {
+    return base('error', { error: e.message || 'Error de conexión con Turso' });
+  }
+
+  const tables = emptyTables();
+  let totalRows = 0;
+  let unknown = 0;
+  for (const table of SYNC_TABLES) {
+    try {
+      const r = await cloudClient.execute({ sql: `SELECT COUNT(*) AS c FROM ${table}`, args: [] });
+      const c = r && r.rows && r.rows[0] != null ? Number(r.rows[0].c) || 0 : 0;
+      tables[table] = { rows: c, state: 'ok' };
+      totalRows += c;
+    } catch {
+      tables[table] = { rows: 0, state: 'missing' };
+      unknown += 1;
+    }
+  }
+
+  let hasSyncState = false;
+  let hasTombstones = false;
+  try {
+    await cloudClient.execute({ sql: 'SELECT COUNT(*) AS c FROM sync_state', args: [] });
+    hasSyncState = true;
+  } catch {
+    hasSyncState = false;
+  }
+  try {
+    await cloudClient.execute({ sql: 'SELECT COUNT(*) AS c FROM sync_tombstones', args: [] });
+    hasTombstones = true;
+  } catch {
+    hasTombstones = false;
+  }
+
+  const cloud = unknown > 0 ? 'partial' : (totalRows > 0 ? 'with-data' : 'empty');
+  return base(cloud, { totalRows, tables, hasSyncState, hasTombstones });
+}
+
 function cleanLocalData(tables = null) {
   const targetTables = tables == null ? CLEAN_TABLES : tables;
   if (!Array.isArray(targetTables)) {
@@ -848,6 +1048,7 @@ module.exports = {
   fullSync,
   bootstrapSync,
   getSyncStatus,
+  getCloudStatus,
   cleanLocalData,
   getLastSyncTime,
   setLastSyncTime,

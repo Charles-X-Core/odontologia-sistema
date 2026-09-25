@@ -14,6 +14,7 @@ import Configuracion from './components/Configuracion';
 import EstacionDatos from './components/EstacionDatos';
 import WhatsAppPanel from './components/WhatsAppPanel';
 import Citas from './components/Citas';
+import FirstSyncOnboarding from './components/FirstSyncOnboarding';
 import './App.css';
 
 function App() {
@@ -112,6 +113,7 @@ function LayoutAuth() {
         )}
       </main>
       </div>
+      <FirstSyncOnboarding />
     </div>
   );
 }

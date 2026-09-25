@@ -529,9 +529,10 @@ describe('DELETE-WINS — pushToTurso remote tombstone blocks INSERT', () => {
     let callCount = 0;
     mockCloud.execute.mockImplementation((params) => {
       callCount++;
-      // First call per table: check remote tombstone → exists!
-      if (params.sql && params.sql.includes('SELECT 1 FROM sync_tombstones')) {
-        return { rows: [{ 1: 1 }], rowsAffected: 0, lastInsertRowid: 0 };
+      // Snapshot único de tombstones remotos: una query por ejecución
+      // (el protocolo anterior de un SELECT por fila ya no lo usa pushToTurso).
+      if (params.sql && params.sql.includes('SELECT table_name, record_id FROM sync_tombstones')) {
+        return { rows: [{ table_name: 'pacientes', record_id: 99 }], rowsAffected: 0, lastInsertRowid: 0 };
       }
       return { rows: [], rowsAffected: 0, lastInsertRowid: 0 };
     });
