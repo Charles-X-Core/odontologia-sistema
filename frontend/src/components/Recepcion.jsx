@@ -30,6 +30,10 @@ export default function Recepcion({ onVolver, onStartSesion }) {
   const [buscando, setBuscando] = useState(false);
   const [pacientesRecientes, setPacientesRecientes] = useState([]);
   const [cargando, setCargando] = useState(true);
+  // Proyecto 4.5 — api.request devuelve { error } sin lanzar: sin esta guarda,
+  // .slice() revienta y la pantalla queda en blanco. buscar() conserva sus
+  // resultados previos ante fallo (sin crash) y queda como limitación.
+  const [errorCarga, setErrorCarga] = useState(false);
 
   const [mostrarFormNuevo, setMostrarFormNuevo] = useState(false);
   const [formNuevo, setFormNuevo] = useState({ ...FORM_NUEVO });
@@ -42,8 +46,15 @@ export default function Recepcion({ onVolver, onStartSesion }) {
   const cargarRecientes = async () => {
     try {
       const data = await api.pacientes.listar();
-      setPacientesRecientes(data.slice(0, 8));
-    } catch {}
+      if (!Array.isArray(data)) {
+        setErrorCarga(true);
+      } else {
+        setErrorCarga(false);
+        setPacientesRecientes(data.slice(0, 8));
+      }
+    } catch {
+      setErrorCarga(true);
+    }
     setCargando(false);
   };
 
@@ -179,6 +190,11 @@ export default function Recepcion({ onVolver, onStartSesion }) {
           <h3>Pacientes Recientes</h3>
           {cargando ? (
             <div className="loading">Cargando...</div>
+          ) : errorCarga ? (
+            <>
+            <div className="alert alert-error">No se pudieron cargar los pacientes recientes. Revisa tu conexión e inténtalo de nuevo.</div>
+            <button className="btn btn-primary btn-sm" onClick={cargarRecientes}>Reintentar</button>
+            </>
           ) : pacientesRecientes.length === 0 ? (
             <div className="recepcion-empty">
               <p>No hay pacientes registrados</p>

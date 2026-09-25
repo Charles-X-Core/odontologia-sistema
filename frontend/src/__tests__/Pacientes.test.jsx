@@ -55,9 +55,33 @@ describe('Pacientes — eliminar', () => {
     const banner = await screen.findByText(/No se pudo eliminar/);
     expect(banner).toBeTruthy();
     // El banner usa el patrón del módulo (mismo que errores de formulario).
-    // El registro sigue visible y no se recargó como si se hubiera borrado.
     expect(screen.getByText('Perez Lopez Juan')).toBeTruthy();
     await new Promise((r) => setTimeout(r, 50));
     expect(api.pacientes.listar.mock.calls.length).toBe(llamadasAntes);
+  });
+});
+
+describe('Pacientes — carga de lista (4.5)', () => {
+  test('fallo de carga: sin crash, con error y Reintentar, sin vacío normal', async () => {
+    mockApi({});
+    api.pacientes.listar.mockResolvedValue({ error: 'Error de conexion. Verifica tu internet.' });
+    render(<Pacientes onVerHistorial={() => {}} onVer360={() => {}} />);
+    expect(await screen.findByText('No se pudieron cargar los pacientes. Revisa tu conexión e inténtalo de nuevo.')).toBeTruthy();
+    expect(screen.getByText('Reintentar')).toBeTruthy();
+    expect(screen.queryByText('No se encontraron pacientes')).toBeNull();
+  });
+
+  test('reintento tras fallo recupera la lista', async () => {
+    api.pacientes.listar
+      .mockResolvedValueOnce({ error: 'Error de conexion. Verifica tu internet.' })
+      .mockResolvedValueOnce([{
+        id: 1, apellido_paterno: 'Perez', apellido_materno: 'Lopez', nombres: 'Juan',
+        dni: '12345678', tipo_documento: 'dni', telefono: '', email: '', sexo: 'M',
+      }]);
+    render(<Pacientes onVerHistorial={() => {}} onVer360={() => {}} />);
+    expect(await screen.findByText('Reintentar')).toBeTruthy();
+    fireEvent.click(screen.getByText('Reintentar'));
+    expect(await screen.findByText('Perez Lopez Juan')).toBeTruthy();
+    expect(screen.queryByText('No se pudieron cargar los pacientes.')).toBeNull();
   });
 });

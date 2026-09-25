@@ -35,14 +35,26 @@ export default function Pacientes({ onVerHistorial, onVer360 }) {
   // Proyecto 4.4 — error de eliminación a nivel de lista (el `error` del
   // formulario vive dentro del modal y no se ve desde la lista).
   const [errorEliminar, setErrorEliminar] = useState('');
+  // Proyecto 4.5 — api.request devuelve { error } sin lanzar: sin esta guarda,
+  // .filter() revienta y la pantalla queda en blanco.
+  const [errorCarga, setErrorCarga] = useState(false);
   const [antecedentesForm, setAntecedentesForm] = useState({});
   const [ordenarPor, setOrdenarPor] = useState('recientes');
 
   useEffect(() => { cargar(); }, []);
 
   const cargar = async () => {
-    const data = await api.pacientes.listar();
-    setPacientes(data);
+    try {
+      const data = await api.pacientes.listar();
+      if (!Array.isArray(data)) {
+        setErrorCarga(true);
+      } else {
+        setErrorCarga(false);
+        setPacientes(data);
+      }
+    } catch {
+      setErrorCarga(true);
+    }
     setCargando(false);
   };
 
@@ -372,6 +384,11 @@ export default function Pacientes({ onVerHistorial, onVer360 }) {
 
         {cargando ? (
           <div className="loading">Cargando pacientes...</div>
+        ) : errorCarga ? (
+          <>
+          <div className="alert alert-error">No se pudieron cargar los pacientes. Revisa tu conexión e inténtalo de nuevo.</div>
+          <button className="btn btn-primary btn-sm" onClick={cargar}>Reintentar</button>
+          </>
         ) : (
           <>
           {errorEliminar && <div className="alert alert-error">{errorEliminar}</div>}

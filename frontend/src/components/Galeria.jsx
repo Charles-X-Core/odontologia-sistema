@@ -229,6 +229,9 @@ export default function Galeria({ pacienteId }) {
   const [accionPendiente, setAccionPendiente] = useState(null);
   // Proyecto 4.4 — error de eliminación visible en el panel.
   const [errorEliminar, setErrorEliminar] = useState('');
+  // Proyecto 4.5 — api.request devuelve { error } sin lanzar: sin esta guarda,
+  // .filter() revienta y la pantalla queda en blanco.
+  const [errorCarga, setErrorCarga] = useState(false);
   const imagenesRef = useRef(imagenes);
 
   const requerirPassword = (accion) => {
@@ -250,6 +253,8 @@ export default function Galeria({ pacienteId }) {
     const interval = setInterval(() => {
       if (!pacienteId) return;
       api.imagenes.porPaciente(pacienteId).then(data => {
+        // Proyecto 4.5 — el sondeo tampoco debe inyectar un {error} en la lista.
+        if (!Array.isArray(data)) return;
         const prev = imagenesRef.current;
         if (data.length > prev.length) {
           setNuevasCount(data.length - prev.length);
@@ -270,9 +275,14 @@ export default function Galeria({ pacienteId }) {
   const cargar = async () => {
     try {
       const data = await api.imagenes.porPaciente(pacienteId);
-      setImagenes(data);
+      if (!Array.isArray(data)) {
+        setErrorCarga(true);
+      } else {
+        setErrorCarga(false);
+        setImagenes(data);
+      }
     } catch {
-      setImagenes([]);
+      setErrorCarga(true);
     }
     setCargando(false);
   };
@@ -385,7 +395,12 @@ export default function Galeria({ pacienteId }) {
         </div>
       )}
 
-      {filtradas.length === 0 ? (
+      {errorCarga ? (
+        <>
+        <div className="alert alert-error">No se pudieron cargar las imágenes. Revisa tu conexión e inténtalo de nuevo.</div>
+        <button className="btn btn-primary btn-sm" onClick={cargar}>Reintentar</button>
+        </>
+      ) : filtradas.length === 0 ? (
         <div className="galeria-empty">
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.5">
             <rect x="3" y="3" width="18" height="18" rx="2"/>

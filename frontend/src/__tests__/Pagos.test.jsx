@@ -67,3 +67,29 @@ describe('Pagos — eliminar', () => {
     expect(api.pagos.listarPorPaciente.mock.calls.length).toBe(llamadasAntes);
   });
 });
+
+describe('Pagos — carga de lista (4.5)', () => {
+  test('fallo de carga: sin crash, con error y Reintentar, sin vacío normal', async () => {
+    mockApi({});
+    api.pagos.listarPorPaciente.mockResolvedValue({ error: 'Error de conexion. Verifica tu internet.' });
+    render(<Pagos pacienteId={1} />);
+    expect(await screen.findByText('No se pudieron cargar los pagos. Revisa tu conexión e inténtalo de nuevo.')).toBeTruthy();
+    expect(screen.getByText('Reintentar')).toBeTruthy();
+    expect(screen.queryByText('No hay registros de pagos')).toBeNull();
+  });
+
+  test('reintento tras fallo recupera la lista', async () => {
+    api.pagos.listarPorPaciente
+      .mockResolvedValueOnce({ error: 'Error de conexion. Verifica tu internet.' })
+      .mockResolvedValueOnce([{
+        id: 21, fecha: '2026-01-05', procedimiento: 'Limpieza',
+        tratamiento_descripcion: '', total: 100, a_cuenta: 50, saldo: 50,
+        metodo_pago: 'efectivo',
+      }]);
+    render(<Pagos pacienteId={1} />);
+    expect(await screen.findByText('Reintentar')).toBeTruthy();
+    fireEvent.click(screen.getByText('Reintentar'));
+    expect(await screen.findByText('Limpieza')).toBeTruthy();
+    expect(screen.queryByText('No se pudieron cargar los pagos.')).toBeNull();
+  });
+});

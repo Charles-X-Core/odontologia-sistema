@@ -33,6 +33,9 @@ export default function Tratamientos({ pacienteId, consultas, paciente }) {
   // Proyecto 4.4 — error de eliminación a nivel de lista (el `error` del
   // formulario vive dentro del modal y no se ve desde la lista).
   const [errorEliminar, setErrorEliminar] = useState('');
+  // Proyecto 4.5 — api.request devuelve { error } sin lanzar: sin esta guarda,
+  // las operaciones de array revientan y la pantalla queda en blanco.
+  const [errorCarga, setErrorCarga] = useState(false);
 
   const requerirPassword = (accion) => {
     setAccionPendiente(() => accion);
@@ -48,8 +51,17 @@ export default function Tratamientos({ pacienteId, consultas, paciente }) {
   useEffect(() => { cargar(); }, [pacienteId]);
 
   const cargar = async () => {
-    const data = await api.tratamientos.listar(pacienteId);
-    setTratamientos(data);
+    try {
+      const data = await api.tratamientos.listar(pacienteId);
+      if (!Array.isArray(data)) {
+        setErrorCarga(true);
+      } else {
+        setErrorCarga(false);
+        setTratamientos(data);
+      }
+    } catch {
+      setErrorCarga(true);
+    }
     setCargando(false);
   };
 
@@ -260,7 +272,12 @@ export default function Tratamientos({ pacienteId, consultas, paciente }) {
 
       {errorEliminar && <div className="alert alert-error">{errorEliminar}</div>}
 
-      {tratamientos.length === 0 ? (
+      {errorCarga ? (
+        <>
+        <div className="alert alert-error">No se pudieron cargar los tratamientos. Revisa tu conexión e inténtalo de nuevo.</div>
+        <button className="btn btn-primary btn-sm" onClick={cargar}>Reintentar</button>
+        </>
+      ) : tratamientos.length === 0 ? (
         <p className="empty">No hay tratamientos registrados</p>
       ) : grupos.length === 0 ? (
         <p className="empty">No se encontraron tratamientos con esos filtros</p>

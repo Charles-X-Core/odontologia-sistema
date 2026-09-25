@@ -25,6 +25,9 @@ export default function Pagos({ pacienteId, paciente, consultas }) {
   const [enviandoPdf, setEnviandoPdf] = useState(null);
   const [mostrarPassword, setMostrarPassword] = useState(false);
   const [accionPendiente, setAccionPendiente] = useState(null);
+  // Proyecto 4.5 — api.request devuelve { error } sin lanzar: sin estas
+  // guardas, .filter() revienta y la pantalla queda en blanco.
+  const [errorCarga, setErrorCarga] = useState(false);
 
   const requerirPassword = (accion) => {
     setAccionPendiente(() => accion);
@@ -40,14 +43,23 @@ export default function Pagos({ pacienteId, paciente, consultas }) {
   useEffect(() => { cargar(); }, [pacienteId]);
 
   const cargar = async () => {
-    const [pagosData, resumenData, tratsData] = await Promise.all([
-      api.pagos.listarPorPaciente(pacienteId),
-      api.pagos.resumen(pacienteId),
-      api.tratamientos.listar(pacienteId),
-    ]);
-    setPagos(pagosData);
-    setResumen(resumenData);
-    setTratamientos(tratsData.filter(t => t.saldo_pendiente > 0));
+    try {
+      const [pagosData, resumenData, tratsData] = await Promise.all([
+        api.pagos.listarPorPaciente(pacienteId),
+        api.pagos.resumen(pacienteId),
+        api.tratamientos.listar(pacienteId),
+      ]);
+      if (!Array.isArray(pagosData)) {
+        setErrorCarga(true);
+      } else {
+        setErrorCarga(false);
+        setPagos(pagosData);
+        setResumen(resumenData && !resumenData.error ? resumenData : {});
+        setTratamientos(Array.isArray(tratsData) ? tratsData.filter(t => t.saldo_pendiente > 0) : []);
+      }
+    } catch {
+      setErrorCarga(true);
+    }
     setCargando(false);
   };
 
@@ -128,6 +140,13 @@ export default function Pagos({ pacienteId, paciente, consultas }) {
 
   return (
     <div className="pagos-panel">
+      {errorCarga ? (
+        <>
+        <div className="alert alert-error">No se pudieron cargar los pagos. Revisa tu conexión e inténtalo de nuevo.</div>
+        <button className="btn btn-primary btn-sm" onClick={cargar}>Reintentar</button>
+        </>
+      ) : (
+      <>
       <div className="pagos-resumen">
         <div className="pago-resumen-card">
           <span className="pago-resumen-label">Total Pagos</span>
@@ -296,6 +315,8 @@ export default function Pagos({ pacienteId, paciente, consultas }) {
             </tbody>
           </table>
         </div>
+      )}
+      </>
       )}
 
       {mostrarWhatsApp && paciente && (

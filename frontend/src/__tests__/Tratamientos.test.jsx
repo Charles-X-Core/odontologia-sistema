@@ -65,3 +65,29 @@ describe('Tratamientos — eliminar', () => {
     expect(api.tratamientos.listar.mock.calls.length).toBe(llamadasAntes);
   });
 });
+
+describe('Tratamientos — carga de lista (4.5)', () => {
+  test('fallo de carga: sin crash, con error y Reintentar, sin vacío normal', async () => {
+    mockApi({});
+    api.tratamientos.listar.mockResolvedValue({ error: 'Error de conexion. Verifica tu internet.' });
+    render(<Tratamientos pacienteId={1} />);
+    expect(await screen.findByText('No se pudieron cargar los tratamientos. Revisa tu conexión e inténtalo de nuevo.')).toBeTruthy();
+    expect(screen.getByText('Reintentar')).toBeTruthy();
+    expect(screen.queryByText('No hay tratamientos registrados')).toBeNull();
+  });
+
+  test('reintento tras fallo recupera la lista', async () => {
+    api.tratamientos.listar
+      .mockResolvedValueOnce({ error: 'Error de conexion. Verifica tu internet.' })
+      .mockResolvedValueOnce([{
+        id: 11, consulta_id: null, procedimiento_realizado: 'Limpieza',
+        costo_total: 100, monto_a_cuenta: 0, saldo_pendiente: 100,
+        estado: 'planificado', pieza_dental: '', notas: '',
+      }]);
+    render(<Tratamientos pacienteId={1} />);
+    expect(await screen.findByText('Reintentar')).toBeTruthy();
+    fireEvent.click(screen.getByText('Reintentar'));
+    expect(await screen.findByText('Limpieza')).toBeTruthy();
+    expect(screen.queryByText('No se pudieron cargar los tratamientos.')).toBeNull();
+  });
+});
