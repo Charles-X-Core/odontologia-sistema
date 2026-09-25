@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
 import Odontograma from './Odontograma';
+import Modal from './ui/Modal';
+import Button from './ui/Button';
 import { nombreCompleto, tipoDocLabel, calcularEdad, validarDocumento } from '../utils/formatters';
 
 const PASOS = [
@@ -36,6 +38,66 @@ const NECESIDADES_DEFAULT = {
 const SIGNOS_VITALES_DEFAULT = {
   presion_arterial: '', temperatura: '', frecuencia_cardiaca: '', frecuencia_respiratoria: '', peso: '', altura: '',
 };
+
+// Claves de antecedentes usadas por el editor (misma lista del formulario).
+const ANTECEDENTES_KEYS = [
+  'alergia_medicamentos', 'propension_hemorragias', 'complicaciones_anestesia',
+  'presion_arterial_medicacion', 'cardiopatias_personales', 'cardiopatias_familiares',
+  'diabetes_personal', 'diabetes_familiar', 'hepatitis', 'otras_enfermedades',
+  'enfermedad_actual_medicacion',
+];
+
+/**
+ * Proyecto 4.1 — ¿Hay trabajo clínico sin guardar?
+ *
+ * Principio uniforme, sin inventos: el borrador actual se compara contra la
+ * baseline autocargada (defaults de mount + datos traídos del backend:
+ * motivo de la cita, odontograma previo, antecedentes de la historia).
+ * Para recetas/tratamientos/diagnósticos se replica exactamente el filtro que
+ * usa guardarSesion, así que una fila vacía extra NO cuenta como cambio.
+ * Los estados solo-UI (paso, verHistorial, mensajes, toasts, flags de carga,
+ * dniAlert con guardado propio) nunca cuentan.
+ *
+ * Limitaciones documentadas:
+ * - La comparación del odontograma es por JSON (orden de claves estable en
+ *   la práctica); ante duda, protege (falso positivo, nunca pérdida).
+ * - Un editor de antecedentes abierto sin cambios NO cuenta (comparación
+ *   exacta contra la historia).
+ */
+export function tieneTrabajoSinGuardar(draft, base) {
+  const txt = (v) => (v || '').trim();
+  const noVacio = (v) => txt(v) !== '';
+
+  // Textos libres del paso 2-3 (motivo contra su baseline de la cita).
+  if (txt(draft.motivo) !== txt(base.motivo)) return true;
+  if (['tiempoEnfermedad', 'signosSintomas', 'relatoCronologico', 'funcionesBiologicas', 'examenClinico', 'evaluacionOdonto'].some((k) => noVacio(draft[k]))) return true;
+
+  // Signos vitales y plan de tratamiento.
+  if (Object.values(draft.signosVitales || {}).some(noVacio)) return true;
+  if (['descripcion', 'procedimientos', 'secuencia'].some((k) => noVacio(draft.planTratamiento?.[k]))) return true;
+  if (draft.consentimiento === true) return true;
+
+  // Diagnósticos: igual que guardarSesion (solo cuenta texto real).
+  if ((draft.diagnosticos || []).some((d) => noVacio(d.texto))) return true;
+
+  // Odontograma y necesidades contra baseline.
+  if (JSON.stringify(draft.odontograma || {}) !== JSON.stringify(base.odontograma || {})) return true;
+  if (JSON.stringify(draft.necesidades || {}) !== JSON.stringify(NECESIDADES_DEFAULT)) return true;
+
+  // Evidencias en espera.
+  if ((draft.evidencias || []).length > 0) return true;
+
+  // Recetas y tratamientos: igual que guardarSesion.
+  if ((draft.recetas || []).some((r) => (r.medicamentos || []).some((m) => noVacio(m.nombre)) || noVacio(r.indicaciones))) return true;
+  if ((draft.tratamientos || []).some((t) => noVacio(t.procedimiento_realizado))) return true;
+
+  // Antecedentes editados y aún no guardados (comparación exacta).
+  const form = draft.antecedentesForm || {};
+  const hist = draft.historia || {};
+  if (ANTECEDENTES_KEYS.some((k) => txt(form[k]) !== txt(hist[k]))) return true;
+
+  return false;
+}
 
 export default function SesionClinica({ paciente, citaId, motivoCita, onVolver, onCompletado }) {
   const [paso, setPaso] = useState(1);
@@ -149,6 +211,13 @@ export default function SesionClinica({ paciente, citaId, motivoCita, onVolver, 
   const [antecedentesForm, setAntecedentesForm] = useState({});
   const [guardandoAntecedentes, setGuardandoAntecedentes] = useState(false);
 
+  // Proyecto 4.1 — baseline autocargada para detectar trabajo sin guardar.
+  // motivo: viene de la cita; odontograma: prefill async. Los antecedentes se
+  // comparan contra la historia (que se actualiza al guardarlos).
+  const motivoBaseRef = useRef(motivoCita || '');
+  const odontogramaBaseRef = useRef({});
+  const [mostrarConfirmSalida, setMostrarConfirmSalida] = useState(false);
+
   useEffect(() => { cargarDatos(); }, [paciente.id]);
 
   const cargarDatos = async () => {
@@ -166,11 +235,12 @@ export default function SesionClinica({ paciente, citaId, motivoCita, onVolver, 
           const dientes = datos?.dientes || datos;
           if (dientes && Object.keys(dientes).length > 0) {
             setOdontograma(dientes);
+            odontogramaBaseRef.current = dientes;
           }
         }
       }
       if (data.historia) {
-        setAntecedentesForm({
+        const base = {
           alergia_medicamentos: data.historia.alergia_medicamentos || '',
           propension_hemorragias: data.historia.propension_hemorragias || '',
           complicaciones_anestesia: data.historia.complicaciones_anestesia || '',
@@ -182,7 +252,8 @@ export default function SesionClinica({ paciente, citaId, motivoCita, onVolver, 
           hepatitis: data.historia.hepatitis || '',
           otras_enfermedades: data.historia.otras_enfermedades || '',
           enfermedad_actual_medicacion: data.historia.enfermedad_actual_medicacion || '',
-        });
+        };
+        setAntecedentesForm(base);
       }
     } catch {}
   };
@@ -418,6 +489,37 @@ export default function SesionClinica({ paciente, citaId, motivoCita, onVolver, 
 
   const edad = calcularEdad(paciente.fecha_nacimiento);
 
+  // Proyecto 4.1 — protección anti-pérdida: la única salida (Volver) se
+  // intercepta solo si hay trabajo sin guardar. "Salir" no guarda nada,
+  // solo permite la salida normal existente, una sola vez.
+  const hayTrabajoSinGuardar = () => tieneTrabajoSinGuardar(
+    {
+      motivo, tiempoEnfermedad, signosSintomas, relatoCronologico, funcionesBiologicas,
+      signosVitales, examenClinico, evaluacionOdonto, diagnosticos, planTratamiento,
+      consentimiento, odontograma, necesidades, evidencias, recetas, tratamientos,
+      antecedentesForm, historia,
+    },
+    {
+      motivo: motivoBaseRef.current,
+      odontograma: odontogramaBaseRef.current,
+    }
+  );
+
+  const intentarVolver = () => {
+    if (hayTrabajoSinGuardar()) {
+      setMostrarConfirmSalida(true);
+      return;
+    }
+    onVolver?.();
+  };
+
+  const seguirEditando = () => setMostrarConfirmSalida(false);
+
+  const confirmarSalida = () => {
+    setMostrarConfirmSalida(false);
+    onVolver?.();
+  };
+
   const totalConsultas = consultas.length;
   const ultimaConsulta = consultas.length > 0 ? consultas[0] : null;
 
@@ -435,7 +537,7 @@ export default function SesionClinica({ paciente, citaId, motivoCita, onVolver, 
     <div className="sesion-container">
       <div className="sesion-header">
         <div className="sesion-header-left">
-          <button className="btn-back" onClick={onVolver}>&larr;</button>
+          <button className="btn-back" onClick={intentarVolver}>&larr;</button>
           <div className="sesion-paciente-info">
             <h2>{nombreCompleto(paciente)}</h2>
             <span>{tipoDocLabel(paciente.tipo_documento)}: {paciente.dni}{edad ? ` | ${edad} anos` : ''}{paciente.telefono ? ` | Tel: ${paciente.telefono}` : ''}</span>
@@ -1335,8 +1437,7 @@ export default function SesionClinica({ paciente, citaId, motivoCita, onVolver, 
             <div className="modal-header">
               <h3>Documento no registrado</h3>
               <button className="btn-close" onClick={() => setMostrarAlertaDni(false)}>&times;</button>
-            </div>
-            <div style={{ padding: '20px' }}>
+            </div>            <div style={{ padding: '20px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', padding: '12px', background: '#fef3c7', borderRadius: '8px', border: '1px solid #fcd34d' }}>
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#92400e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                 <span style={{ fontSize: '13px', color: '#92400e' }}>Este paciente fue registrado sin documento real. Se recomienda ingresar el DNI/CE correcto para mejor identificacion.</span>
@@ -1370,6 +1471,23 @@ export default function SesionClinica({ paciente, citaId, motivoCita, onVolver, 
           </div>
         </div>
       )}
+
+      {/* Proyecto 4.1 — confirmación anti-pérdida. ×/Escape = seguir editando. */}
+      <Modal
+        open={mostrarConfirmSalida}
+        onClose={seguirEditando}
+        title="Tienes cambios sin guardar"
+        size="sm"
+        footer={
+          <>
+            <Button variant="secondary" onClick={confirmarSalida}>Salir</Button>
+            <Button variant="primary" onClick={seguirEditando}>Seguir editando</Button>
+          </>
+        }
+      >
+        <p>Si sales ahora se perderá el trabajo de esta sesión que aún no guardaste.</p>
+        <p>Para conservarlo, sigue editando y usa "Guardar Sesion Completa" al finalizar.</p>
+      </Modal>
     </div>
   );
 }

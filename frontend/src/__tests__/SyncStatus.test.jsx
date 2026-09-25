@@ -183,9 +183,12 @@ describe('SyncStatus — bootstrap y nube', () => {
     });
     render(<SyncStatus />);
     expect(await screen.findByText('Primera copia pendiente')).toBeTruthy();
+    // Esperar la variante con nube confirmada (antes, con nube aún sin
+    // cargar, hay un estado neutro sin botón).
+    expect(await screen.findByText('Descargar primera copia')).toBeTruthy();
     expect(screen.getByText(/Esta computadora aún no tiene información/)).toBeTruthy();
-    expect(screen.getByText('Descargar primera copia')).toBeTruthy();
     expect(screen.queryByText(/Sigue el asistente en pantalla/)).toBeNull();
+    expect(screen.queryByText(/Usa el asistente/)).toBeNull();
     expect(screen.queryByText('Sincronizar ahora')).toBeNull();
     await waitFor(() => expect(cloudCalls()).toBeGreaterThan(0));
     expect(pushCalls()).toBe(0);
@@ -199,8 +202,10 @@ describe('SyncStatus — bootstrap y nube', () => {
     });
     render(<SyncStatus />);
     expect(await screen.findByText('Primera copia pendiente')).toBeTruthy();
+    // Esperar la variante con nube confirmada (el título aparece antes,
+    // con nube aún sin cargar, en la rama genérica sin botón).
+    expect(await screen.findByText('Abrir asistente')).toBeTruthy();
     expect(screen.getByText(/Abre el asistente para preparar la primera copia/)).toBeTruthy();
-    expect(screen.getByText('Abrir asistente')).toBeTruthy();
     expect(screen.queryByText('Sincronizar ahora')).toBeNull();
     expect(fullCalls()).toBe(0);
   });
@@ -326,9 +331,10 @@ describe('SyncStatus — reglas transversales', () => {
     // pasa a bootstrapPending=false y el servicio lo notifica.
     currentStatus = { ...baseStatus };
     syncService.notifyListeners({ syncing: false, lastResult: fullOk });
-    // 3. el aviso antiguo de nube no debe persistir.
+    // 3. el aviso antiguo de nube no debe persistir (espera: la limpieza
+    // ocurre en el efecto posterior al cambio de estado).
     expect(await screen.findByText('Al día')).toBeTruthy();
-    expect(screen.queryByText(/Sin conexión a la nube/)).toBeNull();
+    await waitFor(() => expect(screen.queryByText(/Sin conexión a la nube/)).toBeNull());
   });
 });
 

@@ -155,9 +155,21 @@ export function classifySyncState({ status, cloud, syncing, lastResult, assistan
     // usa el fullSync() existente, que en A1 es pull-only en backend (sin push
     // de contenido y sin colisiones posibles). Texto autocontenido: no menciona
     // ningún asistente porque FirstSyncOnboarding no aparece en A1.
+    // Con nube aún sin cargar no se afirma nada: ni botón ni referencias.
+    if (scenario === 'A1_empty' && !cloud) {
+      return {
+        key: 'bootstrap',
+        title: 'Primera copia pendiente',
+        subtitle: 'Revisando el estado de la nube…',
+        dot: 'pending',
+        showButton: false,
+        buttonEnabled: false,
+        buttonText: 'Descargar primera copia',
+      };
+    }
     if (
       scenario === 'A1_empty' &&
-      (!cloud || cloud.cloud === 'empty' || cloud.cloud === 'unconfigured' || cloud.cloud === 'with-data')
+      (cloud.cloud === 'empty' || cloud.cloud === 'unconfigured' || cloud.cloud === 'with-data')
     ) {
       return {
         key: 'bootstrap-download',
