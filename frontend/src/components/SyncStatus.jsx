@@ -148,14 +148,31 @@ export function classifySyncState({ status, cloud, syncing, lastResult }) {
 
   if (status && status.bootstrapPending) {
     const scenario = status.scenario;
+    // Proyecto 3.2 — A1 (instalación nueva, local vacío): la primera descarga
+    // usa el fullSync() existente, que en A1 es pull-only en backend (sin push
+    // de contenido y sin colisiones posibles). Texto autocontenido: no menciona
+    // ningún asistente porque FirstSyncOnboarding no aparece en A1.
+    if (
+      scenario === 'A1_empty' &&
+      (!cloud || cloud.cloud === 'empty' || cloud.cloud === 'unconfigured' || cloud.cloud === 'with-data')
+    ) {
+      return {
+        key: 'bootstrap-download',
+        title: 'Primera copia pendiente',
+        subtitle:
+          'Esta computadora aún no tiene información. La primera descarga traerá la copia de la nube.',
+        dot: 'pending',
+        showButton: true,
+        buttonEnabled: true,
+        buttonText: 'Descargar primera copia',
+      };
+    }
     if (!cloud || cloud.cloud === 'empty' || cloud.cloud === 'unconfigured') {
       return {
         key: 'bootstrap',
         title: 'Primera copia pendiente',
         subtitle:
-          scenario === 'A1_empty'
-            ? 'Esta computadora aún no tiene copia de la nube. La primera descarga la traerá. Sigue el asistente en pantalla.'
-            : 'Esta computadora tiene información que aún no está en la nube. Usa el asistente de primera sincronización.',
+          'Esta computadora tiene información que aún no está en la nube. Usa el asistente de primera sincronización.',
         dot: 'pending',
         showButton: false,
         buttonEnabled: false,

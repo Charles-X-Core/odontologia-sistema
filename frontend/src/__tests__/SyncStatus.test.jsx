@@ -174,14 +174,16 @@ describe('SyncStatus — errores y colisiones', () => {
 });
 
 describe('SyncStatus — bootstrap y nube', () => {
-  test('10. Bootstrap A1: primera copia pendiente sin CTA manual', async () => {
+  test('10. Bootstrap A1 + nube vacía: primera descarga manual', async () => {
     mockApi({
       status: { ...baseStatus, lastSync: null, bootstrapPending: true, scenario: 'A1_empty' },
       cloud: { ...cloudEmpty, cloud: 'empty' },
     });
     render(<SyncStatus />);
     expect(await screen.findByText('Primera copia pendiente')).toBeTruthy();
-    expect(screen.getByText(/primera descarga la traerá/i)).toBeTruthy();
+    expect(screen.getByText(/Esta computadora aún no tiene información/)).toBeTruthy();
+    expect(screen.getByText('Descargar primera copia')).toBeTruthy();
+    expect(screen.queryByText(/Sigue el asistente en pantalla/)).toBeNull();
     expect(screen.queryByText('Sincronizar ahora')).toBeNull();
     await waitFor(() => expect(cloudCalls()).toBeGreaterThan(0));
     expect(pushCalls()).toBe(0);
@@ -324,5 +326,122 @@ describe('SyncStatus — reglas transversales', () => {
     // 3. el aviso antiguo de nube no debe persistir.
     expect(await screen.findByText('Al día')).toBeTruthy();
     expect(screen.queryByText(/Sin conexión a la nube/)).toBeNull();
+  });
+});
+
+describe('SyncStatus — primera descarga A1 (3.2)', () => {
+  test('20. A1 + nube con datos: el botón llama una vez a fullSync sin argumentos', async () => {
+    mockApi({
+      status: { ...baseStatus, lastSync: null, bootstrapPending: true, scenario: 'A1_empty' },
+      cloud: { ...cloudEmpty, cloud: 'with-data', totalRows: 12 },
+    });
+    const spy = vi.spyOn(syncService, 'fullSync');
+    render(<SyncStatus />);
+    expect(await screen.findByText('Descargar primera copia')).toBeTruthy();
+    fireEvent.click(screen.getByText('Descargar primera copia'));
+    await waitFor(() => expect(spy).toHaveBeenCalledTimes(1));
+    expect(spy).toHaveBeenCalledWith();
+    expect(pushCalls()).toBe(0);
+  });
+
+  test('21. A1 + nube sin configurar: botón disponible, fullSync es la única operación', async () => {
+    mockApi({
+      status: { ...baseStatus, lastSync: null, bootstrapPending: true, scenario: 'A1_empty' },
+      cloud: { ...cloudEmpty, cloud: 'unconfigured', isConfigured: false },
+      fullJson: { success: false, error: 'Turso not configured' },
+    });
+    const spy = vi.spyOn(syncService, 'fullSync');
+    const pushSpy = vi.spyOn(syncService, 'push');
+    render(<SyncStatus />);
+    expect(await screen.findByText('Descargar primera copia')).toBeTruthy();
+    fireEvent.click(screen.getByText('Descargar primera copia'));
+    expect(await screen.findByText('No se pudo sincronizar')).toBeTruthy();
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(spy).toHaveBeenCalledWith();
+    expect(pushSpy).not.toHaveBeenCalled();
+    expect(pushCalls()).toBe(0);
+  });
+
+  test('22. A1 + nube parcial: sin botón', async () => {
+    mockApi({
+      status: { ...baseStatus, lastSync: null, bootstrapPending: true, scenario: 'A1_empty' },
+      cloud: { ...cloudEmpty, cloud: 'partial' },
+    });
+    render(<SyncStatus />);
+    expect(await screen.findByText('Primera copia pendiente')).toBeTruthy();
+    expect(screen.queryByText('Descargar primera copia')).toBeNull();
+    expect(screen.queryByText('Sincronizar ahora')).toBeNull();
+    expect(fullCalls()).toBe(0);
+  });
+
+  test('23. A1 + error de nube: sin botón', async () => {
+    mockApi({
+      status: { ...baseStatus, lastSync: null, bootstrapPending: true, scenario: 'A1_empty' },
+      cloud: { ...cloudEmpty, cloud: 'error', error: 'timeout' },
+    });
+    render(<SyncStatus />);
+    expect(await screen.findByText('Primera copia pendiente')).toBeTruthy();
+    expect(await screen.findByText(/Sin conexión a la nube/)).toBeTruthy();
+    expect(screen.queryByText('Descargar primera copia')).toBeNull();
+    expect(screen.queryByText('Sincronizar ahora')).toBeNull();
+  });
+
+  test('24. Durante la descarga: deshabilitado y doble clic sin segunda llamada', async () => {
+    let release;
+    const gate = new Promise((res) => { release = res; });
+    mockApi({
+      status: { ...baseStatus, lastSync: null, bootstrapPending: true, scenario: 'A1_empty' },
+      cloud: { ...cloudEmpty, cloud: 'empty' },
+      fullJson: () => gate.then(() => fullOk),
+    });
+    const spy = vi.spyOn(syncService, 'fullSync');
+    render(<SyncStatus />);
+    expect(await screen.findByText('Descargar primera copia')).toBeTruthy();
+    fireEvent.click(screen.getByText('Descargar primera copia'));
+    expect(await screen.findByText(/Sincronizando… no cierres el programa/)).toBeTruthy();
+    const busy = screen.getByText('Sincronizando…');
+    expect(busy.disabled).toBe(true);
+    fireEvent.click(busy);
+    await new Promise((r) => setTimeout(r, 50));
+    expect(spy).toHaveBeenCalledTimes(1);
+    release();
+    await screen.findByText('Descargar primera copia');
+  });
+
+  test('25. Descarga exitosa: sale de bootstrap y muestra Al día', async () => {
+    let currentStatus = { ...baseStatus, lastSync: null, bootstrapPending: true, scenario: 'A1_empty' };
+    global.fetch = vi.fn(async (url) => {
+      const u = String(url);
+      if (u.includes('/api/sync/full')) {
+        currentStatus = { ...baseStatus };
+        return { ok: true, json: async () => fullOk };
+      }
+      if (u.includes('cloud-status')) {
+        return { ok: true, json: async () => ({ success: true, data: cloudEmpty }) };
+      }
+      return { ok: true, json: async () => ({ success: true, data: currentStatus }) };
+    });
+    render(<SyncStatus />);
+    expect(await screen.findByText('Descargar primera copia')).toBeTruthy();
+    fireEvent.click(screen.getByText('Descargar primera copia'));
+    expect(await screen.findByText('Al día')).toBeTruthy();
+    expect(screen.queryByText('Primera copia pendiente')).toBeNull();
+    expect(screen.getByText(/Última copia:/)).toBeTruthy();
+  });
+
+  test('26. Descarga fallida: mensaje amable sin tecnicismos', async () => {
+    mockApi({
+      status: { ...baseStatus, lastSync: null, bootstrapPending: true, scenario: 'A1_empty' },
+      cloud: { ...cloudEmpty, cloud: 'with-data', totalRows: 8 },
+      fullJson: { success: false, error: 'Error al descargar cambios' },
+    });
+    render(<SyncStatus />);
+    expect(await screen.findByText('Descargar primera copia')).toBeTruthy();
+    fireEvent.click(screen.getByText('Descargar primera copia'));
+    expect(await screen.findByText('No se pudo sincronizar')).toBeTruthy();
+    expect(screen.getByText(/Tus datos siguen a salvo/)).toBeTruthy();
+    for (const raw of ['A1_empty', 'bootstrap', 'Turso', 'cursor', 'admitLocalPush']) {
+      expect(screen.queryByText(new RegExp(raw, 'i'))).toBeNull();
+    }
   });
 });
