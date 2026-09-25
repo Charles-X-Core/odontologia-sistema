@@ -62,6 +62,10 @@ function getUltimosMeses(consultas, numMeses = 6) {
 export default function Dashboard({ onNavigate }) {
   const [stats, setStats] = useState(null);
   const [cargando, setCargando] = useState(true);
+  // Proyecto 4.2 — fallo de carga distinguible de "sin datos": api.request
+  // no rechaza ante error de red (devuelve { error }), así que se detecta
+  // explícitamente y nunca se pinta ese objeto como si fueran contadores.
+  const [errorCarga, setErrorCarga] = useState(false);
   const [filtroFecha, setFiltroFecha] = useState('todo');
   const [waConnected, setWaConnected] = useState(false);
   const [citasPorProcesar, setCitasPorProcesar] = useState([]);
@@ -72,16 +76,17 @@ export default function Dashboard({ onNavigate }) {
   }, []);
 
   const cargarDatos = async () => {
+    setCargando(true);
+    setErrorCarga(false);
     try {
       const data = await api.dashboard.stats();
-      setStats(data);
+      if (!data || data.error) {
+        setErrorCarga(true);
+      } else {
+        setStats(data);
+      }
     } catch {
-      setStats({
-        pacientes: 0, consultas: 0, tratamientos: 0,
-        tratamientosRealizados: 0, tratamientosPlanificados: 0,
-        pagos: { total_general: 0, total_pagado: 0, total_pendiente: 0 },
-        ultimasConsultas: [], ingresosMensuales: [], saldosPendientes: [],
-      });
+      setErrorCarga(true);
     }
     try {
       const citas = await api.citas.pendientesProcesar();
@@ -232,6 +237,26 @@ export default function Dashboard({ onNavigate }) {
           <div className="skeleton-stats">{[1, 2, 3, 4, 5, 6].map(i => <div key={i} className="skeleton-stat-card"></div>)}</div>
           <div className="skeleton-charts"><div className="skeleton-chart"></div><div className="skeleton-chart"></div></div>
           <div className="skeleton-card"></div>
+        </div>
+      </div>
+    );
+  }
+
+  // Proyecto 4.2 — fallo de carga: ni ceros como datos ni CTA engañoso.
+  // Patrones existentes: empty-state + botón, sin tecnicismos visibles.
+  if (errorCarga) {
+    return (
+      <div className="dashboard">
+        <div className="dashboard-header">
+          <div>
+            <h2>Dashboard</h2>
+            <p className="dashboard-subtitle">Vista general del sistema</p>
+          </div>
+        </div>
+        <div className="empty-state">
+          <p>No se pudieron cargar los datos del panel.</p>
+          <p>Revisa tu conexión e inténtalo de nuevo.</p>
+          <button className="empty-state-btn" onClick={cargarDatos}>Reintentar</button>
         </div>
       </div>
     );
